@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3a2a12">
+<meta name="description" content="和合本、ESV、新譯本、ASV、KJV 多譯本聖經查詢與閱讀">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="聖經查詢">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<title>多譯本聖經查詢</title>
+<style>
+:root {
+  --bg: #f5f1eb;
+  --bg2: #ffffff;
+  --text: #2c2419;
+  --text2: #6b5d4d;
+  --accent: #8b6914;
+  --accent2: #c49b2a;
+  --border: #d9cfc0;
+  --shadow: rgba(0,0,0,0.08);
+  --card: #fffdf8;
+  --highlight: #fff3cd;
+  --tag-bg: #f0e8d8;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: "Noto Serif TC","Source Han Serif TC",Georgia,serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; line-height: 1.8;
+}
+.app-header {
+  background: linear-gradient(135deg,#3a2a12 0%,#5c3d1a 50%,#3a2a12 100%);
+  color: #f0e0c0; padding: 16px 20px; text-align: center;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+.app-header h1 { font-size:1.4rem; font-weight:700; letter-spacing:4px; }
+.app-header .subtitle { font-size:0.75rem; opacity:0.7; margin-top:2px; }
+.tabs {
+  display:flex; background:#4a3520;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+}
+.tab {
+  flex:1; padding:10px 16px; text-align:center; color:#c0a878;
+  cursor:pointer; font-size:0.9rem; transition:all 0.2s;
+  border:none; border-bottom:3px solid transparent;
+  font-family:inherit; background:none;
+}
+.tab:hover { color:#f0e0c0; background:rgba(255,255,255,0.05); }
+.tab.active { color:#f0d890; border-bottom-color:var(--accent2); background:rgba(255,255,255,0.08); }
+.container { max-width:1200px; margin:0 auto; padding:16px; }
+.panel { display:none; }
+.panel.active { display:block; }
+
+.selector-row { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:end; }
+.selector-group { display:flex; flex-direction:column; gap:4px; }
+.selector-group label { font-size:0.75rem; color:var(--text2); font-weight:600; }
+.selector-group select, .selector-group input {
+  padding:8px 12px; border:1px solid var(--border); border-radius:8px;
+  background:var(--bg2); color:var(--text); font-size:0.9rem;
+  font-family:inherit; cursor:pointer; min-width:80px;
+}
+.selector-group select:focus, .selector-group input:focus {
+  outline:none; border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(139,105,20,0.15);
+}
+.btn {
+  padding:8px 20px; background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:white; border:none; border-radius:8px; cursor:pointer;
+  font-size:0.9rem; font-family:inherit; font-weight:600;
+  transition:all 0.2s; white-space:nowrap;
+}
+.btn:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(139,105,20,0.3); }
+.btn:active { transform:translateY(0); }
+.btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+.version-toggles {
+  display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;
+  padding:12px; background:var(--card); border-radius:10px; border:1px solid var(--border);
+}
+.version-toggle {
+  display:flex; align-items:center; gap:6px; padding:6px 14px;
+  border-radius:20px; cursor:pointer; font-size:0.85rem; font-weight:600;
+  transition:all 0.2s; border:2px solid var(--border);
+  background:var(--bg); user-select:none;
+}
+.version-toggle.active { border-color:var(--accent); background:var(--tag-bg); color:var(--accent); }
+.version-toggle input { display:none; }
+
+.results-area { min-height:200px; }
+.loading { text-align:center; padding:40px; color:var(--text2); font-size:0.95rem; }
+.loading::after {
+  content:''; display:block; width:32px; height:32px; margin:12px auto 0;
+  border:3px solid var(--border); border-top-color:var(--accent);
+  border-radius:50%; animation:spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.verse-group {
+  margin-bottom:16px; background:var(--card); border-radius:12px;
+  overflow:hidden; border:1px solid var(--border); box-shadow:0 2px 8px var(--shadow);
+}
+.verse-header {
+  padding:10px 16px; background:linear-gradient(135deg,#f5eed8,#ebe3cf);
+  font-weight:700; font-size:0.95rem; color:var(--accent);
+  border-bottom:1px solid var(--border);
+}
+.verse-translations { display:grid; gap:0; }
+.verse-translation {
+  padding:12px 16px; border-bottom:1px solid #f0ebe0;
+  display:flex; gap:10px; align-items:baseline;
+}
+.verse-translation:last-child { border-bottom:none; }
+.version-badge {
+  flex-shrink:0; padding:2px 8px; border-radius:4px;
+  font-size:0.7rem; font-weight:700; color:white; min-width:42px; text-align:center;
+}
+.badge-unv { background:#c0392b; }
+.badge-ncv { background:#2980b9; }
+.badge-kjv { background:#27ae60; }
+.badge-asv { background:#8e44ad; }
+.badge-esv { background:#e67e22; }
+.verse-text { font-size:1rem; line-height:1.85; flex:1; }
+.verse-text .highlight-match { background:#ffe066; padding:1px 2px; border-radius:2px; }
+
+.chapter-nav {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-top:20px; padding:12px 16px; background:var(--card);
+  border-radius:10px; border:1px solid var(--border);
+}
+.chapter-nav .btn { padding:8px 16px; font-size:0.85rem; }
+.chapter-info { font-size:0.9rem; font-weight:600; color:var(--text2); }
+
+.search-box { display:flex; gap:8px; margin-bottom:16px; }
+.search-box input {
+  flex:1; padding:10px 16px; border:2px solid var(--border); border-radius:10px;
+  font-size:1rem; font-family:inherit; background:var(--bg2); color:var(--text);
+}
+.search-box input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(139,105,20,0.15); }
+.search-options { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; align-items:center; }
+.search-options label { font-size:0.85rem; color:var(--text2); font-weight:600; }
+
+.search-result-item {
+  padding:14px 16px; background:var(--card); border-radius:10px;
+  border:1px solid var(--border); margin-bottom:10px; cursor:pointer; transition:all 0.2s;
+}
+.search-result-item:hover { border-color:var(--accent); box-shadow:0 2px 12px var(--shadow); }
+.search-ref { font-weight:700; color:var(--accent); font-size:0.9rem; margin-bottom:4px; }
+.search-text { font-size:0.95rem; color:var(--text); }
+.search-stats {
+  font-size:0.85rem; color:var(--text2); margin-bottom:12px;
+  padding:8px 12px; background:var(--tag-bg); border-radius:8px;
+}
+
+.quick-input { display:flex; gap:8px; margin-bottom:16px; }
+.quick-input input {
+  flex:1; padding:10px 16px; border:2px solid var(--border); border-radius:10px;
+  font-size:0.95rem; font-family:inherit; background:var(--bg2); color:var(--text);
+}
+.quick-input input::placeholder { color:#bbb; }
+.quick-input input:focus { outline:none; border-color:var(--accent); }
+
+.empty-state { text-align:center; padding:60px 20px; color:var(--text2); }
+.empty-state .icon { font-size:3rem; margin-bottom:16px; opacity:0.3; }
+.empty-state p { font-size:0.95rem; margin-bottom:6px; }
+.error-msg {
+  text-align:center; padding:20px; color:#c0392b; background:#fdf0ef;
+  border-radius:10px; border:1px solid #f5c6cb; margin-bottom:12px;
+}
+.app-footer {
+  text-align:center; padding:20px; font-size:0.75rem; color:var(--text2);
+  border-top:1px solid var(--border); margin-top:40px;
+}
+.app-footer a { color:var(--accent); text-decoration:none; }
+.app-footer a:hover { text-decoration:underline; }
+
+.load-bar { width:100%; background:var(--border); border-radius:4px; height:6px; margin:8px 0; }
+.load-bar-fill { height:100%; background:var(--accent); border-radius:4px; transition:width 0.3s; }
+
+@media (max-width:600px) {
+  .app-header h1 { font-size:1.15rem; letter-spacing:2px; }
+  .container { padding:10px; }
+  .selector-row { gap:6px; }
+  .selector-group select { min-width:60px; font-size:0.85rem; padding:7px 8px; }
+  .btn { padding:7px 14px; font-size:0.85rem; }
+  .version-toggles { gap:6px; padding:10px; }
+  .version-toggle { padding:5px 10px; font-size:0.8rem; }
+  .verse-translation { padding:10px 12px; flex-direction:column; gap:4px; }
+  .verse-text { font-size:0.95rem; }
+  .search-box { flex-direction:column; }
+  .quick-input { flex-direction:column; }
+  .tab { padding:9px 8px; font-size:0.82rem; }
+}
+@media (min-width:900px) {
+  .verse-translations.parallel-mode {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  }
+  .verse-translations.parallel-mode .verse-translation {
+    border-bottom:none; border-right:1px solid #f0ebe0;
+  }
+  .verse-translations.parallel-mode .verse-translation:last-child { border-right:none; }
+}
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>多譯本聖經查詢</h1>
+  <div class="subtitle">Multi-Version Bible Reader</div>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-tab="read" onclick="switchTab('read')">經文閱讀</button>
+  <button class="tab" data-tab="search" onclick="switchTab('search')">關鍵字搜尋</button>
+  <button class="tab" data-tab="quick" onclick="switchTab('quick')">快速查詢</button>
+</nav>
+
+<div class="container">
+
+  <div id="load-status" style="padding:20px;text-align:center;color:var(--text2);display:none;">
+    <div style="font-size:0.95rem;">正在載入離線經文資料...</div>
+    <div class="load-bar"><div class="load-bar-fill" id="load-bar-fill" style="width:0%"></div></div>
+    <div id="load-detail" style="font-size:0.8rem;margin-top:4px;"></div>
+  </div>
+
+  <div id="panel-read" class="panel active">
+    <div class="selector-row">
+      <div class="selector-group"><label>書卷</label><select id="sel-book" onchange="onBookChange()"></select></div>
+      <div class="selector-group"><label>章</label><select id="sel-chap" onchange="onChapChange()"></select></div>
+      <div class="selector-group"><label>起始節</label><select id="sel-sec-start"></select></div>
+      <div class="selector-group"><label>結束節</label><select id="sel-sec-end"></select></div>
+      <button class="btn" id="btn-read" onclick="fetchVerses()">查詢</button>
+    </div>
+    <div class="version-toggles" id="version-toggles"></div>
+    <div class="results-area" id="results-read">
+      <div class="empty-state"><div class="icon">📖</div><p>選擇書卷、章節後點擊「查詢」</p></div>
+    </div>
+    <div class="chapter-nav" id="chap-nav" style="display:none;">
+      <button class="btn" id="btn-prev-chap" onclick="prevChapter()">上一章</button>
+      <span class="chapter-info" id="chap-info"></span>
+      <button class="btn" id="btn-next-chap" onclick="nextChapter()">下一章</button>
+    </div>
+  </div>
+
+  <div id="panel-search" class="panel">
+    <div class="search-box">
+      <input type="text" id="search-input" placeholder="輸入關鍵字搜尋經文..." onkeydown="if(event.key==='Enter')doSearch()">
+      <button class="btn" onclick="doSearch()">搜尋</button>
+    </div>
+    <div class="version-toggles" id="version-toggles-search"></div>
+    <div class="search-options">
+      <label>搜尋範圍：</label>
+      <select id="search-range">
+        <option value="0">全部</option><option value="1">新約</option><option value="2">舊約</option>
+      </select>
+    </div>
+    <div id="results-search">
+      <div class="empty-state"><div class="icon">🔍</div><p>輸入關鍵字搜尋聖經經文</p></div>
+    </div>
+  </div>
+
+  <div id="panel-quick" class="panel">
+    <div class="quick-input">
+      <input type="text" id="quick-ref" placeholder="例：創 1:1-3、約 3:16、太 5:1-12" onkeydown="if(event.key==='Enter')doQuickLookup()">
+      <button class="btn" onclick="doQuickLookup()">查詢</button>
+    </div>
+    <div class="version-toggles" id="version-toggles-quick"></div>
+    <div id="results-quick">
+      <div class="empty-state"><div class="icon">⚡</div><p>輸入經文參照快速查詢</p><p style="font-size:0.8rem;">支援格式：創 1:1-3、約 3:16</p></div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="app-footer">
+  <p>經文資料來源：<a href="https://bible.fhl.net" target="_blank" rel="noopener">信望愛聖經網站</a></p>
+  <p style="margin-top:4px;">和合本 · ESV · 新譯本 · ASV · KJV ｜ ESV 由信望愛 API 即時查詢，其餘本地秒速載入</p>
+</footer>
+
+<script>
+const FHL_API = 'https://bible.fhl.net/json';
+const LOCAL_VERSIONS = ['unv','ncv','kjv','asv'];
+const VERSIONS = [
+  { code:'unv', name:'和合本', badge:'badge-unv', local:true },
+  { code:'esv', name:'ESV',   badge:'badge-esv', local:false },
+  { code:'ncv', name:'新譯本', badge:'badge-ncv', local:true },
+  { code:'asv', name:'ASV',   badge:'badge-asv', local:true },
+  { code:'kjv', name:'KJV',   badge:'badge-kjv', local:true },
+];
+let activeVersions = ['unv','esv','ncv','asv','kjv'];
+
+const BOOKS = [
+  {bid:1,chineses:'創',chinesef:'創世記',engs:'Gen',chapters:50},
+  {bid:2,chineses:'出',chinesef:'出埃及記',engs:'Ex',chapters:40},
+  {bid:3,chineses:'利',chinesef:'利未記',engs:'Lev',chapters:27},
+  {bid:4,chineses:'民',chinesef:'民數記',engs:'Num',chapters:36},
+  {bid:5,chineses:'申',chinesef:'申命記',engs:'Deut',chapters:34},
+  {bid:6,chineses:'書',chinesef:'約書亞記',engs:'Josh',chapters:24},
+  {bid:7,chineses:'士',chinesef:'士師記',engs:'Judg',chapters:21},
+  {bid:8,chineses:'得',chinesef:'路得記',engs:'Ruth',chapters:4},
+  {bid:9,chineses:'撒上',chinesef:'撒母耳記上',engs:'1 Sam',chapters:31},
+  {bid:10,chineses:'撒下',chinesef:'撒母耳記下',engs:'2 Sam',chapters:24},
+  {bid:11,chineses:'王上',chinesef:'列王紀上',engs:'1 Kin',chapters:22},
+  {bid:12,chineses:'王下',chinesef:'列王紀下',engs:'2 Kin',chapters:25},
+  {bid:13,chineses:'代上',chinesef:'歷代志上',engs:'1 Chr',chapters:29},
+  {bid:14,chineses:'代下',chinesef:'歷代志下',engs:'2 Chr',chapters:36},
+  {bid:15,chineses:'拉',chinesef:'以斯拉記',engs:'Ezra',chapters:10},
+  {bid:16,chineses:'尼',chinesef:'尼希米記',engs:'Neh',chapters:13},
+  {bid:17,chineses:'斯',chinesef:'以斯帖記',engs:'Esth',chapters:10},
+  {bid:18,chineses:'伯',chinesef:'約伯記',engs:'Job',chapters:42},
+  {bid:19,chineses:'詩',chinesef:'詩篇',engs:'Ps',chapters:150},
+  {bid:20,chineses:'箴',chinesef:'箴言',engs:'Prov',chapters:31},
+  {bid:21,chineses:'傳',chinesef:'傳道書',engs:'Eccl',chapters:12},
+  {bid:22,chineses:'歌',chinesef:'雅歌',engs:'Song',chapters:8},
+  {bid:23,chineses:'賽',chinesef:'以賽亞書',engs:'Is',chapters:66},
+  {bid:24,chineses:'耶',chinesef:'耶利米書',engs:'Jer',chapters:52},
+  {bid:25,chineses:'哀',chinesef:'耶利米哀歌',engs:'Lam',chapters:5},
+  {bid:26,chineses:'結',chinesef:'以西結書',engs:'Ezek',chapters:48},
+  {bid:27,chineses:'但',chinesef:'但以理書',engs:'Dan',chapters:12},
+  {bid:28,chineses:'何',chinesef:'何西阿書',engs:'Hos',chapters:14},
+  {bid:29,chineses:'珥',chinesef:'約珥書',engs:'Joel',chapters:3},
+  {bid:30,chineses:'摩',chinesef:'阿摩司書',engs:'Amos',chapters:9},
+  {bid:31,chineses:'俄',chinesef:'俄巴底亞書',engs:'Obad',chapters:1},
+  {bid:32,chineses:'拿',chinesef:'約拿書',engs:'Jon',chapters:4},
+  {bid:33,chineses:'彌',chinesef:'彌迦書',engs:'Mic',chapters:7},
+  {bid:34,chineses:'鴻',chinesef:'那鴻書',engs:'Nah',chapters:3},
+  {bid:35,chineses:'哈',chinesef:'哈巴谷書',engs:'Hab',chapters:3},
+  {bid:36,chineses:'番',chinesef:'西番雅書',engs:'Zeph',chapters:3},
+  {bid:37,chineses:'該',chinesef:'哈該書',engs:'Hag',chapters:2},
+  {bid:38,chineses:'亞',chinesef:'撒迦利亞書',engs:'Zech',chapters:14},
+  {bid:39,chineses:'瑪',chinesef:'瑪拉基書',engs:'Mal',chapters:4},
+  {bid:40,chineses:'太',chinesef:'馬太福音',engs:'Matt',chapters:28},
+  {bid:41,chineses:'可',chinesef:'馬可福音',engs:'Mark',chapters:16},
+  {bid:42,chineses:'路',chinesef:'路加福音',engs:'Luke',chapters:24},
+  {bid:43,chineses:'約',chinesef:'約翰福音',engs:'John',chapters:21},
+  {bid:44,chineses:'徒',chinesef:'使徒行傳',engs:'Acts',chapters:28},
+  {bid:45,chineses:'羅',chinesef:'羅馬書',engs:'Rom',chapters:16},
+  {bid:46,chineses:'林前',chinesef:'哥林多前書',engs:'1 Cor',chapters:16},
+  {bid:47,chineses:'林後',chinesef:'哥林多後書',engs:'2 Cor',chapters:13},
+  {bid:48,chineses:'加',chinesef:'加拉太書',engs:'Gal',chapters:6},
+  {bid:49,chineses:'弗',chinesef:'以弗所書',engs:'Eph',chapters:6},
+  {bid:50,chineses:'腓',chinesef:'腓立比書',engs:'Phil',chapters:4},
+  {bid:51,chineses:'西',chinesef:'歌羅西書',engs:'Col',chapters:4},
+  {bid:52,chineses:'帖前',chinesef:'帖撒羅尼迦前書',engs:'1 Thess',chapters:5},
+  {bid:53,chineses:'帖後',chinesef:'帖撒羅尼迦後書',engs:'2 Thess',chapters:3},
+  {bid:54,chineses:'提前',chinesef:'提摩太前書',engs:'1 Tim',chapters:6},
+  {bid:55,chineses:'提後',chinesef:'提摩太後書',engs:'2 Tim',chapters:4},
+  {bid:56,chineses:'多',chinesef:'提多書',engs:'Titus',chapters:3},
+  {bid:57,chineses:'門',chinesef:'腓利門書',engs:'Philem',chapters:1},
+  {bid:58,chineses:'來',chinesef:'希伯來書',engs:'Heb',chapters:13},
+  {bid:59,chineses:'雅',chinesef:'雅各書',engs:'James',chapters:5},
+  {bid:60,chineses:'彼前',chinesef:'彼得前書',engs:'1 Pet',chapters:5},
+  {bid:61,chineses:'彼後',chinesef:'彼得後書',engs:'2 Pet',chapters:3},
+  {bid:62,chineses:'約一',chinesef:'約翰一書',engs:'1 John',chapters:5},
+  {bid:63,chineses:'約二',chinesef:'約翰二書',engs:'2 John',chapters:1},
+  {bid:64,chineses:'約三',chinesef:'約翰三書',engs:'3 John',chapters:1},
+  {bid:65,chineses:'猶',chinesef:'猶大書',engs:'Jude',chapters:1},
+  {bid:66,chineses:'啟',chinesef:'啟示錄',engs:'Rev',chapters:22},
+];
+
+const VERSE_COUNTS = {1:[31,25,24,26,32,22,24,22,29,32,32,20,18,24,21,16,27,33,38,18,34,24,20,67,34,35,46,22,35,43,55,32,20,31,29,43,36,30,23,23,57,38,34,34,28,34,31,22,33,26],2:[22,25,22,31,23,30,25,32,35,29,10,51,22,31,27,36,16,27,25,26,36,31,33,18,40,37,21,43,46,38,18,35,23,35,35,38,29,31,43,38],3:[17,16,17,35,19,30,38,36,24,20,47,8,59,57,33,34,16,30,37,27,24,33,44,23,55,46,34],4:[54,34,51,49,31,27,89,26,36,35,16,33,45,41,50,13,32,22,29,35,41,30,25,18,65,23,31,40,16,54,42,56,29,34,13],5:[46,37,29,49,33,25,26,20,29,22,32,32,18,29,23,22,20,22,21,20,23,30,25,22,19,19,26,68,29,20,30,52,29,12],6:[18,24,17,24,15,27,26,35,27,43,23,24,33,15,63,10,18,28,51,9,45,34,16,33],7:[36,23,31,24,31,40,25,35,57,18,40,15,25,20,20,31,13,31,30,48,25],8:[22,23,18,22],9:[28,36,21,22,12,21,17,22,27,27,15,25,23,52,35,23,58,30,24,43,15,23,28,23,44,25,12,25,11,31,13],10:[27,32,39,12,25,23,29,18,13,19,27,31,39,33,37,23,29,33,43,26,22,51,39,25],11:[53,46,28,34,18,38,51,66,28,29,43,33,34,31,34,34,24,46,21,43,29,53],12:[18,25,27,44,27,33,20,29,37,36,21,21,25,29,38,20,41,37,37,21,26,20,37,20,30],13:[54,55,24,43,26,81,40,40,44,14,47,40,14,17,29,43,27,17,19,8,30,19,32,31,31,32,34,21,30],14:[17,18,17,22,14,42,22,18,31,19,23,16,22,15,19,14,19,34,11,37,20,12,21,27,28,23,9,27,36,27,21,33,25,33,27,23],15:[11,70,13,24,17,22,28,36,15,44],16:[11,20,32,23,19,19,73,18,38,39,36,47,31],17:[22,23,15,17,14,14,10,17,32,3],18:[22,13,26,21,27,30,21,22,35,22,20,25,28,22,35,22,16,21,29,29,34,30,17,25,6,14,23,28,25,31,40,22,33,37,16,33,24,41,30,24,34,17],19:[6,12,8,8,12,10,17,9,20,18,7,8,6,7,5,11,15,50,14,9,13,31,6,10,22,12,14,9,11,12,24,11,22,22,28,12,40,22,13,17,13,11,5,26,17,11,9,14,20,23,19,9,6,7,23,13,11,11,17,12,8,12,11,10,13,20,7,35,36,5,24,20,28,23,10,12,20,72,13,19,16,8,18,12,13,17,7,18,52,17,16,15,5,23,11,13,12,9,9,5,8,28,22,35,45,48,43,13,31,7,10,10,9,8,18,19,2,29,176,7,8,9,4,8,5,6,5,6,8,8,3,18,3,3,21,26,9,8,24,13,10,7,12,15,21,10,20,14,9,6],20:[33,22,35,27,23,35,27,36,18,32,31,28,25,35,33,33,28,24,29,30,31],21:[18,26,22,16,20,12,29,17,18,20,10,14],22:[17,17,11,16,16,13,13,14],23:[31,22,26,6,30,13,25,22,21,34,16,6,22,32,9,14,14,7,25,6,17,25,18,23,12,21,13,29,24,33,9,20,24,17,10,22,38,22,8,31,29,25,28,28,25,13,15,22,26,11,23,15,12,17,13,12,21,14,21,22,11,12,19,12,25,24],24:[19,37,25,31,31,30,34,22,26,25,23,17,27,22,21,21,27,23,15,18,14,30,40,10,38,24,22,17,32,24,40,44,26,22,19,32,21,28,18,16,18,22,13,30,5,28,7,47,39,46,64,34],25:[22,22,66,22,22],26:[28,10,27,17,17,14,27,18,11,22,25,28,23,23,8,63,24,32,14,49,32,31,49,27,17,21,36,26,21,26,18,32,33,31,15,38,28,23,29,49,26,20,27,31,25,24,23,35],27:[21,49,30,37,31,28,28,27,27,21,45,13],28:[11,23,5,19,15,11,16,14,17,15,12,14,16,9],29:[20,32,21],30:[15,16,15,13,27,14,17,14,15],31:[21],32:[17,10,10,11],33:[16,13,12,13,15,16,20],34:[15,13,19],35:[17,20,19],36:[18,15,20],37:[15,23],38:[21,13,10,14,11,15,14,23,17,12,17,14,9,21],39:[14,17,18,6],40:[25,23,17,25,48,34,29,34,38,42,30,50,58,36,39,28,27,35,30,34,46,46,39,51,46,75,66,20],41:[45,28,35,41,43,56,37,38,50,52,33,44,37,72,47,20],42:[80,52,38,44,39,49,50,56,62,42,54,59,35,35,32,31,37,43,48,47,38,71,56,53],43:[51,25,36,54,47,71,53,59,41,42,57,50,38,31,27,33,26,40,42,31,25],44:[26,47,26,37,42,15,60,40,43,48,30,25,52,28,41,40,34,28,41,38,40,30,35,27,27,32,44,31],45:[32,29,31,25,21,23,25,39,33,21,36,21,14,23,33,27],46:[31,16,23,21,13,20,40,13,27,33,34,31,13,40,58,10],47:[24,17,18,18,21,18,16,24,15,18,33,21,14],48:[24,21,29,31,26,18],49:[23,22,21,32,33,24],50:[30,30,21,23],51:[29,23,25,18],52:[10,20,13,18,28],53:[12,17,18],54:[20,15,16,16,25,21],55:[18,26,17,22],56:[16,15,15],57:[25],58:[14,18,19,16,14,20,28,13,28,39,40,29,25],59:[27,26,18,17,20],60:[25,25,22,19,14],61:[21,22,18],62:[10,29,24,21,21],63:[13],64:[14],65:[25],66:[20,29,22,11,14,17,17,13,21,11,19,17,18,20,8,21,18,24,21,15,27,21]};
+
+// ========== Local data store ==========
+const bibleData = {};
+let dataReady = false;
+
+async function loadLocalData() {
+  const statusEl = document.getElementById('load-status');
+  const barEl = document.getElementById('load-bar-fill');
+  const detailEl = document.getElementById('load-detail');
+  statusEl.style.display = 'block';
+
+  const names = { unv:'和合本', ncv:'新譯本', kjv:'KJV', asv:'ASV' };
+  let loaded = 0;
+  for (const ver of LOCAL_VERSIONS) {
+    detailEl.textContent = `載入 ${names[ver]}...`;
+    barEl.style.width = `${(loaded / LOCAL_VERSIONS.length) * 100}%`;
+    try {
+      const resp = await fetch(`data/${ver}.json`);
+      if (!resp.ok) throw new Error(`${resp.status}`);
+      bibleData[ver] = await resp.json();
+    } catch (e) {
+      console.warn(`無法載入 ${ver}.json:`, e.message);
+      bibleData[ver] = null;
+    }
+    loaded++;
+    barEl.style.width = `${(loaded / LOCAL_VERSIONS.length) * 100}%`;
+  }
+  detailEl.textContent = '載入完成！';
+  dataReady = true;
+  setTimeout(() => { statusEl.style.display = 'none'; }, 600);
+}
+
+function getLocalVerse(ver, bid, chap, sec) {
+  const d = bibleData[ver];
+  if (!d) return null;
+  const b = d[bid]; if (!b) return null;
+  const c = b[chap]; if (!c) return null;
+  return c[sec] || null;
+}
+
+function getLocalChapter(ver, bid, chap) {
+  const d = bibleData[ver];
+  if (!d) return {};
+  const b = d[bid]; if (!b) return {};
+  return b[chap] || {};
+}
+
+function searchLocal(ver, keyword, range) {
+  const d = bibleData[ver];
+  if (!d) return [];
+  const results = [];
+  const lower = keyword.toLowerCase();
+  for (const bid of Object.keys(d)) {
+    const bidNum = parseInt(bid);
+    if (range === '1' && bidNum < 40) continue;
+    if (range === '2' && bidNum >= 40) continue;
+    const book = BOOKS.find(b => b.bid === bidNum);
+    for (const chap of Object.keys(d[bid])) {
+      for (const sec of Object.keys(d[bid][chap])) {
+        const text = d[bid][chap][sec];
+        if (text && text.toLowerCase().includes(lower)) {
+          results.push({ bid:bidNum, chap:parseInt(chap), sec:parseInt(sec), text, bookName: book ? book.chinesef : '' });
+          if (results.length >= 100) return results;
+        }
+      }
+    }
+  }
+  return results;
+}
+
+// ========== ESV via FHL API ==========
+async function fetchEsvChapter(chineses, chap, secRange) {
+  const params = new URLSearchParams({ chineses, chap, version:'esv', gb:'0', strong:'0' });
+  if (secRange) params.set('sec', secRange);
+  const resp = await fetch(`${FHL_API}/qb.php?${params}`);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
+async function searchEsv(keyword, range) {
+  const params = new URLSearchParams({ VERSION:'esv', q:keyword, orig:'0', RANGE:range, limit:'100', gb:'0' });
+  const resp = await fetch(`${FHL_API}/se.php?${params}`);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
+// ========== UI Logic ==========
+function initBookSelector() {
+  const sel = document.getElementById('sel-book');
+  sel.innerHTML = '';
+  const otG = document.createElement('optgroup'); otG.label = '舊約';
+  const ntG = document.createElement('optgroup'); ntG.label = '新約';
+  BOOKS.forEach(b => {
+    const o = document.createElement('option'); o.value = b.bid;
+    o.textContent = `${b.chinesef} (${b.engs})`;
+    (b.bid <= 39 ? otG : ntG).appendChild(o);
+  });
+  sel.appendChild(otG); sel.appendChild(ntG);
+  onBookChange();
+}
+
+function onBookChange() {
+  const bid = parseInt(document.getElementById('sel-book').value);
+  const book = BOOKS.find(b => b.bid === bid); if (!book) return;
+  const s = document.getElementById('sel-chap'); s.innerHTML = '';
+  for (let i = 1; i <= book.chapters; i++) { const o = document.createElement('option'); o.value=i; o.textContent=i; s.appendChild(o); }
+  onChapChange();
+}
+
+function onChapChange() {
+  const bid = parseInt(document.getElementById('sel-book').value);
+  const chap = parseInt(document.getElementById('sel-chap').value);
+  const vc = VERSE_COUNTS[bid];
+  const mx = vc && vc[chap-1] ? vc[chap-1] : 30;
+  const ss = document.getElementById('sel-sec-start');
+  const se = document.getElementById('sel-sec-end');
+  ss.innerHTML = '<option value="">全章</option>';
+  se.innerHTML = '<option value="">末節</option>';
+  for (let i = 1; i <= mx; i++) {
+    ss.innerHTML += `<option value="${i}">${i}</option>`;
+    se.innerHTML += `<option value="${i}">${i}</option>`;
+  }
+}
+
+function initVersionToggles() {
+  ['version-toggles','version-toggles-quick','version-toggles-search'].forEach(id => {
+    const c = document.getElementById(id); if (!c) return;
+    c.innerHTML = '';
+    VERSIONS.forEach(v => {
+      const l = document.createElement('label');
+      l.className = 'version-toggle active'; l.dataset.version = v.code;
+      l.innerHTML = `<input type="checkbox" checked> ${v.name}${v.local ? '' : ' <small style="opacity:0.6">(API)</small>'}`;
+      l.addEventListener('click', e => {
+        e.preventDefault(); l.classList.toggle('active');
+        const idx = activeVersions.indexOf(v.code);
+        if (idx >= 0) activeVersions.splice(idx, 1); else activeVersions.push(v.code);
+        document.querySelectorAll(`.version-toggle[data-version="${v.code}"]`).forEach(el => {
+          el.classList.toggle('active', activeVersions.includes(v.code));
+        });
+      });
+      c.appendChild(l);
+    });
+  });
+}
+
+function sortedVers(vers) {
+  const order = VERSIONS.map(v => v.code);
+  return [...vers].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+}
+
+function renderVerseGroup(ref, versionsToShow, textsMap) {
+  const ordered = sortedVers(versionsToShow);
+  const parallelClass = ordered.length > 1 && window.innerWidth >= 900 ? 'parallel-mode' : '';
+  const trs = ordered.map(ver => {
+    const info = VERSIONS.find(x => x.code === ver);
+    const text = textsMap[ver] || '（此版本無此節經文）';
+    return `<div class="verse-translation"><span class="version-badge ${info.badge}">${info.name}</span><span class="verse-text">${text}</span></div>`;
+  }).join('');
+  return `<div class="verse-group"><div class="verse-header">${ref}</div><div class="verse-translations ${parallelClass}">${trs}</div></div>`;
+}
+
+async function fetchVerses() {
+  const bid = parseInt(document.getElementById('sel-book').value);
+  const chap = parseInt(document.getElementById('sel-chap').value);
+  const secStart = document.getElementById('sel-sec-start').value;
+  const secEnd = document.getElementById('sel-sec-end').value;
+  const book = BOOKS.find(b => b.bid === bid); if (!book) return;
+
+  let secRange = '';
+  if (secStart && secEnd) secRange = `${secStart}-${secEnd}`;
+  else if (secStart) secRange = secStart;
+
+  const div = document.getElementById('results-read');
+  div.innerHTML = '<div class="loading">載入中...</div>';
+  document.getElementById('btn-read').disabled = true;
+
+  try {
+    const vers = activeVersions.length > 0 ? [...activeVersions] : ['unv'];
+    const localVers = vers.filter(v => LOCAL_VERSIONS.includes(v));
+    const needEsv = vers.includes('esv');
+
+    const verseMap = {};
+
+    localVers.forEach(ver => {
+      if (secRange) {
+        const parts = secRange.split('-');
+        const start = parseInt(parts[0]);
+        const end = parts[1] ? parseInt(parts[1]) : start;
+        for (let s = start; s <= end; s++) {
+          const t = getLocalVerse(ver, bid, chap, s);
+          if (t !== null) {
+            const k = `${chap}:${s}`;
+            if (!verseMap[k]) verseMap[k] = { chap, sec:s, texts:{} };
+            verseMap[k].texts[ver] = t;
+          }
+        }
+      } else {
+        const chapData = getLocalChapter(ver, bid, chap);
+        Object.entries(chapData).forEach(([sec, text]) => {
+          const k = `${chap}:${sec}`;
+          if (!verseMap[k]) verseMap[k] = { chap, sec:parseInt(sec), texts:{} };
+          verseMap[k].texts[ver] = text;
+        });
+      }
+    });
+
+    if (needEsv) {
+      try {
+        const esvData = await fetchEsvChapter(book.chineses, chap, secRange);
+        if (esvData.status === 'success' && esvData.record) {
+          esvData.record.forEach(r => {
+            const k = `${r.chap}:${r.sec}`;
+            if (!verseMap[k]) verseMap[k] = { chap:r.chap, sec:r.sec, texts:{} };
+            verseMap[k].texts['esv'] = r.bible_text;
+          });
+        }
+      } catch (e) { console.warn('ESV API error:', e.message); }
+    }
+
+    const sorted = Object.keys(verseMap).sort((a,b) => {
+      const [ac,as_] = a.split(':').map(Number);
+      const [bc,bs] = b.split(':').map(Number);
+      return ac-bc || as_-bs;
+    });
+
+    if (sorted.length === 0) {
+      div.innerHTML = '<div class="error-msg">查無經文資料（離線資料可能尚未載入）</div>';
+    } else {
+      div.innerHTML = sorted.map(k => {
+        const v = verseMap[k];
+        return renderVerseGroup(`${book.chinesef} ${v.chap}:${v.sec}`, vers, v.texts);
+      }).join('');
+    }
+
+    const nav = document.getElementById('chap-nav');
+    nav.style.display = 'flex';
+    document.getElementById('chap-info').textContent = `${book.chinesef} 第 ${chap} 章`;
+    document.getElementById('btn-prev-chap').disabled = (chap <= 1);
+    document.getElementById('btn-next-chap').disabled = (chap >= book.chapters);
+
+  } catch (err) {
+    div.innerHTML = `<div class="error-msg">查詢失敗：${err.message}</div>`;
+  }
+  document.getElementById('btn-read').disabled = false;
+}
+
+function prevChapter() {
+  const s = document.getElementById('sel-chap'); const c = parseInt(s.value);
+  if (c > 1) { s.value = c-1; onChapChange(); fetchVerses(); window.scrollTo({top:0,behavior:'smooth'}); }
+}
+
+function nextChapter() {
+  const s = document.getElementById('sel-chap');
+  const bid = parseInt(document.getElementById('sel-book').value);
+  const book = BOOKS.find(b => b.bid === bid);
+  const c = parseInt(s.value);
+  if (c < book.chapters) { s.value = c+1; onChapChange(); fetchVerses(); window.scrollTo({top:0,behavior:'smooth'}); }
+}
+
+async function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+  const range = document.getElementById('search-range').value;
+  const div = document.getElementById('results-search');
+  const vers = activeVersions.length > 0 ? [...activeVersions] : ['unv'];
+  div.innerHTML = '<div class="loading">搜尋中...</div>';
+
+  try {
+    const verseMap = new Map();
+
+    vers.filter(v => LOCAL_VERSIONS.includes(v)).forEach(ver => {
+      const results = searchLocal(ver, q, range);
+      results.forEach(r => {
+        const k = `${r.bid}-${r.chap}-${r.sec}`;
+        if (!verseMap.has(k)) verseMap.set(k, { bid:r.bid, chap:r.chap, sec:r.sec, bookName:r.bookName, texts:{} });
+        verseMap.get(k).texts[ver] = r.text;
+      });
+    });
+
+    if (vers.includes('esv')) {
+      try {
+        const esvData = await searchEsv(q, range);
+        if (esvData.record) {
+          esvData.record.forEach(r => {
+            const book = BOOKS.find(b => b.chineses === r.chineses) || BOOKS.find(b => b.engs === r.engs);
+            const bid = book ? book.bid : 0;
+            const k = `${bid}-${r.chap}-${r.sec}`;
+            if (!verseMap.has(k)) verseMap.set(k, { bid, chap:r.chap, sec:r.sec, bookName: book ? book.chinesef : r.chineses, texts:{} });
+            verseMap.get(k).texts['esv'] = r.bible_text;
+          });
+        }
+      } catch (e) { console.warn('ESV search error:', e.message); }
+    }
+
+    if (verseMap.size === 0) { div.innerHTML = '<div class="error-msg">查無結果</div>'; return; }
+
+    const sorted = [...verseMap.entries()].sort((a,b) => {
+      const [ab,ac,as_] = a[0].split('-').map(Number);
+      const [bb,bc,bs] = b[0].split('-').map(Number);
+      return ab-bb || ac-bc || as_-bs;
+    }).slice(0, 50);
+
+    const localOthers = vers.filter(v => LOCAL_VERSIONS.includes(v));
+    sorted.forEach(([k, v]) => {
+      localOthers.forEach(ver => {
+        if (!v.texts[ver]) {
+          const t = getLocalVerse(ver, v.bid, v.chap, v.sec);
+          if (t) v.texts[ver] = t;
+        }
+      });
+    });
+
+    if (vers.includes('esv')) {
+      const esvMissing = sorted.filter(([k, v]) => !v.texts['esv']);
+      if (esvMissing.length > 0) {
+        const groups = {};
+        esvMissing.forEach(([k, v]) => {
+          const book = BOOKS.find(b => b.bid === v.bid);
+          if (!book) return;
+          const gk = `${book.chineses}|${v.chap}`;
+          if (!groups[gk]) groups[gk] = { chineses: book.chineses, chap: v.chap, secs: [] };
+          groups[gk].secs.push(v.sec);
+        });
+        const esvFills = Object.values(groups).map(g =>
+          fetchEsvChapter(g.chineses, g.chap, g.secs.join(','))
+            .then(data => {
+              if (data.status === 'success' && data.record) {
+                data.record.forEach(r => {
+                  const book = BOOKS.find(b => b.chineses === r.chineses);
+                  const bid = book ? book.bid : 0;
+                  const mk = `${bid}-${r.chap}-${r.sec}`;
+                  const entry = sorted.find(([ek]) => ek === mk);
+                  if (entry) entry[1].texts['esv'] = r.bible_text;
+                });
+              }
+            }).catch(() => {})
+        );
+        await Promise.all(esvFills);
+      }
+    }
+
+    const escQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const statsHtml = `<div class="search-stats">搜尋「${q}」，找到 ${verseMap.size} 節${verseMap.size > 50 ? '（顯示前 50 節）' : ''}</div>`;
+
+    const orderedVers = sortedVers(vers);
+    const html = sorted.map(([k, v]) => {
+      const trs = orderedVers.map(ver => {
+        const info = VERSIONS.find(x => x.code === ver);
+        const text = v.texts[ver]; if (!text) return '';
+        const hl = text.replace(new RegExp(`(${escQ})`, 'gi'), '<span class="highlight-match">$1</span>');
+        return `<div class="verse-translation"><span class="version-badge ${info.badge}">${info.name}</span><span class="verse-text">${hl}</span></div>`;
+      }).filter(Boolean).join('');
+      return `<div class="search-result-item" onclick="goToVerse(${v.bid},${v.chap},${v.sec})">
+        <div class="search-ref">${v.bookName} ${v.chap}:${v.sec}</div>${trs}</div>`;
+    }).join('');
+
+    div.innerHTML = statsHtml + html;
+  } catch (err) {
+    div.innerHTML = `<div class="error-msg">搜尋失敗：${err.message}</div>`;
+  }
+}
+
+function goToVerse(bid, chap, sec) {
+  switchTab('read');
+  document.getElementById('sel-book').value = bid; onBookChange();
+  document.getElementById('sel-chap').value = chap; onChapChange();
+  document.getElementById('sel-sec-start').value = sec;
+  document.getElementById('sel-sec-end').value = sec;
+  fetchVerses();
+}
+
+async function doQuickLookup() {
+  const raw = document.getElementById('quick-ref').value.trim();
+  if (!raw) return;
+  const div = document.getElementById('results-quick');
+  div.innerHTML = '<div class="loading">查詢中...</div>';
+
+  try {
+    const parsed = parseQuickRef(raw);
+    if (!parsed) { div.innerHTML = '<div class="error-msg">無法解析經文參照，請使用格式如：創 1:1-3、約 3:16</div>'; return; }
+
+    const vers = activeVersions.length > 0 ? [...activeVersions] : ['unv'];
+    const book = BOOKS.find(b => b.chineses === parsed.chineses);
+    if (!book) { div.innerHTML = '<div class="error-msg">找不到書卷</div>'; return; }
+
+    const verseMap = {};
+
+    vers.filter(v => LOCAL_VERSIONS.includes(v)).forEach(ver => {
+      if (parsed.secRange) {
+        const parts = parsed.secRange.split('-');
+        const start = parseInt(parts[0]);
+        const end = parts[1] ? parseInt(parts[1]) : start;
+        for (let s = start; s <= end; s++) {
+          const t = getLocalVerse(ver, book.bid, parsed.chap, s);
+          if (t !== null) {
+            const k = `${parsed.chap}:${s}`;
+            if (!verseMap[k]) verseMap[k] = { chap:parsed.chap, sec:s, texts:{} };
+            verseMap[k].texts[ver] = t;
+          }
+        }
+      } else {
+        const chapData = getLocalChapter(ver, book.bid, parsed.chap);
+        Object.entries(chapData).forEach(([sec, text]) => {
+          const k = `${parsed.chap}:${sec}`;
+          if (!verseMap[k]) verseMap[k] = { chap:parsed.chap, sec:parseInt(sec), texts:{} };
+          verseMap[k].texts[ver] = text;
+        });
+      }
+    });
+
+    if (vers.includes('esv')) {
+      try {
+        const esvData = await fetchEsvChapter(parsed.chineses, parsed.chap, parsed.secRange);
+        if (esvData.status === 'success' && esvData.record) {
+          esvData.record.forEach(r => {
+            const k = `${r.chap}:${r.sec}`;
+            if (!verseMap[k]) verseMap[k] = { chap:r.chap, sec:r.sec, texts:{} };
+            verseMap[k].texts['esv'] = r.bible_text;
+          });
+        }
+      } catch (e) { console.warn('ESV error:', e.message); }
+    }
+
+    const sorted = Object.keys(verseMap).sort((a,b) => {
+      const [ac,as_] = a.split(':').map(Number);
+      const [bc,bs] = b.split(':').map(Number);
+      return ac-bc || as_-bs;
+    });
+
+    if (sorted.length === 0) { div.innerHTML = '<div class="error-msg">查無經文資料</div>'; return; }
+
+    div.innerHTML = sorted.map(k => {
+      const v = verseMap[k];
+      return renderVerseGroup(`${book.chinesef} ${v.chap}:${v.sec}`, vers, v.texts);
+    }).join('');
+  } catch (err) {
+    div.innerHTML = `<div class="error-msg">查詢失敗：${err.message}</div>`;
+  }
+}
+
+function parseQuickRef(raw) {
+  const map = {};
+  BOOKS.forEach(b => { map[b.engs.toLowerCase()]=b.chineses; map[b.chineses]=b.chineses; map[b.chinesef]=b.chineses; });
+  raw = raw.replace(/：/g,':').replace(/—/g,'-').replace(/\s+/g,' ').trim();
+  const m = raw.match(/^([a-zA-Z0-9\u4e00-\u9fff]+)\s*(\d.*)$/);
+  if (!m) return null;
+  const bookStr = m[1].trim(); const rest = m[2].trim();
+  let chineses = map[bookStr] || map[bookStr.toLowerCase()];
+  if (!chineses) {
+    for (const b of BOOKS) {
+      if (b.chinesef.startsWith(bookStr) || b.engs.toLowerCase().startsWith(bookStr.toLowerCase())) { chineses = b.chineses; break; }
+    }
+  }
+  if (!chineses) return null;
+  const parts = rest.split(':');
+  return { chineses, chap:parseInt(parts[0]), secRange: parts[1] || '' };
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
+  document.getElementById(`panel-${name}`).classList.add('active');
+}
+
+// ========== Init ==========
+initBookSelector();
+initVersionToggles();
+
+loadLocalData().then(() => {
+  document.getElementById('sel-book').value = 43;
+  onBookChange();
+  document.getElementById('sel-chap').value = 3;
+  onChapChange();
+  document.getElementById('sel-sec-start').value = 16;
+  document.getElementById('sel-sec-end').value = 17;
+  fetchVerses();
+});
+
+// PWA：僅 HTTPS 或 localhost 可註冊 Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/sw.js').catch(function (err) {
+      console.warn('SW register failed:', err);
+    });
+  });
+}
+</script>
+</body>
+</html>
