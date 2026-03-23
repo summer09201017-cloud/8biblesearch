@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#3a2a12">
-<meta name="description" content="和合本、ESV、新譯本、ASV、KJV 多譯本聖經查詢與閱讀">
+<meta name="description" content="和合本、ESV、WEB、BBE、新譯本、呂振中、ASV、KJV 多譯本聖經查詢與閱讀">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="聖經查詢">
@@ -38,8 +38,21 @@ body {
   position: sticky; top: 0; z-index: 100;
   box-shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
+.app-header-inner { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; max-width:1200px; margin:0 auto; }
 .app-header h1 { font-size:1.4rem; font-weight:700; letter-spacing:4px; }
 .app-header .subtitle { font-size:0.75rem; opacity:0.7; margin-top:2px; }
+.app-header-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.btn-install {
+  padding:8px 14px; font-size:0.8rem; font-weight:600; border-radius:8px;
+  border:1px solid rgba(240,216,144,0.5); background:rgba(255,255,255,0.12);
+  color:#f0d890; cursor:pointer; font-family:inherit;
+}
+.btn-install:hover { background:rgba(255,255,255,0.2); }
+.ios-install-hint {
+  display:none; text-align:center; font-size:0.72rem; opacity:0.85;
+  padding:6px 12px; background:rgba(0,0,0,0.15); margin:0 -20px -8px;
+}
+.ios-install-hint.show { display:block; }
 .tabs {
   display:flex; background:#4a3520;
   border-bottom:1px solid rgba(255,255,255,0.1);
@@ -77,19 +90,27 @@ body {
 .btn:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(139,105,20,0.3); }
 .btn:active { transform:translateY(0); }
 .btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+.btn.btn-sm { padding:6px 12px; font-size:0.8rem; }
+.btn.btn-secondary {
+  background:var(--bg2); color:var(--accent); border:1px solid var(--border);
+}
+.btn.btn-secondary:hover { background:var(--tag-bg); box-shadow:none; transform:none; }
 
 .version-toggles {
   display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;
   padding:12px; background:var(--card); border-radius:10px; border:1px solid var(--border);
 }
+.version-toggles-title { font-size:0.8rem; color:var(--text2); font-weight:700; width:100%; margin-bottom:4px; }
 .version-toggle {
-  display:flex; align-items:center; gap:6px; padding:6px 14px;
+  display:flex; align-items:center; gap:8px; padding:6px 14px;
   border-radius:20px; cursor:pointer; font-size:0.85rem; font-weight:600;
   transition:all 0.2s; border:2px solid var(--border);
   background:var(--bg); user-select:none;
 }
 .version-toggle.active { border-color:var(--accent); background:var(--tag-bg); color:var(--accent); }
-.version-toggle input { display:none; }
+.version-toggle input[type="checkbox"] {
+  width:18px; height:18px; cursor:pointer; accent-color:var(--accent); flex-shrink:0;
+}
 
 .results-area { min-height:200px; }
 .loading { text-align:center; padding:40px; color:var(--text2); font-size:0.95rem; }
@@ -124,6 +145,10 @@ body {
 .badge-kjv { background:#27ae60; }
 .badge-asv { background:#8e44ad; }
 .badge-esv { background:#e67e22; }
+.badge-lcc { background:#6d4c41; }
+.badge-niv { background:#1a5276; }
+.badge-web { background:#1565c0; }
+.badge-bbe { background:#5d4037; }
 .verse-text { font-size:1rem; line-height:1.85; flex:1; }
 .verse-text .highlight-match { background:#ffe066; padding:1px 2px; border-radius:2px; }
 
@@ -144,11 +169,20 @@ body {
 .search-options { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; align-items:center; }
 .search-options label { font-size:0.85rem; color:var(--text2); font-weight:600; }
 
+.search-actions {
+  display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:14px;
+  padding:10px 12px; background:var(--card); border-radius:10px; border:1px solid var(--border);
+}
+.search-actions-label { font-size:0.8rem; color:var(--text2); font-weight:600; margin-right:4px; }
 .search-result-item {
+  display:flex; gap:12px; align-items:flex-start;
   padding:14px 16px; background:var(--card); border-radius:10px;
-  border:1px solid var(--border); margin-bottom:10px; cursor:pointer; transition:all 0.2s;
+  border:1px solid var(--border); margin-bottom:10px; transition:all 0.2s;
 }
 .search-result-item:hover { border-color:var(--accent); box-shadow:0 2px 12px var(--shadow); }
+.search-result-check { flex-shrink:0; padding-top:2px; cursor:pointer; }
+.search-result-check input { width:18px; height:18px; cursor:pointer; accent-color:var(--accent); }
+.search-result-main { flex:1; min-width:0; cursor:pointer; }
 .search-ref { font-weight:700; color:var(--accent); font-size:0.9rem; margin-bottom:4px; }
 .search-text { font-size:0.95rem; color:var(--text); }
 .search-stats {
@@ -212,8 +246,16 @@ body {
 <body>
 
 <header class="app-header">
-  <h1>多譯本聖經查詢</h1>
-  <div class="subtitle">Multi-Version Bible Reader</div>
+  <div class="app-header-inner">
+    <div>
+      <h1>多譯本聖經查詢</h1>
+      <div class="subtitle">Multi-Version Bible Reader</div>
+    </div>
+    <div class="app-header-actions">
+      <button type="button" class="btn-install" id="btn-install-pwa" hidden>📲 安裝 App</button>
+    </div>
+  </div>
+  <p class="ios-install-hint" id="ios-install-hint">iPhone／iPad：請用 Safari 開啟本頁，點 <b>分享</b> → <b>加入主畫面</b>，即可像 App 使用。</p>
 </header>
 
 <nav class="tabs">
@@ -261,6 +303,14 @@ body {
         <option value="0">全部</option><option value="1">新約</option><option value="2">舊約</option>
       </select>
     </div>
+    <div id="search-actions-bar" class="search-actions" hidden>
+      <span class="search-actions-label">搜尋結果</span>
+      <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllSearchPicks(true)">全選</button>
+      <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllSearchPicks(false)">取消全選</button>
+      <button type="button" class="btn btn-sm" onclick="copyPickedSearchVerses()">複製勾選經文</button>
+      <button type="button" class="btn btn-sm" onclick="sharePickedToLine()">LINE 分享</button>
+      <button type="button" class="btn btn-sm" onclick="sharePickedToEmail()">Email 分享</button>
+    </div>
     <div id="results-search">
       <div class="empty-state"><div class="icon">🔍</div><p>輸入關鍵字搜尋聖經經文</p></div>
     </div>
@@ -280,21 +330,25 @@ body {
 </div>
 
 <footer class="app-footer">
-  <p>經文資料來源：<a href="https://bible.fhl.net" target="_blank" rel="noopener">信望愛聖經網站</a></p>
-  <p style="margin-top:4px;">和合本 · ESV · 新譯本 · ASV · KJV ｜ ESV 由信望愛 API 即時查詢，其餘本地秒速載入</p>
+  <p>經文僅由本地 <code>data/*.json</code> 讀取，可完全離線使用（下載腳本資料來源可參考<a href="https://bible.fhl.net" target="_blank" rel="noopener">信望愛</a>，網頁執行時不連線查詢）</p>
+  <p style="margin-top:4px;">和合本 · ESV · WEB · BBE · 新譯本 · 呂振中 · ASV · KJV ｜ <span title="NIV 介面暫隱藏；資料與授權見 DEPLOY.md。WEB／BBE：node download_bible.js">譯本說明見 DEPLOY.md</span></p>
 </footer>
 
 <script>
-const FHL_API = 'https://bible.fhl.net/json';
-const LOCAL_VERSIONS = ['unv','ncv','kjv','asv'];
+// niv 保留在 VERSIONS（hideInUi）供日後開啟；不列入 LOCAL_VERSIONS 則不載入 niv.json
+const LOCAL_VERSIONS = ['unv','ncv','kjv','asv','lcc','esv','web','bbe'];
 const VERSIONS = [
   { code:'unv', name:'和合本', badge:'badge-unv', local:true },
-  { code:'esv', name:'ESV',   badge:'badge-esv', local:false },
+  { code:'esv', name:'ESV',   badge:'badge-esv', local:true },
+  { code:'niv', name:'NIV', badge:'badge-niv', local:true, hideInUi:true },
+  { code:'web', name:'WEB', badge:'badge-web', local:true },
   { code:'ncv', name:'新譯本', badge:'badge-ncv', local:true },
+  { code:'lcc', name:'呂振中', badge:'badge-lcc', local:true },
+  { code:'bbe', name:'BBE', badge:'badge-bbe', local:true },
   { code:'asv', name:'ASV',   badge:'badge-asv', local:true },
   { code:'kjv', name:'KJV',   badge:'badge-kjv', local:true },
 ];
-let activeVersions = ['unv','esv','ncv','asv','kjv'];
+let activeVersions = ['unv','esv','ncv','lcc','web'];
 
 const BOOKS = [
   {bid:1,chineses:'創',chinesef:'創世記',engs:'Gen',chapters:50},
@@ -377,7 +431,7 @@ async function loadLocalData() {
   const detailEl = document.getElementById('load-detail');
   statusEl.style.display = 'block';
 
-  const names = { unv:'和合本', ncv:'新譯本', kjv:'KJV', asv:'ASV' };
+  const names = { unv:'和合本', ncv:'新譯本', kjv:'KJV', asv:'ASV', lcc:'呂振中', esv:'ESV', web:'WEB', bbe:'BBE' };
   let loaded = 0;
   for (const ver of LOCAL_VERSIONS) {
     detailEl.textContent = `載入 ${names[ver]}...`;
@@ -428,7 +482,6 @@ function searchLocal(ver, keyword, range) {
         const text = d[bid][chap][sec];
         if (text && text.toLowerCase().includes(lower)) {
           results.push({ bid:bidNum, chap:parseInt(chap), sec:parseInt(sec), text, bookName: book ? book.chinesef : '' });
-          if (results.length >= 100) return results;
         }
       }
     }
@@ -436,20 +489,105 @@ function searchLocal(ver, keyword, range) {
   return results;
 }
 
-// ========== ESV via FHL API ==========
-async function fetchEsvChapter(chineses, chap, secRange) {
-  const params = new URLSearchParams({ chineses, chap, version:'esv', gb:'0', strong:'0' });
-  if (secRange) params.set('sec', secRange);
-  const resp = await fetch(`${FHL_API}/qb.php?${params}`);
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  return resp.json();
+function stripHtml(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.innerHTML = String(s);
+  return (d.textContent || d.innerText || '').replace(/\s+/g, ' ').trim();
 }
 
-async function searchEsv(keyword, range) {
-  const params = new URLSearchParams({ VERSION:'esv', q:keyword, orig:'0', RANGE:range, limit:'100', gb:'0' });
-  const resp = await fetch(`${FHL_API}/se.php?${params}`);
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  return resp.json();
+let _toastTimer;
+function toast(msg) {
+  clearTimeout(_toastTimer);
+  let el = document.getElementById('app-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'app-toast';
+    el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#3a2a12;color:#f5e6c8;padding:12px 22px;border-radius:10px;z-index:99999;font-size:0.88rem;box-shadow:0 4px 20px rgba(0,0,0,0.25);max-width:90vw;text-align:center;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.display = 'block';
+  _toastTimer = setTimeout(function () { el.style.display = 'none'; }, 2400);
+}
+
+function getSearchActionsBar() { return document.getElementById('search-actions-bar'); }
+
+function toggleAllSearchPicks(checked) {
+  document.querySelectorAll('#results-search .search-pick-cb').forEach(function (cb) { cb.checked = checked; });
+}
+
+function buildPickedSearchPlain() {
+  const data = window.__lastSearch;
+  if (!data || !data.sorted) return '';
+  const vers = activeVersions.length ? [...activeVersions] : ['unv'];
+  const orderedVers = sortedVers(vers);
+  const lines = [];
+  document.querySelectorAll('#results-search .search-result-item').forEach(function (row) {
+    const cb = row.querySelector('.search-pick-cb');
+    if (!cb || !cb.checked) return;
+    const idx = parseInt(row.getAttribute('data-idx'), 10);
+    const pair = data.sorted[idx];
+    if (!pair) return;
+    const v = pair[1];
+    let block = v.bookName + ' ' + v.chap + ':' + v.sec;
+    orderedVers.forEach(function (ver) {
+      const t = v.texts[ver];
+      if (!t) return;
+      const info = VERSIONS.find(function (x) { return x.code === ver; });
+      block += '\n' + info.name + '：' + stripHtml(t);
+    });
+    lines.push(block);
+  });
+  return lines.join('\n\n');
+}
+
+function buildSharePickedHeader() {
+  const d = window.__lastSearch;
+  if (!d) return '';
+  let n = 0;
+  document.querySelectorAll('#results-search .search-pick-cb:checked').forEach(function () { n++; });
+  return '【多譯本聖經查詢】\n關鍵字：' + d.q + '\n範圍：' + d.rangeLabel + '\n搜尋命中：' + d.total + ' 節｜已勾選：' + n + ' 節\n' + location.href + '\n\n';
+}
+
+function copyPickedSearchVerses() {
+  const body = buildPickedSearchPlain();
+  if (!body) { toast('請先勾選要複製的經文'); return; }
+  const done = function () { toast('已複製到剪貼簿'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(body).then(done).catch(function () { legacyCopy(body, done); });
+  } else legacyCopy(body, done);
+}
+
+function legacyCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    if (done) done();
+  } catch (e) {
+    alert('無法自動複製，請手動選取文字');
+  }
+  ta.remove();
+}
+
+function sharePickedToLine() {
+  const plain = buildPickedSearchPlain();
+  if (!plain) { toast('請先勾選要分享的經文'); return; }
+  const t = buildSharePickedHeader() + plain;
+  const url = 'https://line.me/R/msg/text/?' + encodeURIComponent(t);
+  if (url.length > 2400) { toast('內容過長，請少選幾節或改用「複製」'); return; }
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function sharePickedToEmail() {
+  const plain = buildPickedSearchPlain();
+  if (!plain) { toast('請先勾選要分享的經文'); return; }
+  const t = buildSharePickedHeader() + plain;
+  const q = window.__lastSearch && window.__lastSearch.q ? window.__lastSearch.q : '';
+  window.location.href = 'mailto:?subject=' + encodeURIComponent('聖經關鍵字查詢：' + q) + '&body=' + encodeURIComponent(t);
 }
 
 // ========== UI Logic ==========
@@ -490,22 +628,48 @@ function onChapChange() {
   }
 }
 
+function normalizeActiveVersionOrder() {
+  const order = VERSIONS.map(x => x.code);
+  activeVersions.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+}
+
+function setVersionChecked(code, checked) {
+  if (checked) {
+    if (!activeVersions.includes(code)) activeVersions.push(code);
+  } else {
+    const i = activeVersions.indexOf(code);
+    if (i >= 0) activeVersions.splice(i, 1);
+  }
+  normalizeActiveVersionOrder();
+  document.querySelectorAll(`input.version-cb[data-version="${code}"]`).forEach(inp => { inp.checked = checked; });
+  document.querySelectorAll(`.version-toggle[data-version="${code}"]`).forEach(el => {
+    el.classList.toggle('active', checked);
+  });
+}
+
 function initVersionToggles() {
   ['version-toggles','version-toggles-quick','version-toggles-search'].forEach(id => {
     const c = document.getElementById(id); if (!c) return;
     c.innerHTML = '';
+    const title = document.createElement('span');
+    title.className = 'version-toggles-title';
+    title.textContent = '顯示譯本（可勾選）';
+    c.appendChild(title);
     VERSIONS.forEach(v => {
+      if (v.hideInUi) return;
+      const on = activeVersions.includes(v.code);
       const l = document.createElement('label');
-      l.className = 'version-toggle active'; l.dataset.version = v.code;
-      l.innerHTML = `<input type="checkbox" checked> ${v.name}${v.local ? '' : ' <small style="opacity:0.6">(API)</small>'}`;
-      l.addEventListener('click', e => {
-        e.preventDefault(); l.classList.toggle('active');
-        const idx = activeVersions.indexOf(v.code);
-        if (idx >= 0) activeVersions.splice(idx, 1); else activeVersions.push(v.code);
-        document.querySelectorAll(`.version-toggle[data-version="${v.code}"]`).forEach(el => {
-          el.classList.toggle('active', activeVersions.includes(v.code));
-        });
-      });
+      l.className = 'version-toggle' + (on ? ' active' : '');
+      l.dataset.version = v.code;
+      const inp = document.createElement('input');
+      inp.type = 'checkbox';
+      inp.className = 'version-cb';
+      inp.dataset.version = v.code;
+      inp.checked = on;
+      inp.addEventListener('click', e => e.stopPropagation());
+      inp.addEventListener('change', () => setVersionChecked(v.code, inp.checked));
+      l.appendChild(inp);
+      l.appendChild(document.createTextNode(v.name));
       c.appendChild(l);
     });
   });
@@ -527,7 +691,7 @@ function renderVerseGroup(ref, versionsToShow, textsMap) {
   return `<div class="verse-group"><div class="verse-header">${ref}</div><div class="verse-translations ${parallelClass}">${trs}</div></div>`;
 }
 
-async function fetchVerses() {
+function fetchVerses() {
   const bid = parseInt(document.getElementById('sel-book').value);
   const chap = parseInt(document.getElementById('sel-chap').value);
   const secStart = document.getElementById('sel-sec-start').value;
@@ -545,7 +709,6 @@ async function fetchVerses() {
   try {
     const vers = activeVersions.length > 0 ? [...activeVersions] : ['unv'];
     const localVers = vers.filter(v => LOCAL_VERSIONS.includes(v));
-    const needEsv = vers.includes('esv');
 
     const verseMap = {};
 
@@ -571,19 +734,6 @@ async function fetchVerses() {
         });
       }
     });
-
-    if (needEsv) {
-      try {
-        const esvData = await fetchEsvChapter(book.chineses, chap, secRange);
-        if (esvData.status === 'success' && esvData.record) {
-          esvData.record.forEach(r => {
-            const k = `${r.chap}:${r.sec}`;
-            if (!verseMap[k]) verseMap[k] = { chap:r.chap, sec:r.sec, texts:{} };
-            verseMap[k].texts['esv'] = r.bible_text;
-          });
-        }
-      } catch (e) { console.warn('ESV API error:', e.message); }
-    }
 
     const sorted = Object.keys(verseMap).sort((a,b) => {
       const [ac,as_] = a.split(':').map(Number);
@@ -625,12 +775,15 @@ function nextChapter() {
   if (c < book.chapters) { s.value = c+1; onChapChange(); fetchVerses(); window.scrollTo({top:0,behavior:'smooth'}); }
 }
 
-async function doSearch() {
+function doSearch() {
   const q = document.getElementById('search-input').value.trim();
   if (!q) return;
   const range = document.getElementById('search-range').value;
   const div = document.getElementById('results-search');
   const vers = activeVersions.length > 0 ? [...activeVersions] : ['unv'];
+  const bar = getSearchActionsBar();
+  if (bar) bar.hidden = true;
+  window.__lastSearch = null;
   div.innerHTML = '<div class="loading">搜尋中...</div>';
 
   try {
@@ -645,28 +798,17 @@ async function doSearch() {
       });
     });
 
-    if (vers.includes('esv')) {
-      try {
-        const esvData = await searchEsv(q, range);
-        if (esvData.record) {
-          esvData.record.forEach(r => {
-            const book = BOOKS.find(b => b.chineses === r.chineses) || BOOKS.find(b => b.engs === r.engs);
-            const bid = book ? book.bid : 0;
-            const k = `${bid}-${r.chap}-${r.sec}`;
-            if (!verseMap.has(k)) verseMap.set(k, { bid, chap:r.chap, sec:r.sec, bookName: book ? book.chinesef : r.chineses, texts:{} });
-            verseMap.get(k).texts['esv'] = r.bible_text;
-          });
-        }
-      } catch (e) { console.warn('ESV search error:', e.message); }
+    if (verseMap.size === 0) {
+      if (bar) bar.hidden = true;
+      div.innerHTML = '<div class="error-msg">查無結果</div>';
+      return;
     }
-
-    if (verseMap.size === 0) { div.innerHTML = '<div class="error-msg">查無結果</div>'; return; }
 
     const sorted = [...verseMap.entries()].sort((a,b) => {
       const [ab,ac,as_] = a[0].split('-').map(Number);
       const [bb,bc,bs] = b[0].split('-').map(Number);
       return ab-bb || ac-bc || as_-bs;
-    }).slice(0, 50);
+    });
 
     const localOthers = vers.filter(v => LOCAL_VERSIONS.includes(v));
     sorted.forEach(([k, v]) => {
@@ -678,52 +820,31 @@ async function doSearch() {
       });
     });
 
-    if (vers.includes('esv')) {
-      const esvMissing = sorted.filter(([k, v]) => !v.texts['esv']);
-      if (esvMissing.length > 0) {
-        const groups = {};
-        esvMissing.forEach(([k, v]) => {
-          const book = BOOKS.find(b => b.bid === v.bid);
-          if (!book) return;
-          const gk = `${book.chineses}|${v.chap}`;
-          if (!groups[gk]) groups[gk] = { chineses: book.chineses, chap: v.chap, secs: [] };
-          groups[gk].secs.push(v.sec);
-        });
-        const esvFills = Object.values(groups).map(g =>
-          fetchEsvChapter(g.chineses, g.chap, g.secs.join(','))
-            .then(data => {
-              if (data.status === 'success' && data.record) {
-                data.record.forEach(r => {
-                  const book = BOOKS.find(b => b.chineses === r.chineses);
-                  const bid = book ? book.bid : 0;
-                  const mk = `${bid}-${r.chap}-${r.sec}`;
-                  const entry = sorted.find(([ek]) => ek === mk);
-                  if (entry) entry[1].texts['esv'] = r.bible_text;
-                });
-              }
-            }).catch(() => {})
-        );
-        await Promise.all(esvFills);
-      }
-    }
+    const rangeSel = document.getElementById('search-range');
+    const rangeLabel = rangeSel.options[rangeSel.selectedIndex].text;
+    window.__lastSearch = { q, rangeLabel, total: verseMap.size, sorted };
 
     const escQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const statsHtml = `<div class="search-stats">搜尋「${q}」，找到 ${verseMap.size} 節${verseMap.size > 50 ? '（顯示前 50 節）' : ''}</div>`;
+    const statsHtml = `<div class="search-stats">搜尋「${q}」，共 ${verseMap.size} 節</div>`;
 
     const orderedVers = sortedVers(vers);
-    const html = sorted.map(([k, v]) => {
+    const html = sorted.map(([k, v], idx) => {
       const trs = orderedVers.map(ver => {
         const info = VERSIONS.find(x => x.code === ver);
         const text = v.texts[ver]; if (!text) return '';
         const hl = text.replace(new RegExp(`(${escQ})`, 'gi'), '<span class="highlight-match">$1</span>');
         return `<div class="verse-translation"><span class="version-badge ${info.badge}">${info.name}</span><span class="verse-text">${hl}</span></div>`;
       }).filter(Boolean).join('');
-      return `<div class="search-result-item" onclick="goToVerse(${v.bid},${v.chap},${v.sec})">
-        <div class="search-ref">${v.bookName} ${v.chap}:${v.sec}</div>${trs}</div>`;
+      return `<div class="search-result-item" data-idx="${idx}">
+        <label class="search-result-check" onclick="event.stopPropagation()"><input type="checkbox" class="search-pick-cb" aria-label="選取此節"></label>
+        <div class="search-result-main" onclick="goToVerse(${v.bid},${v.chap},${v.sec})">
+        <div class="search-ref">${v.bookName} ${v.chap}:${v.sec}</div>${trs}</div></div>`;
     }).join('');
 
     div.innerHTML = statsHtml + html;
+    if (bar) bar.hidden = false;
   } catch (err) {
+    if (bar) bar.hidden = true;
     div.innerHTML = `<div class="error-msg">搜尋失敗：${err.message}</div>`;
   }
 }
@@ -737,7 +858,7 @@ function goToVerse(bid, chap, sec) {
   fetchVerses();
 }
 
-async function doQuickLookup() {
+function doQuickLookup() {
   const raw = document.getElementById('quick-ref').value.trim();
   if (!raw) return;
   const div = document.getElementById('results-quick');
@@ -775,19 +896,6 @@ async function doQuickLookup() {
         });
       }
     });
-
-    if (vers.includes('esv')) {
-      try {
-        const esvData = await fetchEsvChapter(parsed.chineses, parsed.chap, parsed.secRange);
-        if (esvData.status === 'success' && esvData.record) {
-          esvData.record.forEach(r => {
-            const k = `${r.chap}:${r.sec}`;
-            if (!verseMap[k]) verseMap[k] = { chap:r.chap, sec:r.sec, texts:{} };
-            verseMap[k].texts['esv'] = r.bible_text;
-          });
-        }
-      } catch (e) { console.warn('ESV error:', e.message); }
-    }
 
     const sorted = Object.keys(verseMap).sort((a,b) => {
       const [ac,as_] = a.split(':').map(Number);
@@ -844,6 +952,45 @@ loadLocalData().then(() => {
   document.getElementById('sel-sec-end').value = 17;
   fetchVerses();
 });
+
+// PWA 安裝提示（Chrome／Edge／Android）
+let deferredInstallPrompt = null;
+(function setupPwaInstall() {
+  const btnInstall = document.getElementById('btn-install-pwa');
+  const iosHint = document.getElementById('ios-install-hint');
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+  if (isStandalone()) {
+    if (iosHint) iosHint.classList.remove('show');
+    return;
+  }
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (ios && iosHint) iosHint.classList.add('show');
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (btnInstall && !isStandalone()) btnInstall.hidden = false;
+  });
+  window.addEventListener('appinstalled', function () {
+    deferredInstallPrompt = null;
+    if (btnInstall) btnInstall.hidden = true;
+    if (iosHint) iosHint.classList.remove('show');
+  });
+  if (btnInstall) {
+    btnInstall.addEventListener('click', async function () {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        btnInstall.hidden = true;
+      } else {
+        toast('若無法安裝，Android 請用 Chrome；iPhone 請用 Safari「分享」→「加入主畫面」');
+      }
+    });
+  }
+})();
 
 // PWA：僅 HTTPS 或 localhost 可註冊 Service Worker
 if ('serviceWorker' in navigator) {

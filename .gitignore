@@ -3,3 +3,7 @@ Thumbs.db
 *.log
 .env
 .env.*
+!.env.example
+
+# 下載過程暫存，勿提交
+data/_tmp*.json

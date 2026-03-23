@@ -2,8 +2,11 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
+// 信望愛 JSON API（路徑為 /json/qb.php，非 jason）
 const API_BASE = 'https://bible.fhl.net/json/qb.php';
-const VERSIONS = ['unv', 'ncv', 'kjv', 'asv'];
+// lcc = 呂振中；esv = ESV；web = World English Bible；bbe = Bible in Basic English（信望愛 qb.php）。
+// 英文「niv」槽請用 fetch_niv_apibible.js／fetch_niv_legal.js 產生 niv.json，勿在此用 qb.php 的 niv（信望愛 NIV 已壞且 NIV 有版權限制）
+const VERSIONS = ['unv', 'ncv', 'kjv', 'asv', 'lcc', 'esv', 'web', 'bbe'];
 const DATA_DIR = path.join(__dirname, 'data');
 
 const BOOKS = [

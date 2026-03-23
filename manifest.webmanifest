@@ -1,7 +1,7 @@
 {
   "name": "多譯本聖經查詢",
   "short_name": "聖經查詢",
-  "description": "和合本、ESV、新譯本、ASV、KJV 多譯本查詢與閱讀",
+  "description": "和合本、ESV、WEB、BBE、新譯本、呂振中、ASV、KJV 多譯本查詢與閱讀（PWA）",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
