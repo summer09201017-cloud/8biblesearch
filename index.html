@@ -53,6 +53,21 @@ body {
   padding:6px 12px; background:rgba(0,0,0,0.15); margin:0 -20px -8px;
 }
 .ios-install-hint.show { display:block; }
+.install-guide-panel {
+  background: #ebe4d8; border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+}
+.install-guide-panel[hidden] { display: none !important; }
+.install-guide-inner {
+  max-width: 1200px; margin: 0 auto;
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; font-size: 0.88rem; line-height: 1.65; color: var(--text);
+  box-shadow: 0 2px 8px var(--shadow);
+}
+.install-guide-inner strong { display: block; margin-bottom: 8px; color: var(--accent); font-size: 0.95rem; }
+.install-guide-inner ol { margin: 0 0 12px 1.2em; padding: 0; }
+.install-guide-inner li { margin: 6px 0; }
+.install-guide-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .tabs {
   display:flex; background:#4a3520;
   border-bottom:1px solid rgba(255,255,255,0.1);
@@ -257,6 +272,33 @@ body {
   </div>
   <p class="ios-install-hint" id="ios-install-hint">iPhone／iPad：請用 Safari 開啟本頁，點 <b>分享</b> → <b>加入主畫面</b>，即可像 App 使用。</p>
 </header>
+
+<div id="install-guide-ios" class="install-guide-panel" hidden>
+  <div class="install-guide-inner">
+    <strong>iPhone／iPad：加入主畫面（像 App 一樣開啟）</strong>
+    <ol>
+      <li>請用 <b>Safari</b> 開啟本頁。若目前是 LINE、Facebook、Messenger 等<b>內建瀏覽器</b>，請點選單 <b>⋯</b> 或 <b>在 Safari 中開啟</b>。</li>
+      <li>點螢幕底欄中央的 <b>分享</b> 圖示（方塊與向上箭頭）。</li>
+      <li>向下滑，點 <b>加入主畫面</b> → <b>加入</b>。</li>
+    </ol>
+    <div class="install-guide-actions">
+      <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('install-guide-ios').hidden=true">關閉說明</button>
+    </div>
+  </div>
+</div>
+<div id="install-guide-android" class="install-guide-panel" hidden>
+  <div class="install-guide-inner">
+    <strong>Android：安裝或加到主畫面</strong>
+    <ol>
+      <li>建議使用 <b>Chrome</b> 開啟本網站。</li>
+      <li>點右上角 <b>⋮</b>（選單）→ 找 <b>安裝應用程式</b>、<b>加到主畫面</b> 或 <b>新增至主畫面</b>（依機型與版本用詞可能不同）。</li>
+      <li>若沒有出現安裝選項，可先將網頁<b>加入書籤</b>並多使用幾次，或到 Chrome 的「網站設定」查看是否曾封鎖安裝提示。</li>
+    </ol>
+    <div class="install-guide-actions">
+      <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('install-guide-android').hidden=true">關閉說明</button>
+    </div>
+  </div>
+</div>
 
 <nav class="tabs">
   <button class="tab active" data-tab="read" onclick="switchTab('read')">經文閱讀</button>
@@ -953,41 +995,90 @@ loadLocalData().then(() => {
   fetchVerses();
 });
 
-// PWA 安裝提示（Chrome／Edge／Android）
+// PWA 安裝：iOS 不支援 beforeinstallprompt，手機上改為一律顯示按鈕並可展開說明
 let deferredInstallPrompt = null;
 (function setupPwaInstall() {
   const btnInstall = document.getElementById('btn-install-pwa');
   const iosHint = document.getElementById('ios-install-hint');
+  const guideIos = document.getElementById('install-guide-ios');
+  const guideAndroid = document.getElementById('install-guide-android');
   function isStandalone() {
     return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   }
+  function isIos() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+  function isMobileUi() {
+    if (isIos()) return true;
+    return /Android/i.test(navigator.userAgent);
+  }
+  function closeInstallGuides() {
+    if (guideIos) guideIos.hidden = true;
+    if (guideAndroid) guideAndroid.hidden = true;
+  }
   if (isStandalone()) {
     if (iosHint) iosHint.classList.remove('show');
+    closeInstallGuides();
     return;
   }
-  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const ios = isIos();
   if (ios && iosHint) iosHint.classList.add('show');
+
+  // 手機：一律顯示安裝相關按鈕（iOS 用「加入主畫面」文案）
+  if (btnInstall && isMobileUi()) {
+    btnInstall.hidden = false;
+    btnInstall.textContent = ios ? '📲 加入主畫面' : '📲 安裝 App';
+  }
 
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault();
     deferredInstallPrompt = e;
-    if (btnInstall && !isStandalone()) btnInstall.hidden = false;
+    if (btnInstall && !isStandalone()) {
+      btnInstall.hidden = false;
+      if (!ios) btnInstall.textContent = '📲 安裝 App';
+    }
   });
   window.addEventListener('appinstalled', function () {
     deferredInstallPrompt = null;
     if (btnInstall) btnInstall.hidden = true;
     if (iosHint) iosHint.classList.remove('show');
+    closeInstallGuides();
   });
   if (btnInstall) {
     btnInstall.addEventListener('click', async function () {
       if (deferredInstallPrompt) {
+        closeInstallGuides();
         deferredInstallPrompt.prompt();
         await deferredInstallPrompt.userChoice;
         deferredInstallPrompt = null;
         btnInstall.hidden = true;
-      } else {
-        toast('若無法安裝，Android 請用 Chrome；iPhone 請用 Safari「分享」→「加入主畫面」');
+        return;
       }
+      if (ios) {
+        if (guideAndroid) guideAndroid.hidden = true;
+        if (guideIos) {
+          const open = guideIos.hidden;
+          closeInstallGuides();
+          if (open) {
+            guideIos.hidden = false;
+            guideIos.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }
+        return;
+      }
+      if (isMobileUi()) {
+        if (guideIos) guideIos.hidden = true;
+        if (guideAndroid) {
+          const open = guideAndroid.hidden;
+          closeInstallGuides();
+          if (open) {
+            guideAndroid.hidden = false;
+            guideAndroid.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }
+        return;
+      }
+      toast('請使用 Chrome 或 Edge，網址列若出現安裝圖示可點選安裝；手機請用 Chrome 開啟本頁。');
     });
   }
 })();
