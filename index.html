@@ -509,11 +509,18 @@ function getLocalChapter(ver, bid, chap) {
   return b[chap] || {};
 }
 
+/** 和合本排版常在「神」前加空白；搜尋時略過這些空白以利連續字比對（例：查「與神同行」可命中「與 神同行」） */
+function normalizeUnvSpacesBeforeShen(s) {
+  if (!s) return '';
+  return String(s).replace(/[\s\u3000\uFEFF]+(?=神)/g, '');
+}
+
 function searchLocal(ver, keyword, range) {
   const d = bibleData[ver];
   if (!d) return [];
   const results = [];
-  const lower = keyword.toLowerCase();
+  const kw = keyword.trim();
+  const lower = ver === 'unv' ? normalizeUnvSpacesBeforeShen(kw).toLowerCase() : kw.toLowerCase();
   for (const bid of Object.keys(d)) {
     const bidNum = parseInt(bid);
     if (range === '1' && bidNum < 40) continue;
@@ -522,7 +529,9 @@ function searchLocal(ver, keyword, range) {
     for (const chap of Object.keys(d[bid])) {
       for (const sec of Object.keys(d[bid][chap])) {
         const text = d[bid][chap][sec];
-        if (text && text.toLowerCase().includes(lower)) {
+        if (!text) continue;
+        const haystack = ver === 'unv' ? normalizeUnvSpacesBeforeShen(text) : text;
+        if (haystack.toLowerCase().includes(lower)) {
           results.push({ bid:bidNum, chap:parseInt(chap), sec:parseInt(sec), text, bookName: book ? book.chinesef : '' });
         }
       }
@@ -867,6 +876,8 @@ function doSearch() {
     window.__lastSearch = { q, rangeLabel, total: verseMap.size, sorted };
 
     const escQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    /** 和合本：高亮時允許「神」前有空白，與 normalizeUnvSpacesBeforeShen 一致 */
+    const escQUnvHighlight = escQ.replace(/神/g, '[\\s\\u3000\\uFEFF]*神');
     const statsHtml = `<div class="search-stats">搜尋「${q}」，共 ${verseMap.size} 節</div>`;
 
     const orderedVers = sortedVers(vers);
@@ -874,7 +885,8 @@ function doSearch() {
       const trs = orderedVers.map(ver => {
         const info = VERSIONS.find(x => x.code === ver);
         const text = v.texts[ver]; if (!text) return '';
-        const hl = text.replace(new RegExp(`(${escQ})`, 'gi'), '<span class="highlight-match">$1</span>');
+        const pat = ver === 'unv' ? escQUnvHighlight : escQ;
+        const hl = text.replace(new RegExp(`(${pat})`, 'gi'), '<span class="highlight-match">$1</span>');
         return `<div class="verse-translation"><span class="version-badge ${info.badge}">${info.name}</span><span class="verse-text">${hl}</span></div>`;
       }).filter(Boolean).join('');
       return `<div class="search-result-item" data-idx="${idx}">
