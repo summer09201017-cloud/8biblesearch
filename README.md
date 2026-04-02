@@ -8,10 +8,10 @@
 
 ```powershell
 # Python 3
-py -3 -m http.server 8080
+py -3 -m http.server 8081
 ```
 
-瀏覽器開啟 `http://localhost:8080/`（或執行根目錄的 `啟動網站.bat`）。
+瀏覽器開啟 `http://localhost:8081/`（或執行根目錄的 `啟動網站.bat`）。
 
 ## 資料檔
 

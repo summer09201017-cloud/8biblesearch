@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0"
 
-set PORT=8080
+set PORT=8081
 echo.
 echo Bible app local server
 echo Folder: %cd%
