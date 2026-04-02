@@ -215,6 +215,14 @@ body {
   padding:10px 20px !important; font-size:0.95rem !important; font-weight:700 !important;
 }
 .btn-search-pick-copy:hover { filter:brightness(1.06); box-shadow:0 4px 14px rgba(192,57,43,0.35) !important; transform:translateY(-1px); }
+.read-copy-footer {
+  margin-top:18px; padding:16px; text-align:center;
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  box-shadow:0 2px 8px var(--shadow);
+}
+.btn-read-copy-large {
+  padding:12px 32px !important; font-size:1.08rem !important;
+}
 .search-result-main { flex:1; min-width:0; cursor:pointer; }
 .search-ref { font-weight:700; color:var(--accent); font-size:0.9rem; margin-bottom:4px; }
 .search-text { font-size:0.95rem; color:var(--text); }
@@ -583,6 +591,12 @@ function toast(msg) {
 
 function getSearchActionsBar() { return document.getElementById('search-actions-bar'); }
 
+function readCopyFooterHtml() {
+  return '<div class="read-copy-footer">' +
+    '<button type="button" class="btn btn-search-pick-copy btn-read-copy-large" onclick="copyReadSelection()" title="有勾選經節時只複製勾選；未勾選則依起始／結束節（或全章）">複製所選經文</button>' +
+    '</div>';
+}
+
 function searchActionsFooterHtml() {
   return '<div class="search-actions search-actions-footer">' +
     '<span class="search-actions-label">勾選經文</span>' +
@@ -927,7 +941,7 @@ function fetchVerses() {
       div.innerHTML = sorted.map(k => {
         const v = verseMap[k];
         return renderVerseGroup(bid, v.chap, v.sec, `${book.chinesef} ${v.chap}:${v.sec}`, vers, v.texts);
-      }).join('');
+      }).join('') + readCopyFooterHtml();
     }
 
     const nav = document.getElementById('chap-nav');
