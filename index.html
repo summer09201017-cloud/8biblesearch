@@ -405,7 +405,7 @@ body {
 
   <div id="panel-search" class="panel">
     <div class="search-box">
-      <input type="text" id="search-input" placeholder="輸入關鍵字搜尋經文..." onkeydown="if(event.key==='Enter')doSearch()">
+      <input type="text" id="search-input" placeholder="輸入關鍵字搜尋經文..." onkeydown="if(event.key==='Enter'){clearTimeout(_searchDebounce);doSearch()}" oninput="autoSearch()">
       <button class="btn" onclick="doSearch()">搜尋</button>
     </div>
     <div class="version-toggles" id="version-toggles-search"></div>
@@ -486,7 +486,7 @@ const VERSIONS = [
   { code:'asv', name:'ASV',   badge:'badge-asv', local:true },
   { code:'kjv', name:'KJV',   badge:'badge-kjv', local:true },
 ];
-let activeVersions = ['unv','esv','niv','ncv','lcc','web'];
+let activeVersions = ['unv','esv','niv','ncv','lcc'];
 
 const BOOKS = [
   {bid:1,chineses:'創',chinesef:'創世記',engs:'Gen',chapters:50},
@@ -956,6 +956,7 @@ function renderVerseGroup(bid, chap, sec, ref, versionsToShow, textsMap) {
 }
 
 function fetchVerses() {
+  const t0 = performance.now();
   const bid = parseInt(document.getElementById('sel-book').value);
   const chap = parseInt(document.getElementById('sel-chap').value);
   const secStart = document.getElementById('sel-sec-start').value;
@@ -1005,10 +1006,13 @@ function fetchVerses() {
       return ac-bc || as_-bs;
     });
 
+    const elapsed = (performance.now() - t0).toFixed(0);
+
     if (sorted.length === 0) {
       div.innerHTML = '<div class="error-msg">查無經文資料（離線資料可能尚未載入）</div>';
     } else {
-      div.innerHTML = sorted.map(k => {
+      const timeHtml = `<div class="search-stats">共 ${sorted.length} 節，耗時 ${elapsed} ms</div>`;
+      div.innerHTML = timeHtml + sorted.map(k => {
         const v = verseMap[k];
         return renderVerseGroup(bid, v.chap, v.sec, `${book.chinesef} ${v.chap}:${v.sec}`, vers, v.texts);
       }).join('') + readCopyFooterHtml();
@@ -1039,7 +1043,17 @@ function nextChapter() {
   if (c < book.chapters) { s.value = c+1; onChapChange(); fetchVerses(); window.scrollTo({top:0,behavior:'smooth'}); }
 }
 
+let _searchDebounce;
+function autoSearch() {
+  clearTimeout(_searchDebounce);
+  const q = document.getElementById('search-input').value.trim();
+  if (q.length < 2) return;
+  const delay = q.length === 2 ? 0 : 120;
+  _searchDebounce = setTimeout(doSearch, delay);
+}
+
 function doSearch() {
+  const t0 = performance.now();
   const q = document.getElementById('search-input').value.trim();
   if (!q) return;
   const range = document.getElementById('search-range').value;
@@ -1091,7 +1105,8 @@ function doSearch() {
     const escQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     /** 和合本：高亮時允許「神」前有空白，與 normalizeUnvSpacesBeforeShen 一致 */
     const escQUnvHighlight = escQ.replace(/神/g, '[\\s\\u3000\\uFEFF]*神');
-    const statsHtml = `<div class="search-stats">搜尋「${q}」，共 ${verseMap.size} 節</div>`;
+    const elapsed = (performance.now() - t0).toFixed(0);
+    const statsHtml = `<div class="search-stats">搜尋「${q}」，共 ${verseMap.size} 節，耗時 ${elapsed} ms</div>`;
 
     const orderedVers = sortedVers(vers);
     const html = sorted.map(([k, v], idx) => {
@@ -1128,6 +1143,7 @@ function goToVerse(bid, chap) {
 }
 
 function doQuickLookup() {
+  const t0 = performance.now();
   const raw = document.getElementById('quick-ref').value.trim();
   if (!raw) return;
   const div = document.getElementById('results-quick');
@@ -1172,9 +1188,12 @@ function doQuickLookup() {
       return ac-bc || as_-bs;
     });
 
+    const elapsed = (performance.now() - t0).toFixed(0);
+
     if (sorted.length === 0) { div.innerHTML = '<div class="error-msg">查無經文資料</div>'; return; }
 
-    div.innerHTML = sorted.map(k => {
+    const timeHtml = `<div class="search-stats">共 ${sorted.length} 節，耗時 ${elapsed} ms</div>`;
+    div.innerHTML = timeHtml + sorted.map(k => {
       const v = verseMap[k];
       return renderVerseGroup(book.bid, v.chap, v.sec, `${book.chinesef} ${v.chap}:${v.sec}`, vers, v.texts);
     }).join('');
