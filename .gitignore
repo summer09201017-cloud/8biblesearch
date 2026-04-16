@@ -7,3 +7,6 @@ Thumbs.db
 
 # 下載過程暫存，勿提交
 data/_tmp*.json
+
+# NIV 來源分檔（已合併至 data/niv.json）
+data/NIV/

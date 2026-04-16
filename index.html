@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#3a2a12">
-<meta name="description" content="和合本、ESV、WEB、BBE、新譯本、呂振中、ASV、KJV 多譯本聖經查詢與閱讀">
+<meta name="description" content="和合本、ESV、NIV、WEB、BBE、新譯本、呂振中、ASV、KJV 多譯本聖經查詢與閱讀">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="聖經查詢">
@@ -42,12 +42,29 @@ body {
 .app-header h1 { font-size:1.4rem; font-weight:700; letter-spacing:4px; }
 .app-header .subtitle { font-size:0.75rem; opacity:0.7; margin-top:2px; }
 .app-header-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.font-size-ctrl {
+  display:flex; align-items:center; gap:4px;
+}
+.btn-font {
+  padding:5px 10px; font-size:0.78rem; font-weight:700; border-radius:6px;
+  border:1px solid rgba(240,216,144,0.5); background:rgba(255,255,255,0.12);
+  color:#f0d890; cursor:pointer; font-family:inherit; line-height:1;
+}
+.btn-font:hover { background:rgba(255,255,255,0.25); }
+.font-size-label { font-size:0.72rem; color:#c0a878; min-width:32px; text-align:center; }
 .btn-install {
   padding:8px 14px; font-size:0.8rem; font-weight:600; border-radius:8px;
   border:1px solid rgba(240,216,144,0.5); background:rgba(255,255,255,0.12);
   color:#f0d890; cursor:pointer; font-family:inherit;
 }
 .btn-install:hover { background:rgba(255,255,255,0.2); }
+.fhl-com-link {
+  font-size:0.72rem; color:var(--accent); text-decoration:none;
+  border:1px solid var(--border); border-radius:5px; padding:2px 7px;
+  background:var(--tag-bg); white-space:nowrap; font-weight:600;
+  transition:all 0.2s;
+}
+.fhl-com-link:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
 .ios-install-hint {
   display:none; text-align:center; font-size:0.72rem; opacity:0.85;
   padding:6px 12px; background:rgba(0,0,0,0.15); margin:0 -20px -8px;
@@ -314,6 +331,11 @@ body {
       <div class="subtitle">Multi-Version Bible Reader</div>
     </div>
     <div class="app-header-actions">
+      <div class="font-size-ctrl">
+        <button type="button" class="btn-font" onclick="changeFontSize(-1)" title="縮小字型">A-</button>
+        <span class="font-size-label" id="font-size-label">100%</span>
+        <button type="button" class="btn-font" onclick="changeFontSize(1)" title="放大字型">A+</button>
+      </div>
       <button type="button" class="btn-install" id="btn-install-pwa" hidden>📲 安裝 App</button>
     </div>
   </div>
@@ -421,16 +443,42 @@ body {
 
 <footer class="app-footer">
   <p>經文僅由本地 <code>data/*.json</code> 讀取，可完全離線使用（下載腳本資料來源可參考<a href="https://bible.fhl.net" target="_blank" rel="noopener">信望愛</a>，網頁執行時不連線查詢）</p>
-  <p style="margin-top:4px;">和合本 · ESV · WEB · BBE · 新譯本 · 呂振中 · ASV · KJV ｜ <span title="NIV 介面暫隱藏；資料與授權見 DEPLOY.md。WEB／BBE：node download_bible.js">譯本說明見 DEPLOY.md</span></p>
+  <p style="margin-top:4px;">和合本 · ESV · NIV · WEB · BBE · 新譯本 · 呂振中 · ASV · KJV ｜ <span title="WEB／BBE：node download_bible.js">譯本說明見 DEPLOY.md</span></p>
 </footer>
 
 <script>
-// niv 保留在 VERSIONS（hideInUi）供日後開啟；不列入 LOCAL_VERSIONS 則不載入 niv.json
-const LOCAL_VERSIONS = ['unv','ncv','kjv','asv','lcc','esv','web','bbe'];
+// ========== Font Size Control ==========
+const FONT_STEPS = [80, 90, 100, 110, 120, 130, 150];
+let fontSizeIdx = (() => {
+  const saved = localStorage.getItem('bible-font-size');
+  if (saved) { const i = FONT_STEPS.indexOf(parseInt(saved)); if (i >= 0) return i; }
+  return FONT_STEPS.indexOf(100);
+})();
+function applyFontSize() {
+  const pct = FONT_STEPS[fontSizeIdx];
+  document.documentElement.style.fontSize = pct + '%';
+  const lbl = document.getElementById('font-size-label');
+  if (lbl) lbl.textContent = pct + '%';
+  localStorage.setItem('bible-font-size', pct);
+}
+function changeFontSize(dir) {
+  fontSizeIdx = Math.max(0, Math.min(FONT_STEPS.length - 1, fontSizeIdx + dir));
+  applyFontSize();
+}
+applyFontSize();
+
+// ========== FHL Commentary Link Helper ==========
+function fhlComLink(bid, chap, sec) {
+  const book = BOOKS.find(b => b.bid === bid);
+  const engs = book ? encodeURIComponent(book.engs) : '';
+  return 'https://bible.fhl.net/new/com.php?book=3&engs=' + engs + '&chap=' + chap + '&sec=' + sec + '&m=0';
+}
+
+const LOCAL_VERSIONS = ['unv','ncv','kjv','asv','lcc','esv','niv','web','bbe'];
 const VERSIONS = [
   { code:'unv', name:'和合本', badge:'badge-unv', local:true },
   { code:'esv', name:'ESV',   badge:'badge-esv', local:true },
-  { code:'niv', name:'NIV', badge:'badge-niv', local:true, hideInUi:true },
+  { code:'niv', name:'NIV', badge:'badge-niv', local:true },
   { code:'web', name:'WEB', badge:'badge-web', local:true },
   { code:'ncv', name:'新譯本', badge:'badge-ncv', local:true },
   { code:'lcc', name:'呂振中', badge:'badge-lcc', local:true },
@@ -438,7 +486,7 @@ const VERSIONS = [
   { code:'asv', name:'ASV',   badge:'badge-asv', local:true },
   { code:'kjv', name:'KJV',   badge:'badge-kjv', local:true },
 ];
-let activeVersions = ['unv','esv','ncv','lcc','web'];
+let activeVersions = ['unv','esv','niv','ncv','lcc','web'];
 
 const BOOKS = [
   {bid:1,chineses:'創',chinesef:'創世記',engs:'Gen',chapters:50},
@@ -521,7 +569,7 @@ async function loadLocalData() {
   const detailEl = document.getElementById('load-detail');
   statusEl.style.display = 'block';
 
-  const names = { unv:'和合本', ncv:'新譯本', kjv:'KJV', asv:'ASV', lcc:'呂振中', esv:'ESV', web:'WEB', bbe:'BBE' };
+  const names = { unv:'和合本', ncv:'新譯本', kjv:'KJV', asv:'ASV', lcc:'呂振中', esv:'ESV', niv:'NIV', web:'WEB', bbe:'BBE' };
   let loaded = 0;
   for (const ver of LOCAL_VERSIONS) {
     detailEl.textContent = `載入 ${names[ver]}...`;
@@ -903,7 +951,8 @@ function renderVerseGroup(bid, chap, sec, ref, versionsToShow, textsMap) {
     const text = textsMap[ver] || '（此版本無此節經文）';
     return `<div class="verse-translation"><span class="version-badge ${info.badge}">${info.name}</span><span class="verse-text">${text}</span></div>`;
   }).join('');
-  return `<div class="verse-group" data-bid="${bid}" data-chap="${chap}" data-sec="${sec}"><div class="verse-header"><span class="verse-ref-title">${ref}</span><div class="verse-read-pick" onclick="event.stopPropagation()"><label class="verse-read-check"><span class="verse-read-check-label">勾選複製經文</span><input type="checkbox" class="read-pick-cb" aria-label="勾選複製經文"></label></div></div><div class="verse-translations ${parallelClass}">${trs}</div></div>`;
+  const comUrl = fhlComLink(bid, chap, sec);
+  return `<div class="verse-group" data-bid="${bid}" data-chap="${chap}" data-sec="${sec}"><div class="verse-header"><span class="verse-ref-title">${ref}</span><div class="verse-read-pick" onclick="event.stopPropagation()"><a class="fhl-com-link" href="${comUrl}" target="_blank" rel="noopener" title="信望愛註釋">📖 註釋</a><label class="verse-read-check"><span class="verse-read-check-label">勾選複製經文</span><input type="checkbox" class="read-pick-cb" aria-label="勾選複製經文"></label></div></div><div class="verse-translations ${parallelClass}">${trs}</div></div>`;
 }
 
 function fetchVerses() {
@@ -1053,10 +1102,11 @@ function doSearch() {
         const hl = text.replace(new RegExp(`(${pat})`, 'gi'), '<span class="highlight-match">$1</span>');
         return `<div class="verse-translation"><span class="version-badge ${info.badge}">${info.name}</span><span class="verse-text">${hl}</span></div>`;
       }).filter(Boolean).join('');
+      const comUrl2 = fhlComLink(v.bid, v.chap, v.sec);
       return `<div class="search-result-item" data-idx="${idx}">
         <label class="search-result-check" onclick="event.stopPropagation()"><input type="checkbox" class="search-pick-cb" aria-label="選取此節"></label>
         <div class="search-result-main" onclick="goToVerse(${v.bid},${v.chap})" title="開啟此章全文">
-        <div class="search-ref">${v.bookName} ${v.chap}:${v.sec}</div>${trs}</div></div>`;
+        <div class="search-ref">${v.bookName} ${v.chap}:${v.sec} <a class="fhl-com-link" href="${comUrl2}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="信望愛註釋">📖 註釋</a></div>${trs}</div></div>`;
     }).join('');
 
     div.innerHTML = statsHtml + html + searchActionsFooterHtml();
