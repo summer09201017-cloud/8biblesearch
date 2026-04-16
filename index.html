@@ -223,6 +223,17 @@ body {
   font-size:1rem; font-family:inherit; background:var(--bg2); color:var(--text);
 }
 .search-box input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(139,105,20,0.15); }
+.btn-search-flash {
+  background:#2ecc71 !important;
+  color:#fff !important;
+  transform:scale(0.92) !important;
+  box-shadow:0 0 14px rgba(46,204,113,0.5) !important;
+}
+.btn-search-flash-up {
+  background:linear-gradient(135deg,var(--accent),var(--accent2)) !important;
+  transform:scale(1) !important;
+  transition:all 0.25s ease-out !important;
+}
 .search-options { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; align-items:center; }
 .search-options label { font-size:0.85rem; color:var(--text2); font-weight:600; }
 
@@ -405,8 +416,8 @@ body {
 
   <div id="panel-search" class="panel">
     <div class="search-box">
-      <input type="text" id="search-input" placeholder="輸入關鍵字搜尋經文..." onkeydown="if(event.key==='Enter'){clearTimeout(_searchDebounce);doSearch()}" oninput="autoSearch()">
-      <button class="btn" onclick="doSearch()">搜尋</button>
+      <input type="text" id="search-input" placeholder="輸入關鍵字搜尋經文..." onkeydown="if(event.key==='Enter'){clearTimeout(_searchDebounce);doSearchWithFlash()}" oninput="autoSearch()">
+      <button class="btn" id="btn-search" onclick="doSearchWithFlash()">搜尋</button>
     </div>
     <div class="version-toggles" id="version-toggles-search"></div>
     <div class="search-options">
@@ -1044,12 +1055,28 @@ function nextChapter() {
 }
 
 let _searchDebounce;
+let _searchFlashTimer;
+function doSearchWithFlash() {
+  const btn = document.getElementById('btn-search');
+  if (!btn) return;
+  clearTimeout(_searchFlashTimer);
+  btn.classList.remove('btn-search-flash-up');
+  btn.classList.add('btn-search-flash');
+  btn.textContent = '搜尋中...';
+  _searchFlashTimer = setTimeout(() => {
+    btn.classList.remove('btn-search-flash');
+    btn.classList.add('btn-search-flash-up');
+    btn.textContent = '搜尋';
+    setTimeout(() => btn.classList.remove('btn-search-flash-up'), 200);
+  }, 200);
+  doSearch();
+}
 function autoSearch() {
   clearTimeout(_searchDebounce);
   const q = document.getElementById('search-input').value.trim();
   if (q.length < 2) return;
   const delay = q.length === 2 ? 0 : 120;
-  _searchDebounce = setTimeout(doSearch, delay);
+  _searchDebounce = setTimeout(doSearchWithFlash, delay);
 }
 
 function doSearch() {
