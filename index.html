@@ -459,7 +459,7 @@ body {
 
 <script>
 // ========== Font Size Control ==========
-const FONT_STEPS = [80, 90, 100, 110, 120, 130, 150];
+const FONT_STEPS = [50, 75, 100, 125, 150, 175, 200, 225, 250];
 let fontSizeIdx = (() => {
   const saved = localStorage.getItem('bible-font-size');
   if (saved) { const i = FONT_STEPS.indexOf(parseInt(saved)); if (i >= 0) return i; }
