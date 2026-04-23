@@ -268,8 +268,13 @@ body {
 .btn-read-copy-large {
   padding:12px 32px !important; font-size:1.08rem !important;
 }
-.search-result-main { flex:1; min-width:0; cursor:pointer; }
+.search-result-main { flex:1; min-width:0; }
 .search-ref { font-weight:700; color:var(--accent); font-size:0.9rem; margin-bottom:4px; }
+.search-ref-link {
+  color:var(--accent); text-decoration:underline; cursor:pointer;
+  text-decoration-thickness:1px; text-underline-offset:2px;
+}
+.search-ref-link:hover { color:var(--accent2); text-decoration-thickness:2px; }
 .search-text { font-size:0.95rem; color:var(--text); }
 .search-stats {
   font-size:0.85rem; color:var(--text2); margin-bottom:12px;
@@ -490,7 +495,7 @@ const VERSIONS = [
   { code:'unv', name:'和合本', badge:'badge-unv', local:true },
   { code:'esv', name:'ESV',   badge:'badge-esv', local:true },
   { code:'niv', name:'NIV', badge:'badge-niv', local:true },
-  { code:'web', name:'WEB', badge:'badge-web', local:true },
+  { code:'web', name:'WEB', badge:'badge-web', local:true, hideInUi:true },
   { code:'ncv', name:'新譯本', badge:'badge-ncv', local:true },
   { code:'lcc', name:'呂振中', badge:'badge-lcc', local:true },
   { code:'bbe', name:'BBE', badge:'badge-bbe', local:true },
@@ -1147,8 +1152,8 @@ function doSearch() {
       const comUrl2 = fhlComLink(v.bid, v.chap, v.sec);
       return `<div class="search-result-item" data-idx="${idx}">
         <label class="search-result-check" onclick="event.stopPropagation()"><input type="checkbox" class="search-pick-cb" aria-label="選取此節"></label>
-        <div class="search-result-main" onclick="goToVerse(${v.bid},${v.chap})" title="開啟此章全文">
-        <div class="search-ref">${v.bookName} ${v.chap}:${v.sec} <a class="fhl-com-link" href="${comUrl2}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="信望愛註釋">📖 註釋</a></div>${trs}</div></div>`;
+        <div class="search-result-main">
+        <div class="search-ref"><span class="search-ref-link" onclick="goToVerse(${v.bid},${v.chap},${v.sec})" title="開啟此章閱讀此節">${v.bookName} ${v.chap}:${v.sec}</span> <a class="fhl-com-link" href="${comUrl2}" target="_blank" rel="noopener" title="信望愛註釋">📖 註釋</a></div>${trs}</div></div>`;
     }).join('');
 
     div.innerHTML = statsHtml + html + searchActionsFooterHtml();
@@ -1159,14 +1164,27 @@ function doSearch() {
   }
 }
 
-function goToVerse(bid, chap) {
+function goToVerse(bid, chap, sec) {
   switchTab('read');
   document.getElementById('sel-book').value = bid; onBookChange();
   document.getElementById('sel-chap').value = chap; onChapChange();
   document.getElementById('sel-sec-start').value = '';
   document.getElementById('sel-sec-end').value = '';
   fetchVerses();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (sec) {
+    setTimeout(() => {
+      const target = document.querySelector(`#results-read .verse-group[data-bid="${bid}"][data-chap="${chap}"][data-sec="${sec}"]`);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.style.outline = '2px solid var(--accent2)';
+        setTimeout(() => { target.style.outline = ''; }, 1800);
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 100);
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 }
 
 function doQuickLookup() {
