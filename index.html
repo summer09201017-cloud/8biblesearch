@@ -35,36 +35,27 @@ body {
 .app-header {
   background: linear-gradient(135deg,#3a2a12 0%,#5c3d1a 50%,#3a2a12 100%);
   color: #f0e0c0; padding: 16px 20px; text-align: center;
-  position: sticky; top: 0; z-index: 100;
+  position: sticky; top: 0; z-index: 200;
   box-shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
-.app-header-inner { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; max-width:1200px; margin:0 auto; }
+.app-header-inner {
+  display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;
+  gap:12px 20px; max-width:1200px; margin:0 auto; text-align:left;
+}
+.app-header-brand { flex:0 1 auto; min-width:0; }
+.app-header-right {
+  display:flex; align-items:center; justify-content:flex-end; flex:1 1 auto;
+  gap:10px; flex-wrap:wrap; min-width:min(100%, 280px);
+}
 .app-header h1 { font-size:1.4rem; font-weight:700; letter-spacing:4px; }
 .app-header .subtitle { font-size:0.75rem; opacity:0.7; margin-top:2px; }
 .app-header-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-.font-size-ctrl {
-  display:flex; align-items:center; gap:4px;
-}
-.btn-font {
-  padding:5px 10px; font-size:0.78rem; font-weight:700; border-radius:6px;
-  border:1px solid rgba(240,216,144,0.5); background:rgba(255,255,255,0.12);
-  color:#f0d890; cursor:pointer; font-family:inherit; line-height:1;
-}
-.btn-font:hover { background:rgba(255,255,255,0.25); }
-.font-size-label { font-size:0.72rem; color:#c0a878; min-width:32px; text-align:center; }
 .btn-install {
   padding:8px 14px; font-size:0.8rem; font-weight:600; border-radius:8px;
   border:1px solid rgba(240,216,144,0.5); background:rgba(255,255,255,0.12);
   color:#f0d890; cursor:pointer; font-family:inherit;
 }
 .btn-install:hover { background:rgba(255,255,255,0.2); }
-.fhl-com-link {
-  font-size:0.72rem; color:var(--accent); text-decoration:none;
-  border:1px solid var(--border); border-radius:5px; padding:2px 7px;
-  background:var(--tag-bg); white-space:nowrap; font-weight:600;
-  transition:all 0.2s;
-}
-.fhl-com-link:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
 .ios-install-hint {
   display:none; text-align:center; font-size:0.72rem; opacity:0.85;
   padding:6px 12px; background:rgba(0,0,0,0.15); margin:0 -20px -8px;
@@ -206,7 +197,7 @@ body {
 .badge-niv { background:#1a5276; }
 .badge-web { background:#1565c0; }
 .badge-bbe { background:#5d4037; }
-.verse-text { font-size:1rem; line-height:1.85; flex:1; }
+.verse-text { font-size:var(--verse-font-size, 1rem); line-height:1.85; flex:1; }
 .verse-text .highlight-match { background:#ffe066; padding:1px 2px; border-radius:2px; }
 
 .chapter-nav {
@@ -319,7 +310,7 @@ body {
   .version-toggles { gap:6px; padding:10px; }
   .version-toggle { padding:5px 10px; font-size:0.8rem; }
   .verse-translation { padding:10px 12px; flex-direction:column; gap:4px; }
-  .verse-text { font-size:0.95rem; }
+  .verse-text { font-size:var(--verse-font-size, 0.95rem); }
   .search-box { flex-direction:column; }
   .quick-input { flex-direction:column; }
   .tab { padding:9px 8px; font-size:0.82rem; }
@@ -333,6 +324,100 @@ body {
   }
   .verse-translations.parallel-mode .verse-translation:last-child { border-right:none; }
 }
+/* ===== 字體大小列（在標題右側，隨 sticky header 固定、永遠浮在最上層） ===== */
+.font-size-bar {
+  display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;
+  margin:0; padding:4px 10px;
+  background:rgba(0,0,0,0.2);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px;
+}
+.font-size-bar .fs-bar-label { font-size:0.75rem; color:#f0d890; font-weight:700; letter-spacing:0.5px; white-space:nowrap; }
+.font-size-bar .fs-btn {
+  padding:3px 10px; font-size:0.85rem; font-weight:800;
+  background:rgba(255,255,255,0.1); color:#f5e6c8;
+  border:1px solid rgba(240,216,144,0.4); border-radius:6px;
+  cursor:pointer; font-family:inherit; min-width:36px;
+}
+.font-size-bar .fs-btn:hover { background:rgba(255,255,255,0.22); }
+.font-size-bar .fs-btn:active { transform:translateY(1px); }
+.font-size-bar input[type="range"] {
+  width:min(200px, 32vw);
+  min-width:80px; max-width:220px; flex:1 1 auto;
+  accent-color:var(--accent2); cursor:pointer; vertical-align:middle;
+}
+.font-size-bar .fs-bar-value {
+  font-size:0.8rem; color:#f5e6c8; min-width:42px; text-align:center; font-weight:700;
+  white-space:nowrap;
+}
+@media (max-width:600px) {
+  .app-header-inner { flex-direction:column; align-items:stretch; text-align:center; }
+  .app-header-brand h1, .app-header-brand .subtitle { text-align:center; }
+  .app-header-right { justify-content:center; min-width:0; width:100%; }
+  .font-size-bar { justify-content:center; width:100%; max-width:100%; }
+  .font-size-bar input[type="range"] { width:min(70vw, 200px); flex:1 1 120px; }
+  .font-size-bar .fs-btn { padding:3px 8px; min-width:32px; font-size:0.8rem; }
+  .font-size-bar .fs-bar-label { font-size:0.7rem; }
+}
+
+/* ===== 經文／註釋連結按鈕（字體隨 --verse-font-size 縮放） ===== */
+.verse-comment-link {
+  display:inline-block;
+  font-size:calc(var(--verse-font-size, 16px) * 0.8);
+  font-weight:600; color:var(--accent);
+  text-decoration:none; padding:2px 8px; border:1px solid var(--border); border-radius:4px;
+  background:var(--tag-bg); margin-left:6px; white-space:nowrap; transition:all 0.2s;
+  cursor:pointer;
+}
+.verse-comment-link:hover { background:var(--accent); color:#fff; border-color:var(--accent); text-decoration:none; }
+
+/* ===== 信望愛註釋彈窗（iframe + 獨立字體大小調整） ===== */
+.comment-modal {
+  position:fixed; inset:0; z-index:9998;
+  background:rgba(0,0,0,0.55);
+  display:flex; flex-direction:column; padding:10px;
+}
+.comment-modal[hidden] { display:none !important; }
+.comment-modal-box {
+  background:var(--card); border-radius:12px; flex:1;
+  display:flex; flex-direction:column; overflow:hidden;
+  max-width:1200px; width:100%; margin:0 auto;
+  box-shadow:0 20px 60px rgba(0,0,0,0.4);
+}
+.comment-modal-header {
+  padding:10px 14px; border-bottom:1px solid var(--border);
+  background:linear-gradient(135deg,#f5eed8,#ebe3cf);
+  display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+}
+.comment-modal-title { font-weight:700; color:var(--accent); font-size:0.98rem; }
+.comment-fs-ctrl { display:flex; align-items:center; gap:6px; margin-left:auto; }
+.comment-fs-ctrl label { font-size:0.78rem; font-weight:700; color:var(--text2); }
+.comment-fs-ctrl input[type="range"] {
+  min-width:100px; max-width:180px; accent-color:var(--accent); cursor:pointer;
+}
+.comment-fs-ctrl .fs-btn {
+  padding:3px 10px; font-size:0.82rem; font-weight:700;
+  background:var(--bg2); color:var(--accent); border:1px solid var(--border);
+  border-radius:6px; cursor:pointer; font-family:inherit; min-width:34px;
+}
+.comment-fs-ctrl .fs-btn:hover { background:var(--tag-bg); }
+.comment-fs-ctrl .fs-value { font-size:0.78rem; color:var(--accent); font-weight:700; min-width:44px; text-align:center; }
+.comment-modal-actions { display:flex; gap:6px; }
+.comment-modal-body { flex:1; position:relative; overflow:hidden; background:#fff; }
+.comment-modal-body iframe { width:100%; height:100%; border:0; display:block; }
+.comment-modal-hint {
+  position:absolute; left:0; right:0; bottom:0;
+  background:#fffbe6; border-top:1px solid #f0dfa8;
+  padding:8px 12px; font-size:0.78rem; color:#6b5d4d; text-align:center;
+}
+@media (max-width:600px) {
+  .comment-modal { padding:6px; }
+  .comment-modal-header { padding:8px 10px; gap:6px; }
+  .comment-fs-ctrl { margin-left:0; width:100%; flex-wrap:wrap; justify-content:center; }
+  .comment-fs-ctrl input[type="range"] { flex:1; min-width:80px; }
+  .comment-modal-actions { width:100%; justify-content:center; }
+}
+
 ::-webkit-scrollbar { width:6px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
@@ -342,17 +427,21 @@ body {
 
 <header class="app-header">
   <div class="app-header-inner">
-    <div>
+    <div class="app-header-brand">
       <h1>多譯本聖經查詢</h1>
       <div class="subtitle">Multi-Version Bible Reader</div>
     </div>
-    <div class="app-header-actions">
-      <div class="font-size-ctrl">
-        <button type="button" class="btn-font" onclick="changeFontSize(-1)" title="縮小字型">A-</button>
-        <span class="font-size-label" id="font-size-label">100%</span>
-        <button type="button" class="btn-font" onclick="changeFontSize(1)" title="放大字型">A+</button>
+    <div class="app-header-right">
+      <div class="font-size-bar" role="group" aria-label="文字大小調整">
+        <span class="fs-bar-label">文字大小</span>
+        <button type="button" class="fs-btn" onclick="adjustFontSize(-2)" aria-label="縮小字體">A-</button>
+        <input id="fs-slider" type="range" min="10" max="40" step="1" value="16" oninput="setFontSize(this.value)" aria-label="文字大小滑桿">
+        <button type="button" class="fs-btn" onclick="adjustFontSize(2)" aria-label="放大字體">A+</button>
+        <span id="fs-label" class="fs-bar-value">16px</span>
       </div>
-      <button type="button" class="btn-install" id="btn-install-pwa" hidden>📲 安裝 App</button>
+      <div class="app-header-actions">
+        <button type="button" class="btn-install" id="btn-install-pwa" hidden>📲 安裝 App</button>
+      </div>
     </div>
   </div>
   <p class="ios-install-hint" id="ios-install-hint">iPhone／iPad：請用 Safari 開啟本頁，點 <b>分享</b> → <b>加入主畫面</b>，即可像 App 使用。</p>
@@ -457,39 +546,35 @@ body {
 
 </div>
 
+<div id="comment-modal" class="comment-modal" hidden>
+  <div class="comment-modal-box">
+    <div class="comment-modal-header">
+      <span class="comment-modal-title">📝 信望愛 註釋</span>
+      <div class="comment-fs-ctrl">
+        <label>文字大小</label>
+        <button type="button" class="fs-btn" onclick="adjustCommentFs(-2)" aria-label="註釋縮小">A-</button>
+        <input id="cm-slider" type="range" min="10" max="40" step="1" value="16" oninput="setCommentFs(this.value)" aria-label="註釋字體滑桿">
+        <button type="button" class="fs-btn" onclick="adjustCommentFs(2)" aria-label="註釋放大">A+</button>
+        <span id="cm-fs-label" class="fs-value">16px</span>
+      </div>
+      <div class="comment-modal-actions">
+        <button type="button" class="btn btn-sm btn-secondary" onclick="openCommentInNewTab()">新分頁開啟</button>
+        <button type="button" class="btn btn-sm" onclick="closeCommentModal()">關閉</button>
+      </div>
+    </div>
+    <div class="comment-modal-body">
+      <iframe id="comment-iframe" src="about:blank" title="信望愛註釋" referrerpolicy="no-referrer"></iframe>
+      <div id="comment-modal-hint" class="comment-modal-hint" hidden>若下方空白，信望愛可能不允許嵌入，請點「新分頁開啟」以原站閱讀。</div>
+    </div>
+  </div>
+</div>
+
 <footer class="app-footer">
   <p>經文僅由本地 <code>data/*.json</code> 讀取，可完全離線使用（下載腳本資料來源可參考<a href="https://bible.fhl.net" target="_blank" rel="noopener">信望愛</a>，網頁執行時不連線查詢）</p>
   <p style="margin-top:4px;">和合本 · ESV · NIV · WEB · BBE · 新譯本 · 呂振中 · ASV · KJV ｜ <span title="WEB／BBE：node download_bible.js">譯本說明見 DEPLOY.md</span></p>
 </footer>
 
 <script>
-// ========== Font Size Control ==========
-const FONT_STEPS = [50, 75, 100, 125, 150, 175, 200, 225, 250];
-let fontSizeIdx = (() => {
-  const saved = localStorage.getItem('bible-font-size');
-  if (saved) { const i = FONT_STEPS.indexOf(parseInt(saved)); if (i >= 0) return i; }
-  return FONT_STEPS.indexOf(100);
-})();
-function applyFontSize() {
-  const pct = FONT_STEPS[fontSizeIdx];
-  document.documentElement.style.fontSize = pct + '%';
-  const lbl = document.getElementById('font-size-label');
-  if (lbl) lbl.textContent = pct + '%';
-  localStorage.setItem('bible-font-size', pct);
-}
-function changeFontSize(dir) {
-  fontSizeIdx = Math.max(0, Math.min(FONT_STEPS.length - 1, fontSizeIdx + dir));
-  applyFontSize();
-}
-applyFontSize();
-
-// ========== FHL Commentary Link Helper ==========
-function fhlComLink(bid, chap, sec) {
-  const book = BOOKS.find(b => b.bid === bid);
-  const engs = book ? encodeURIComponent(book.engs) : '';
-  return 'https://bible.fhl.net/new/com.php?book=3&engs=' + engs + '&chap=' + chap + '&sec=' + sec + '&m=0';
-}
-
 const LOCAL_VERSIONS = ['unv','ncv','kjv','asv','lcc','esv','niv','web','bbe'];
 const VERSIONS = [
   { code:'unv', name:'和合本', badge:'badge-unv', local:true },
@@ -658,6 +743,124 @@ function stripHtml(s) {
   d.innerHTML = String(s);
   return (d.textContent || d.innerText || '').replace(/\s+/g, ' ').trim();
 }
+
+// ====== 全域字體大小（10–40px）：套用至經文與📖/📝按鈕 ======
+const FS_MIN = 10, FS_MAX = 40, FS_KEY = 'bible-verse-px';
+function setFontSize(px) {
+  px = Math.max(FS_MIN, Math.min(FS_MAX, parseInt(px, 10) || 16));
+  document.documentElement.style.setProperty('--verse-font-size', px + 'px');
+  const slider = document.getElementById('fs-slider');
+  const label = document.getElementById('fs-label');
+  if (slider) slider.value = px;
+  if (label) label.textContent = px + 'px';
+  try { localStorage.setItem(FS_KEY, px); } catch(e) {}
+}
+function adjustFontSize(delta) {
+  const slider = document.getElementById('fs-slider');
+  const cur = slider ? parseInt(slider.value, 10) : 16;
+  setFontSize(cur + delta);
+}
+(function restoreFontSize() {
+  try {
+    const saved = parseInt(localStorage.getItem(FS_KEY), 10);
+    if (saved >= FS_MIN && saved <= FS_MAX) setFontSize(saved);
+  } catch(e) {}
+})();
+
+// ====== 信望愛連結 ======
+function buildFhlUrl(bid, chap, sec) {
+  const book = BOOKS.find(b => b.bid === bid);
+  if (!book) return '#';
+  return 'https://bible.fhl.net/new/read.php?chineses=' +
+    encodeURIComponent(book.chineses) + '&chap=' + chap + '&sec=' + sec;
+}
+function buildFhlCommentUrl(bid, chap, sec) {
+  const book = BOOKS.find(b => b.bid === bid);
+  if (!book) return '#';
+  return 'https://bible.fhl.net/new/com.php?book=3&engs=' +
+    encodeURIComponent(book.engs) + '&chap=' + chap + '&sec=' + sec + '&m=0';
+}
+function fhlLinksHtml(bid, chap, sec, opts) {
+  const rLink = buildFhlUrl(bid, chap, sec);
+  const cLink = buildFhlCommentUrl(bid, chap, sec);
+  const extraOnclick = (opts && opts.stopPropagation) ? 'event.stopPropagation();' : '';
+  return '<a class="verse-comment-link" href="' + rLink + '" target="_blank" rel="noopener" ' +
+         'onclick="' + extraOnclick + '" title="在信望愛網站閱讀">📖 經文</a>' +
+         '<a class="verse-comment-link" href="' + cLink + '" ' +
+         'onclick="' + extraOnclick + 'event.preventDefault();openCommentModal(\'' + cLink + '\')" ' +
+         'title="查看信望愛經文註釋（彈窗開啟，可獨立調整字體）">📝 註釋</a>';
+}
+
+// ====== 信望愛註釋彈窗（iframe + 獨立字體大小） ======
+let _commentUrl = '';
+let _commentLoadTimer = null;
+const CM_KEY = 'bible-comment-fs';
+
+function openCommentModal(url) {
+  _commentUrl = url;
+  const modal = document.getElementById('comment-modal');
+  const iframe = document.getElementById('comment-iframe');
+  const hint = document.getElementById('comment-modal-hint');
+  if (hint) hint.hidden = true;
+  iframe.onload = function () {
+    clearTimeout(_commentLoadTimer);
+  };
+  clearTimeout(_commentLoadTimer);
+  _commentLoadTimer = setTimeout(function () {
+    if (hint) hint.hidden = false;
+  }, 6000);
+  iframe.src = url;
+  modal.hidden = false;
+  document.body.style.overflow = 'hidden';
+  let saved = 16;
+  try {
+    const v = parseInt(localStorage.getItem(CM_KEY), 10);
+    if (v >= FS_MIN && v <= FS_MAX) saved = v;
+  } catch(e) {}
+  setCommentFs(saved);
+}
+function closeCommentModal() {
+  const modal = document.getElementById('comment-modal');
+  const iframe = document.getElementById('comment-iframe');
+  clearTimeout(_commentLoadTimer);
+  iframe.src = 'about:blank';
+  modal.hidden = true;
+  document.body.style.overflow = '';
+}
+function setCommentFs(px) {
+  px = Math.max(FS_MIN, Math.min(FS_MAX, parseInt(px, 10) || 16));
+  const iframe = document.getElementById('comment-iframe');
+  const slider = document.getElementById('cm-slider');
+  const label = document.getElementById('cm-fs-label');
+  if (iframe) {
+    /* 以 CSS zoom 縮放 iframe 內容（Chrome/Safari/Edge 支援，Firefox 近版本亦可） */
+    iframe.style.zoom = (px / 16).toFixed(3);
+  }
+  if (slider) slider.value = px;
+  if (label) label.textContent = px + 'px';
+  try { localStorage.setItem(CM_KEY, px); } catch(e) {}
+}
+function adjustCommentFs(delta) {
+  const slider = document.getElementById('cm-slider');
+  const cur = slider ? parseInt(slider.value, 10) : 16;
+  setCommentFs(cur + delta);
+}
+function openCommentInNewTab() {
+  if (_commentUrl) window.open(_commentUrl, '_blank', 'noopener,noreferrer');
+}
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') {
+    const m = document.getElementById('comment-modal');
+    if (m && !m.hidden) closeCommentModal();
+  }
+});
+(function bindCommentModalOutsideClick() {
+  document.addEventListener('click', function (e) {
+    const modal = document.getElementById('comment-modal');
+    if (!modal || modal.hidden) return;
+    if (e.target === modal) closeCommentModal();
+  });
+})();
 
 let _toastTimer;
 function toast(msg) {
@@ -967,8 +1170,8 @@ function renderVerseGroup(bid, chap, sec, ref, versionsToShow, textsMap) {
     const text = textsMap[ver] || '（此版本無此節經文）';
     return `<div class="verse-translation"><span class="version-badge ${info.badge}">${info.name}</span><span class="verse-text">${text}</span></div>`;
   }).join('');
-  const comUrl = fhlComLink(bid, chap, sec);
-  return `<div class="verse-group" data-bid="${bid}" data-chap="${chap}" data-sec="${sec}"><div class="verse-header"><span class="verse-ref-title">${ref}</span><div class="verse-read-pick" onclick="event.stopPropagation()"><a class="fhl-com-link" href="${comUrl}" target="_blank" rel="noopener" title="信望愛註釋">📖 註釋</a><label class="verse-read-check"><span class="verse-read-check-label">勾選複製經文</span><input type="checkbox" class="read-pick-cb" aria-label="勾選複製經文"></label></div></div><div class="verse-translations ${parallelClass}">${trs}</div></div>`;
+  const links = fhlLinksHtml(bid, chap, sec);
+  return `<div class="verse-group" data-bid="${bid}" data-chap="${chap}" data-sec="${sec}"><div class="verse-header"><span class="verse-ref-title">${ref} ${links}</span><div class="verse-read-pick" onclick="event.stopPropagation()"><label class="verse-read-check"><span class="verse-read-check-label">勾選複製經文</span><input type="checkbox" class="read-pick-cb" aria-label="勾選複製經文"></label></div></div><div class="verse-translations ${parallelClass}">${trs}</div></div>`;
 }
 
 function fetchVerses() {
@@ -1149,11 +1352,11 @@ function doSearch() {
         const hl = text.replace(new RegExp(`(${pat})`, 'gi'), '<span class="highlight-match">$1</span>');
         return `<div class="verse-translation"><span class="version-badge ${info.badge}">${info.name}</span><span class="verse-text">${hl}</span></div>`;
       }).filter(Boolean).join('');
-      const comUrl2 = fhlComLink(v.bid, v.chap, v.sec);
+      const srLinks = fhlLinksHtml(v.bid, v.chap, v.sec, { stopPropagation: true });
       return `<div class="search-result-item" data-idx="${idx}">
         <label class="search-result-check" onclick="event.stopPropagation()"><input type="checkbox" class="search-pick-cb" aria-label="選取此節"></label>
         <div class="search-result-main">
-        <div class="search-ref"><span class="search-ref-link" onclick="goToVerse(${v.bid},${v.chap},${v.sec})" title="開啟此章閱讀此節">${v.bookName} ${v.chap}:${v.sec}</span> <a class="fhl-com-link" href="${comUrl2}" target="_blank" rel="noopener" title="信望愛註釋">📖 註釋</a></div>${trs}</div></div>`;
+        <div class="search-ref"><span class="search-ref-link" onclick="goToVerse(${v.bid},${v.chap},${v.sec})" title="開啟此章閱讀此節">${v.bookName} ${v.chap}:${v.sec}</span> ${srLinks}</div>${trs}</div></div>`;
     }).join('');
 
     div.innerHTML = statsHtml + html + searchActionsFooterHtml();
