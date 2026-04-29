@@ -34,21 +34,25 @@ body {
 }
 .app-header {
   background: linear-gradient(135deg,#3a2a12 0%,#5c3d1a 50%,#3a2a12 100%);
-  color: #f0e0c0; padding: 16px 20px; text-align: center;
+  color: #f0e0c0; padding: 8px 20px; text-align: center;
   position: sticky; top: 0; z-index: 200;
   box-shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
 .app-header-inner {
-  display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;
-  gap:12px 20px; max-width:1200px; margin:0 auto; text-align:left;
+  display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap;
+  gap:8px 16px; max-width:1200px; margin:0 auto;
 }
-.app-header-brand { flex:0 1 auto; min-width:0; }
 .app-header-right {
   display:flex; align-items:center; justify-content:flex-end; flex:1 1 auto;
-  gap:10px; flex-wrap:wrap; min-width:min(100%, 280px);
+  gap:10px; flex-wrap:wrap;
 }
-.app-header h1 { font-size:1.4rem; font-weight:700; letter-spacing:4px; }
-.app-header .subtitle { font-size:0.75rem; opacity:0.7; margin-top:2px; }
+.app-brand {
+  background: linear-gradient(135deg,#3a2a12 0%,#5c3d1a 50%,#3a2a12 100%);
+  color: #f0e0c0; padding: 14px 20px; text-align: center;
+  border-bottom: 1px solid rgba(0,0,0,0.25);
+}
+.app-brand h1 { font-size:1.4rem; font-weight:700; letter-spacing:4px; }
+.app-brand .subtitle { font-size:0.75rem; opacity:0.7; margin-top:2px; }
 .app-header-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
 .btn-install {
   padding:8px 14px; font-size:0.8rem; font-weight:600; border-radius:8px;
@@ -58,7 +62,7 @@ body {
 .btn-install:hover { background:rgba(255,255,255,0.2); }
 .ios-install-hint {
   display:none; text-align:center; font-size:0.72rem; opacity:0.85;
-  padding:6px 12px; background:rgba(0,0,0,0.15); margin:0 -20px -8px;
+  padding:6px 12px; background:rgba(0,0,0,0.15); margin:8px -20px -14px;
 }
 .ios-install-hint.show { display:block; }
 .install-guide-panel {
@@ -351,9 +355,10 @@ body {
   white-space:nowrap;
 }
 @media (max-width:600px) {
+  .app-header { padding:6px 12px; }
   .app-header-inner { flex-direction:column; align-items:stretch; text-align:center; }
-  .app-header-brand h1, .app-header-brand .subtitle { text-align:center; }
   .app-header-right { justify-content:center; min-width:0; width:100%; }
+  .app-brand h1, .app-brand .subtitle { text-align:center; }
   .font-size-bar { justify-content:center; width:100%; max-width:100%; }
   .font-size-bar input[type="range"] { width:min(70vw, 200px); flex:1 1 120px; }
   .font-size-bar .fs-btn { padding:3px 8px; min-width:32px; font-size:0.8rem; }
@@ -427,10 +432,6 @@ body {
 
 <header class="app-header">
   <div class="app-header-inner">
-    <div class="app-header-brand">
-      <h1>多譯本聖經查詢</h1>
-      <div class="subtitle">Multi-Version Bible Reader</div>
-    </div>
     <div class="app-header-right">
       <div class="font-size-bar" role="group" aria-label="文字大小調整">
         <span class="fs-bar-label">文字大小</span>
@@ -444,8 +445,13 @@ body {
       </div>
     </div>
   </div>
-  <p class="ios-install-hint" id="ios-install-hint">iPhone／iPad：請用 Safari 開啟本頁，點 <b>分享</b> → <b>加入主畫面</b>，即可像 App 使用。</p>
 </header>
+
+<div class="app-brand">
+  <h1>多譯本聖經查詢</h1>
+  <div class="subtitle">Multi-Version Bible Reader</div>
+  <p class="ios-install-hint" id="ios-install-hint">iPhone／iPad：請用 Safari 開啟本頁，點 <b>分享</b> → <b>加入主畫面</b>，即可像 App 使用。</p>
+</div>
 
 <div id="install-guide-ios" class="install-guide-panel" hidden>
   <div class="install-guide-inner">
@@ -1095,6 +1101,7 @@ function onBookChange() {
   onChapChange();
 }
 
+let _autoQueryEnabled = false;
 function onChapChange() {
   const bid = parseInt(document.getElementById('sel-book').value);
   const chap = parseInt(document.getElementById('sel-chap').value);
@@ -1108,6 +1115,7 @@ function onChapChange() {
     ss.innerHTML += `<option value="${i}">${i}</option>`;
     se.innerHTML += `<option value="${i}">${i}</option>`;
   }
+  if (_autoQueryEnabled && dataReady) fetchVerses();
 }
 
 function normalizeActiveVersionOrder() {
@@ -1487,6 +1495,7 @@ loadLocalData().then(() => {
   document.getElementById('sel-sec-start').value = 16;
   document.getElementById('sel-sec-end').value = 17;
   fetchVerses();
+  _autoQueryEnabled = true;
 });
 
 // PWA 安裝：iOS 不支援 beforeinstallprompt，手機上改為一律顯示按鈕並可展開說明
