@@ -546,8 +546,8 @@ body {
     <div class="selector-row">
       <div class="selector-group"><label>書卷</label><select id="sel-book" onchange="onBookChange()"></select></div>
       <div class="selector-group"><label>章</label><select id="sel-chap" onchange="onChapChange()"></select></div>
-      <div class="selector-group"><label>起始節</label><select id="sel-sec-start"></select></div>
-      <div class="selector-group"><label>結束節</label><select id="sel-sec-end"></select></div>
+      <div class="selector-group"><label>起始節</label><select id="sel-sec-start" onchange="fetchVerses()"></select></div>
+      <div class="selector-group"><label>結束節</label><select id="sel-sec-end" onchange="fetchVerses()"></select></div>
       <button class="btn" onclick="fetchVerses()">查詢</button>
       <button type="button" class="btn btn-read-copy-top" id="btn-copy-read" onclick="copyReadSelection()" title="有勾選經節時只複製勾選；未勾選則依起始／結束節（或全章）">複製所選經文</button>
       <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
@@ -558,8 +558,8 @@ body {
       <button class="btn btn-sm" id="btn-prev-chap-top" onclick="prevChapter()">上一章</button>
       <button class="btn btn-sm" id="btn-prev-sec-top" onclick="prevVerse()">上一節</button>
       <span class="chapter-info" id="chap-info-top"></span>
-      <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
       <button class="btn btn-sm" id="btn-next-sec-top" onclick="nextVerse()">下一節</button>
+      <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
       <button class="btn btn-sm" id="btn-next-chap-top" onclick="nextChapter()">下一章</button>
     </div>
     <div class="results-area" id="results-read">
@@ -569,8 +569,8 @@ body {
       <button class="btn btn-sm" id="btn-prev-chap-bot" onclick="prevChapter()">上一章</button>
       <button class="btn btn-sm" id="btn-prev-sec-bot" onclick="prevVerse()">上一節</button>
       <span class="chapter-info" id="chap-info-bot"></span>
-      <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
       <button class="btn btn-sm" id="btn-next-sec-bot" onclick="nextVerse()">下一節</button>
+      <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
       <button class="btn btn-sm" id="btn-next-chap-bot" onclick="nextChapter()">下一章</button>
     </div>
   </div>
@@ -1233,6 +1233,7 @@ function onChapChange() {
     ss.innerHTML += `<option value="${i}">${i}</option>`;
     se.innerHTML += `<option value="${i}">${i}</option>`;
   }
+  if (dataReady) fetchVerses();
 }
 
 function toggleAllReadPicks(checked) {
