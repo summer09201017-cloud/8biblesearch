@@ -157,6 +157,12 @@ body {
 }
 
 .results-area { min-height:200px; }
+.chapter-nav {
+  display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center; margin-bottom:16px;
+}
+.chapter-info {
+  white-space:nowrap; font-weight:500; color:var(--accent); margin:0 4px;
+}
 .loading { text-align:center; padding:40px; color:var(--text2); font-size:0.95rem; }
 .loading::after {
   content:''; display:block; width:32px; height:32px; margin:12px auto 0;
@@ -553,6 +559,7 @@ body {
       <span class="chapter-info" id="chap-info-top"></span>
       <button class="btn btn-sm" id="btn-next-sec-top" onclick="nextVerse()">下一節</button>
       <button class="btn btn-sm" id="btn-next-chap-top" onclick="nextChapter()">下一章</button>
+      <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
     </div>
     <div class="results-area" id="results-read">
       <div class="empty-state"><div class="icon">📖</div><p>選擇書卷、章節即可自動查詢</p></div>
@@ -563,6 +570,7 @@ body {
       <span class="chapter-info" id="chap-info-bot"></span>
       <button class="btn btn-sm" id="btn-next-sec-bot" onclick="nextVerse()">下一節</button>
       <button class="btn btn-sm" id="btn-next-chap-bot" onclick="nextChapter()">下一章</button>
+      <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
     </div>
   </div>
 
@@ -900,14 +908,11 @@ function buildFhlCommentUrl(bid, chap, sec) {
     encodeURIComponent(book.engs) + '&chap=' + chap + '&sec=' + sec + '&m=0';
 }
 function fhlLinksHtml(bid, chap, sec, opts) {
-  const rLink = buildFhlUrl(bid, chap, sec);
   const cLink = buildFhlCommentUrl(bid, chap, sec);
   const extraOnclick = (opts && opts.stopPropagation) ? 'event.stopPropagation();' : '';
-  return '<a class="verse-comment-link" href="' + rLink + '" target="_blank" rel="noopener" ' +
-         'onclick="' + extraOnclick + '" title="在信望愛網站閱讀">📖 經文</a>' +
-         '<a class="verse-comment-link" href="' + cLink + '" ' +
+  return '<a class="verse-comment-link" href="' + cLink + '" ' +
          'onclick="' + extraOnclick + 'event.preventDefault();openCommentModal(\'' + cLink + '\')" ' +
-         'title="查看信望愛經文註釋（彈窗開啟，可獨立調整字體）">📝 註釋</a>';
+         'title="查看信望愛經文註釋（彈窗開啟，可獨立調整字體）">📖 註釋</a>';
 }
 
 // ====== 信望愛註釋彈窗（iframe + 獨立字體大小） ======
