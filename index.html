@@ -163,10 +163,20 @@ body {
 .chapter-info {
   white-space:nowrap; font-weight:500; color:var(--accent); margin:0 4px;
 }
-.nav-v-group {
+.chapter-nav {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.nav-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 .loading { text-align:center; padding:40px; color:var(--text2); font-size:0.95rem; }
 .loading::after {
@@ -559,28 +569,36 @@ body {
       <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(false)">取消全選</button>
     </div>
     <div class="version-toggles" id="version-toggles"></div>
-    <div class="chapter-nav" id="chap-nav-top" style="display:none; margin-bottom: 16px;">
-      <button class="btn btn-sm" id="btn-prev-chap-top" onclick="prevChapter()">上一章</button>
-      <button class="btn btn-sm" id="btn-prev-sec-top" onclick="prevVerse()">上一節</button>
-      <span class="chapter-info" id="chap-info-top"></span>
-      <div class="nav-v-group">
-        <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
-        <button class="btn btn-sm" id="btn-next-sec-top" onclick="nextVerse()">下一節</button>
+    <div class="chapter-nav" id="chap-nav-top" style="display:none;">
+      <div class="nav-row">
+        <button class="btn btn-sm" id="btn-prev-chap-top" onclick="prevChapter()">上一章</button>
+        <button class="btn btn-sm" id="btn-prev-sec-top" onclick="prevVerse()">上一節</button>
       </div>
-      <button class="btn btn-sm" id="btn-next-chap-top" onclick="nextChapter()">下一章</button>
+      <div class="nav-row">
+        <span class="chapter-info" id="chap-info-top"></span>
+        <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
+      </div>
+      <div class="nav-row">
+        <button class="btn btn-sm" id="btn-next-sec-top" onclick="nextVerse()">下一節</button>
+        <button class="btn btn-sm" id="btn-next-chap-top" onclick="nextChapter()">下一章</button>
+      </div>
     </div>
     <div class="results-area" id="results-read">
       <div class="empty-state"><div class="icon">📖</div><p>選擇書卷、章節即可自動查詢</p></div>
     </div>
     <div class="chapter-nav" id="chap-nav-bottom" style="display:none;">
-      <button class="btn btn-sm" id="btn-prev-chap-bot" onclick="prevChapter()">上一章</button>
-      <button class="btn btn-sm" id="btn-prev-sec-bot" onclick="prevVerse()">上一節</button>
-      <span class="chapter-info" id="chap-info-bot"></span>
-      <div class="nav-v-group">
-        <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
-        <button class="btn btn-sm" id="btn-next-sec-bot" onclick="nextVerse()">下一節</button>
+      <div class="nav-row">
+        <button class="btn btn-sm" id="btn-prev-chap-bot" onclick="prevChapter()">上一章</button>
+        <button class="btn btn-sm" id="btn-prev-sec-bot" onclick="prevVerse()">上一節</button>
       </div>
-      <button class="btn btn-sm" id="btn-next-chap-bot" onclick="nextChapter()">下一章</button>
+      <div class="nav-row">
+        <span class="chapter-info" id="chap-info-bot"></span>
+        <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
+      </div>
+      <div class="nav-row">
+        <button class="btn btn-sm" id="btn-next-sec-bot" onclick="nextVerse()">下一節</button>
+        <button class="btn btn-sm" id="btn-next-chap-bot" onclick="nextChapter()">下一章</button>
+      </div>
     </div>
   </div>
 
