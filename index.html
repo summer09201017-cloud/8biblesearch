@@ -163,6 +163,11 @@ body {
 .chapter-info {
   white-space:nowrap; font-weight:500; color:var(--accent); margin:0 4px;
 }
+.nav-v-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .loading { text-align:center; padding:40px; color:var(--text2); font-size:0.95rem; }
 .loading::after {
   content:''; display:block; width:32px; height:32px; margin:12px auto 0;
@@ -558,8 +563,10 @@ body {
       <button class="btn btn-sm" id="btn-prev-chap-top" onclick="prevChapter()">上一章</button>
       <button class="btn btn-sm" id="btn-prev-sec-top" onclick="prevVerse()">上一節</button>
       <span class="chapter-info" id="chap-info-top"></span>
-      <button class="btn btn-sm" id="btn-next-sec-top" onclick="nextVerse()">下一節</button>
-      <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
+      <div class="nav-v-group">
+        <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
+        <button class="btn btn-sm" id="btn-next-sec-top" onclick="nextVerse()">下一節</button>
+      </div>
       <button class="btn btn-sm" id="btn-next-chap-top" onclick="nextChapter()">下一章</button>
     </div>
     <div class="results-area" id="results-read">
@@ -569,8 +576,10 @@ body {
       <button class="btn btn-sm" id="btn-prev-chap-bot" onclick="prevChapter()">上一章</button>
       <button class="btn btn-sm" id="btn-prev-sec-bot" onclick="prevVerse()">上一節</button>
       <span class="chapter-info" id="chap-info-bot"></span>
-      <button class="btn btn-sm" id="btn-next-sec-bot" onclick="nextVerse()">下一節</button>
-      <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
+      <div class="nav-v-group">
+        <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
+        <button class="btn btn-sm" id="btn-next-sec-bot" onclick="nextVerse()">下一節</button>
+      </div>
       <button class="btn btn-sm" id="btn-next-chap-bot" onclick="nextChapter()">下一章</button>
     </div>
   </div>
