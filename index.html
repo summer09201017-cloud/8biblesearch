@@ -284,9 +284,50 @@ body {
 .quick-input input::placeholder { color:#bbb; }
 .quick-input input:focus { outline:none; border-color:var(--accent); }
 
+.history-chip {
+  display:inline-block; padding:4px 10px; font-size:0.8rem;
+  background:rgba(139,105,20,0.1); color:var(--accent);
+  border:1px solid rgba(139,105,20,0.3); border-radius:12px; cursor:pointer; margin-bottom:4px;
+}
+.history-chip:hover { background:rgba(139,105,20,0.2); }
+.history-chip-del { margin-left:4px; opacity:0.6; cursor:pointer; }
+.history-chip-del:hover { opacity:1; color:red; }
+
 .empty-state { text-align:center; padding:60px 20px; color:var(--text2); }
 .empty-state .icon { font-size:3rem; margin-bottom:16px; opacity:0.3; }
 .empty-state p { font-size:0.95rem; margin-bottom:6px; }
+
+.note-modal-overlay {
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.5); z-index:1000; display:none;
+  align-items:center; justify-content:center;
+}
+.note-modal {
+  background:var(--card); padding:20px; border-radius:12px;
+  width:90%; max-width:400px;
+}
+.note-modal textarea {
+  width:100%; height:100px; padding:10px; border:1px solid var(--border);
+  border-radius:8px; font-family:inherit; margin-bottom:12px;
+}
+.color-picker { display:flex; gap:10px; margin-bottom:16px; }
+.color-btn {
+  width:32px; height:32px; border-radius:50%; cursor:pointer;
+  border:2px solid transparent;
+}
+.color-btn.selected { border-color:var(--accent); transform:scale(1.1); }
+.hl-yellow { background-color: #fff3cd; }
+.hl-green { background-color: #d4edda; }
+.hl-pink { background-color: #f8d7da; }
+.hl-blue { background-color: #d1ecf1; }
+.hl-none { background-color: #eee; text-align:center; line-height:28px; font-size:12px;}
+
+.user-note-box {
+  margin:8px 16px; padding:8px 12px; background:rgba(255,255,255,0.5);
+  border-left:4px solid var(--accent); border-radius:4px; font-size:0.9rem;
+  color:var(--text2);
+}
+
 .error-msg {
   text-align:center; padding:20px; color:#c0392b; background:#fdf0ef;
   border-radius:10px; border:1px solid #f5c6cb; margin-bottom:12px;
@@ -484,6 +525,7 @@ body {
   <button class="tab active" data-tab="read" onclick="switchTab('read')">經文閱讀</button>
   <button class="tab" data-tab="search" onclick="switchTab('search')">關鍵字搜尋</button>
   <button class="tab" data-tab="quick" onclick="switchTab('quick')">快速查詢</button>
+  <button class="tab" data-tab="settings" onclick="switchTab('settings')">設定/資料</button>
 </nav>
 
 <div class="container">
@@ -498,19 +540,29 @@ body {
     <div class="selector-row">
       <div class="selector-group"><label>書卷</label><select id="sel-book" onchange="onBookChange()"></select></div>
       <div class="selector-group"><label>章</label><select id="sel-chap" onchange="onChapChange()"></select></div>
-      <div class="selector-group"><label>起始節</label><select id="sel-sec-start"></select></div>
-      <div class="selector-group"><label>結束節</label><select id="sel-sec-end"></select></div>
-      <button class="btn btn-read-query" id="btn-read" onclick="fetchVerses()">查詢</button>
+      <div class="selector-group"><label>起始節</label><select id="sel-sec-start" onchange="fetchVerses()"></select></div>
+      <div class="selector-group"><label>結束節</label><select id="sel-sec-end" onchange="fetchVerses()"></select></div>
       <button type="button" class="btn btn-read-copy-top" id="btn-copy-read" onclick="copyReadSelection()" title="有勾選經節時只複製勾選；未勾選則依起始／結束節（或全章）">複製所選經文</button>
+      <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
+      <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(false)">取消全選</button>
     </div>
     <div class="version-toggles" id="version-toggles"></div>
-    <div class="results-area" id="results-read">
-      <div class="empty-state"><div class="icon">📖</div><p>選擇書卷、章節後點擊「查詢」</p></div>
+    <div class="chapter-nav" id="chap-nav-top" style="display:none; margin-bottom: 16px;">
+      <button class="btn btn-sm" id="btn-prev-chap-top" onclick="prevChapter()">上一章</button>
+      <button class="btn btn-sm" id="btn-prev-sec-top" onclick="prevVerse()">上一節</button>
+      <span class="chapter-info" id="chap-info-top"></span>
+      <button class="btn btn-sm" id="btn-next-sec-top" onclick="nextVerse()">下一節</button>
+      <button class="btn btn-sm" id="btn-next-chap-top" onclick="nextChapter()">下一章</button>
     </div>
-    <div class="chapter-nav" id="chap-nav" style="display:none;">
-      <button class="btn" id="btn-prev-chap" onclick="prevChapter()">上一章</button>
-      <span class="chapter-info" id="chap-info"></span>
-      <button class="btn" id="btn-next-chap" onclick="nextChapter()">下一章</button>
+    <div class="results-area" id="results-read">
+      <div class="empty-state"><div class="icon">📖</div><p>選擇書卷、章節即可自動查詢</p></div>
+    </div>
+    <div class="chapter-nav" id="chap-nav-bottom" style="display:none;">
+      <button class="btn btn-sm" id="btn-prev-chap-bot" onclick="prevChapter()">上一章</button>
+      <button class="btn btn-sm" id="btn-prev-sec-bot" onclick="prevVerse()">上一節</button>
+      <span class="chapter-info" id="chap-info-bot"></span>
+      <button class="btn btn-sm" id="btn-next-sec-bot" onclick="nextVerse()">下一節</button>
+      <button class="btn btn-sm" id="btn-next-chap-bot" onclick="nextChapter()">下一章</button>
     </div>
   </div>
 
@@ -519,6 +571,7 @@ body {
       <input type="text" id="search-input" placeholder="輸入關鍵字搜尋經文..." onkeydown="if(event.key==='Enter'){clearTimeout(_searchDebounce);doSearchWithFlash()}" oninput="autoSearch()">
       <button class="btn" id="btn-search" onclick="doSearchWithFlash()">搜尋</button>
     </div>
+    <div id="search-history" class="history-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
     <div class="version-toggles" id="version-toggles-search"></div>
     <div class="search-options">
       <label>搜尋範圍：</label>
@@ -544,12 +597,45 @@ body {
       <input type="text" id="quick-ref" placeholder="例：創 1:1-3、約 3:16、太 5:1-12" onkeydown="if(event.key==='Enter')doQuickLookup()">
       <button class="btn" onclick="doQuickLookup()">查詢</button>
     </div>
+    <div id="quick-history" class="history-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
     <div class="version-toggles" id="version-toggles-quick"></div>
     <div id="results-quick">
       <div class="empty-state"><div class="icon">⚡</div><p>輸入經文參照快速查詢</p><p style="font-size:0.8rem;">支援格式：創 1:1-3、約 3:16</p></div>
     </div>
   </div>
 
+  <div id="panel-settings" class="panel">
+    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border);">
+      <h3>資料管理 (筆記/螢光筆/歷史)</h3>
+      <p style="font-size:0.9rem;color:var(--text2);margin-bottom:16px;">匯出您的所有筆記、標記與歷史紀錄，以便在其他裝置上匯入使用。</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn" onclick="exportUserData()">匯出資料 (JSON)</button>
+        <label class="btn btn-secondary" style="cursor:pointer; margin:0;">
+          匯入資料 (JSON)
+          <input type="file" id="import-file" style="display:none;" accept=".json" onchange="importUserData(event)">
+        </label>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="note-modal" class="note-modal-overlay">
+  <div class="note-modal">
+    <h3 style="margin-bottom:12px;">筆記與標記 <span id="note-modal-ref" style="font-size:0.9rem;color:var(--accent);"></span></h3>
+    <div class="color-picker" id="note-color-picker">
+      <div class="color-btn hl-none selected" data-color="">無</div>
+      <div class="color-btn hl-yellow" data-color="#fff3cd"></div>
+      <div class="color-btn hl-green" data-color="#d4edda"></div>
+      <div class="color-btn hl-pink" data-color="#f8d7da"></div>
+      <div class="color-btn hl-blue" data-color="#d1ecf1"></div>
+    </div>
+    <textarea id="note-text" placeholder="在此輸入您的筆記..."></textarea>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="closeNoteModal()">取消</button>
+      <button class="btn" onclick="saveNote()">儲存</button>
+    </div>
+  </div>
 </div>
 
 <div id="comment-modal" class="comment-modal" hidden>
@@ -670,6 +756,31 @@ const VERSE_COUNTS = {1:[31,25,24,26,32,22,24,22,29,32,32,20,18,24,21,16,27,33,3
 const bibleData = {};
 let dataReady = false;
 
+async function loadVersionData(ver) {
+  if (bibleData[ver]) return true;
+  const names = { unv:'和合本', ncv:'新譯本', kjv:'KJV', asv:'ASV', lcc:'呂振中', esv:'ESV', niv:'NIV', web:'WEB', bbe:'BBE' };
+  const statusEl = document.getElementById('load-status');
+  const detailEl = document.getElementById('load-detail');
+  const barEl = document.getElementById('load-bar-fill');
+  statusEl.style.display = 'block';
+  detailEl.textContent = `載入 ${names[ver] || ver}...`;
+  barEl.style.width = '50%';
+  
+  try {
+    const resp = await fetch(`data/${ver}.json`);
+    if (!resp.ok) throw new Error(`${resp.status}`);
+    bibleData[ver] = await resp.json();
+    barEl.style.width = '100%';
+    return true;
+  } catch (e) {
+    console.warn(`無法載入 ${ver}.json:`, e.message);
+    bibleData[ver] = null;
+    return false;
+  } finally {
+    setTimeout(() => { statusEl.style.display = 'none'; }, 300);
+  }
+}
+
 async function loadLocalData() {
   const statusEl = document.getElementById('load-status');
   const barEl = document.getElementById('load-bar-fill');
@@ -678,9 +789,11 @@ async function loadLocalData() {
 
   const names = { unv:'和合本', ncv:'新譯本', kjv:'KJV', asv:'ASV', lcc:'呂振中', esv:'ESV', niv:'NIV', web:'WEB', bbe:'BBE' };
   let loaded = 0;
-  for (const ver of LOCAL_VERSIONS) {
+  const toLoad = activeVersions.filter(v => LOCAL_VERSIONS.includes(v));
+  
+  for (const ver of toLoad) {
     detailEl.textContent = `載入 ${names[ver]}...`;
-    barEl.style.width = `${(loaded / LOCAL_VERSIONS.length) * 100}%`;
+    barEl.style.width = `${(loaded / toLoad.length) * 100}%`;
     try {
       const resp = await fetch(`data/${ver}.json`);
       if (!resp.ok) throw new Error(`${resp.status}`);
@@ -690,7 +803,7 @@ async function loadLocalData() {
       bibleData[ver] = null;
     }
     loaded++;
-    barEl.style.width = `${(loaded / LOCAL_VERSIONS.length) * 100}%`;
+    barEl.style.width = `${(loaded / toLoad.length) * 100}%`;
   }
   detailEl.textContent = '載入完成！';
   dataReady = true;
@@ -1093,16 +1206,15 @@ function initBookSelector() {
   onBookChange();
 }
 
-function onBookChange() {
+function onBookChange(skipFetch) {
   const bid = parseInt(document.getElementById('sel-book').value);
   const book = BOOKS.find(b => b.bid === bid); if (!book) return;
   const s = document.getElementById('sel-chap'); s.innerHTML = '';
   for (let i = 1; i <= book.chapters; i++) { const o = document.createElement('option'); o.value=i; o.textContent=i; s.appendChild(o); }
-  onChapChange();
+  onChapChange(skipFetch);
 }
 
-let _autoQueryEnabled = false;
-function onChapChange() {
+function onChapChange(skipFetch) {
   const bid = parseInt(document.getElementById('sel-book').value);
   const chap = parseInt(document.getElementById('sel-chap').value);
   const vc = VERSE_COUNTS[bid];
@@ -1115,7 +1227,11 @@ function onChapChange() {
     ss.innerHTML += `<option value="${i}">${i}</option>`;
     se.innerHTML += `<option value="${i}">${i}</option>`;
   }
-  if (_autoQueryEnabled && dataReady) fetchVerses();
+  if (skipFetch !== true && dataReady) fetchVerses();
+}
+
+function toggleAllReadPicks(checked) {
+  document.querySelectorAll('#results-read .read-pick-cb').forEach(function (cb) { cb.checked = checked; });
 }
 
 function normalizeActiveVersionOrder() {
@@ -1123,7 +1239,7 @@ function normalizeActiveVersionOrder() {
   activeVersions.sort((a, b) => order.indexOf(a) - order.indexOf(b));
 }
 
-function setVersionChecked(code, checked) {
+async function setVersionChecked(code, checked) {
   if (checked) {
     if (!activeVersions.includes(code)) activeVersions.push(code);
   } else {
@@ -1135,6 +1251,18 @@ function setVersionChecked(code, checked) {
   document.querySelectorAll(`.version-toggle[data-version="${code}"]`).forEach(el => {
     el.classList.toggle('active', checked);
   });
+  
+  if (checked && LOCAL_VERSIONS.includes(code) && !bibleData[code]) {
+    await loadVersionData(code);
+  }
+  
+  const activeTab = document.querySelector('.tab.active');
+  if (activeTab) {
+    const tabName = activeTab.getAttribute('data-tab');
+    if (tabName === 'read') fetchVerses();
+    else if (tabName === 'search' && document.getElementById('search-input').value.trim()) doSearch();
+    else if (tabName === 'quick' && document.getElementById('quick-ref').value.trim()) doQuickLookup();
+  }
 }
 
 function initVersionToggles() {
@@ -1173,13 +1301,18 @@ function sortedVers(vers) {
 function renderVerseGroup(bid, chap, sec, ref, versionsToShow, textsMap) {
   const ordered = sortedVers(versionsToShow);
   const parallelClass = ordered.length > 1 && window.innerWidth >= 900 ? 'parallel-mode' : '';
+  const k = `${bid}-${chap}-${sec}`;
+  const d = userData[k] || {};
+  const bgColor = d.color ? `background-color:${d.color};` : '';
+  const noteHtml = d.note ? `<div class="user-note-box">${d.note.replace(/\n/g, '<br>')}</div>` : '';
+
   const trs = ordered.map(ver => {
     const info = VERSIONS.find(x => x.code === ver);
     const text = textsMap[ver] || '（此版本無此節經文）';
-    return `<div class="verse-translation"><span class="version-badge ${info.badge}">${info.name}</span><span class="verse-text">${text}</span></div>`;
+    return `<div class="verse-translation" style="${bgColor}"><span class="version-badge ${info.badge}">${info.name}</span><span class="verse-text">${text}</span></div>`;
   }).join('');
   const links = fhlLinksHtml(bid, chap, sec);
-  return `<div class="verse-group" data-bid="${bid}" data-chap="${chap}" data-sec="${sec}"><div class="verse-header"><span class="verse-ref-title">${ref} ${links}</span><div class="verse-read-pick" onclick="event.stopPropagation()"><label class="verse-read-check"><span class="verse-read-check-label">勾選複製經文</span><input type="checkbox" class="read-pick-cb" aria-label="勾選複製經文"></label></div></div><div class="verse-translations ${parallelClass}">${trs}</div></div>`;
+  return `<div class="verse-group" data-bid="${bid}" data-chap="${chap}" data-sec="${sec}"><div class="verse-header"><span class="verse-ref-title">${ref} ${links}</span><div class="verse-read-pick" onclick="event.stopPropagation()"><a class="fhl-com-link" href="#" onclick="event.preventDefault();openNoteModal(${bid},${chap},${sec},'${ref}')" title="筆記與標記">📝 筆記</a><label class="verse-read-check"><span class="verse-read-check-label">勾選複製經文</span><input type="checkbox" class="read-pick-cb" aria-label="勾選複製經文"></label></div></div><div class="verse-translations ${parallelClass}">${trs}</div>${noteHtml}</div>`;
 }
 
 function fetchVerses() {
@@ -1196,7 +1329,6 @@ function fetchVerses() {
 
   const div = document.getElementById('results-read');
   div.innerHTML = '<div class="loading">載入中...</div>';
-  document.getElementById('btn-read').disabled = true;
 
   try {
     const vers = activeVersions.length > 0 ? [...activeVersions] : ['unv'];
@@ -1245,21 +1377,37 @@ function fetchVerses() {
       }).join('') + readCopyFooterHtml();
     }
 
-    const nav = document.getElementById('chap-nav');
-    nav.style.display = 'flex';
-    document.getElementById('chap-info').textContent = `${book.chinesef} 第 ${chap} 章`;
-    document.getElementById('btn-prev-chap').disabled = (chap <= 1);
-    document.getElementById('btn-next-chap').disabled = (chap >= book.chapters);
+    const navT = document.getElementById('chap-nav-top');
+    const navB = document.getElementById('chap-nav-bottom');
+    if (navT) navT.style.display = 'flex';
+    if (navB) navB.style.display = 'flex';
+    const infoText = `${book.chinesef} 第 ${chap} 章`;
+    if (document.getElementById('chap-info-top')) document.getElementById('chap-info-top').textContent = infoText;
+    if (document.getElementById('chap-info-bot')) document.getElementById('chap-info-bot').textContent = infoText;
+    
+    const prevDis = (chap <= 1);
+    const nextDis = (chap >= book.chapters);
+    ['btn-prev-chap-top','btn-prev-chap-bot'].forEach(id => { if (document.getElementById(id)) document.getElementById(id).disabled = prevDis; });
+    ['btn-next-chap-top','btn-next-chap-bot'].forEach(id => { if (document.getElementById(id)) document.getElementById(id).disabled = nextDis; });
+    
+    // Disable prev/next verse logic if selecting "全章" (whole chapter)
+    const vc = VERSE_COUNTS[bid];
+    const mx = vc && vc[chap-1] ? vc[chap-1] : 30;
+    const startVal = parseInt(secStart) || 1;
+    const endVal = parseInt(secEnd) || mx;
+    const prevSecDis = (startVal <= 1);
+    const nextSecDis = (endVal >= mx);
+    ['btn-prev-sec-top','btn-prev-sec-bot'].forEach(id => { if (document.getElementById(id)) document.getElementById(id).disabled = prevSecDis; });
+    ['btn-next-sec-top','btn-next-sec-bot'].forEach(id => { if (document.getElementById(id)) document.getElementById(id).disabled = nextSecDis; });
 
   } catch (err) {
     div.innerHTML = `<div class="error-msg">查詢失敗：${err.message}</div>`;
   }
-  document.getElementById('btn-read').disabled = false;
 }
 
 function prevChapter() {
   const s = document.getElementById('sel-chap'); const c = parseInt(s.value);
-  if (c > 1) { s.value = c-1; onChapChange(); fetchVerses(); window.scrollTo({top:0,behavior:'smooth'}); }
+  if (c > 1) { s.value = c-1; onChapChange(); window.scrollTo({top:0,behavior:'smooth'}); }
 }
 
 function nextChapter() {
@@ -1267,7 +1415,40 @@ function nextChapter() {
   const bid = parseInt(document.getElementById('sel-book').value);
   const book = BOOKS.find(b => b.bid === bid);
   const c = parseInt(s.value);
-  if (c < book.chapters) { s.value = c+1; onChapChange(); fetchVerses(); window.scrollTo({top:0,behavior:'smooth'}); }
+  if (c < book.chapters) { s.value = c+1; onChapChange(); window.scrollTo({top:0,behavior:'smooth'}); }
+}
+
+function prevVerse() {
+  const ss = document.getElementById('sel-sec-start');
+  const se = document.getElementById('sel-sec-end');
+  let sVal = parseInt(ss.value); let eVal = parseInt(se.value);
+  if (isNaN(sVal)) return;
+  if (isNaN(eVal)) eVal = sVal;
+  const diff = eVal - sVal;
+  if (sVal > 1) {
+    ss.value = sVal - 1;
+    se.value = (sVal - 1 + diff);
+    fetchVerses(); window.scrollTo({top:0,behavior:'smooth'});
+  }
+}
+
+function nextVerse() {
+  const bid = parseInt(document.getElementById('sel-book').value);
+  const chap = parseInt(document.getElementById('sel-chap').value);
+  const vc = VERSE_COUNTS[bid];
+  const mx = vc && vc[chap-1] ? vc[chap-1] : 30;
+
+  const ss = document.getElementById('sel-sec-start');
+  const se = document.getElementById('sel-sec-end');
+  let sVal = parseInt(ss.value); let eVal = parseInt(se.value);
+  if (isNaN(sVal)) return;
+  if (isNaN(eVal)) eVal = sVal;
+  const diff = eVal - sVal;
+  if (eVal < mx) {
+    ss.value = sVal + 1;
+    se.value = (sVal + 1 + diff);
+    fetchVerses(); window.scrollTo({top:0,behavior:'smooth'});
+  }
 }
 
 let _searchDebounce;
@@ -1306,6 +1487,8 @@ function doSearch() {
   if (bar) bar.hidden = true;
   window.__lastSearch = null;
   div.innerHTML = '<div class="loading">搜尋中...</div>';
+  
+  saveHistory('bible-search-history', q, 'search-history', 'triggerSearchHistory');
 
   try {
     const verseMap = new Map();
@@ -1358,13 +1541,20 @@ function doSearch() {
         const text = v.texts[ver]; if (!text) return '';
         const pat = ver === 'unv' ? escQUnvHighlight : escQ;
         const hl = text.replace(new RegExp(`(${pat})`, 'gi'), '<span class="highlight-match">$1</span>');
-        return `<div class="verse-translation"><span class="version-badge ${info.badge}">${info.name}</span><span class="verse-text">${hl}</span></div>`;
+        
+        const ud = userData[`${v.bid}-${v.chap}-${v.sec}`] || {};
+        const bgColor = ud.color ? `background-color:${ud.color};` : '';
+        return `<div class="verse-translation" style="${bgColor}"><span class="version-badge ${info.badge}">${info.name}</span><span class="verse-text">${hl}</span></div>`;
       }).filter(Boolean).join('');
       const srLinks = fhlLinksHtml(v.bid, v.chap, v.sec, { stopPropagation: true });
+      const ud = userData[`${v.bid}-${v.chap}-${v.sec}`] || {};
+      const noteHtml = ud.note ? `<div class="user-note-box">${ud.note.replace(/\n/g, '<br>')}</div>` : '';
+      const refStr = `${v.bookName} ${v.chap}:${v.sec}`;
+      
       return `<div class="search-result-item" data-idx="${idx}">
         <label class="search-result-check" onclick="event.stopPropagation()"><input type="checkbox" class="search-pick-cb" aria-label="選取此節"></label>
         <div class="search-result-main">
-        <div class="search-ref"><span class="search-ref-link" onclick="goToVerse(${v.bid},${v.chap},${v.sec})" title="開啟此章閱讀此節">${v.bookName} ${v.chap}:${v.sec}</span> ${srLinks}</div>${trs}</div></div>`;
+        <div class="search-ref"><span class="search-ref-link" onclick="goToVerse(${v.bid},${v.chap},${v.sec})" title="開啟此章閱讀此節">${refStr}</span> ${srLinks} <a class="fhl-com-link" href="#" onclick="event.preventDefault();event.stopPropagation();openNoteModal(${v.bid},${v.chap},${v.sec},'${refStr}')" title="筆記與標記">📝 筆記</a></div>${trs}${noteHtml}</div></div>`;
     }).join('');
 
     div.innerHTML = statsHtml + html + searchActionsFooterHtml();
@@ -1404,6 +1594,8 @@ function doQuickLookup() {
   if (!raw) return;
   const div = document.getElementById('results-quick');
   div.innerHTML = '<div class="loading">查詢中...</div>';
+  
+  saveHistory('bible-quick-history', raw, 'quick-history', 'triggerQuickHistory');
 
   try {
     const parsed = parseQuickRef(raw);
@@ -1483,15 +1675,148 @@ function switchTab(name) {
   document.getElementById(`panel-${name}`).classList.add('active');
 }
 
+function loadHistory(key, containerId, callbackName) {
+  const c = document.getElementById(containerId); if(!c) return;
+  const arr = JSON.parse(localStorage.getItem(key) || '[]');
+  if(arr.length === 0) { c.innerHTML = ''; return; }
+  c.innerHTML = arr.map(item => `<span class="history-chip" onclick="${callbackName}('${item.replace(/'/g, "\\'")}')">${item} <span class="history-chip-del" onclick="event.stopPropagation();deleteHistory('${key}', '${item.replace(/'/g, "\\'")}', '${containerId}', '${callbackName}')">✖</span></span>`).join('');
+}
+
+function saveHistory(key, val, containerId, callbackName) {
+  if(!val) return;
+  let arr = JSON.parse(localStorage.getItem(key) || '[]');
+  arr = arr.filter(x => x !== val);
+  arr.unshift(val);
+  if(arr.length > 10) arr.pop();
+  localStorage.setItem(key, JSON.stringify(arr));
+  loadHistory(key, containerId, callbackName);
+}
+
+function deleteHistory(key, val, containerId, callbackName) {
+  let arr = JSON.parse(localStorage.getItem(key) || '[]');
+  arr = arr.filter(x => x !== val);
+  localStorage.setItem(key, JSON.stringify(arr));
+  loadHistory(key, containerId, callbackName);
+}
+
+function triggerSearchHistory(val) {
+  document.getElementById('search-input').value = val;
+  doSearchWithFlash();
+}
+
+function triggerQuickHistory(val) {
+  document.getElementById('quick-ref').value = val;
+  doQuickLookup();
+}
+
+const USER_DATA_KEY = 'bible-user-data';
+let userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
+let currentNoteRef = null;
+
+function saveUserData() {
+  localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+}
+
+function openNoteModal(bid, chap, sec, refName) {
+  currentNoteRef = {bid, chap, sec};
+  document.getElementById('note-modal-ref').textContent = refName;
+  const k = `${bid}-${chap}-${sec}`;
+  const d = userData[k] || {note:'', color:''};
+  document.getElementById('note-text').value = d.note || '';
+  document.querySelectorAll('#note-color-picker .color-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.color === (d.color || ''));
+  });
+  document.getElementById('note-modal').style.display = 'flex';
+}
+
+function closeNoteModal() {
+  document.getElementById('note-modal').style.display = 'none';
+  currentNoteRef = null;
+}
+
+function saveNote() {
+  if(!currentNoteRef) return;
+  const k = `${currentNoteRef.bid}-${currentNoteRef.chap}-${currentNoteRef.sec}`;
+  const text = document.getElementById('note-text').value.trim();
+  const colorEl = document.querySelector('#note-color-picker .color-btn.selected');
+  const color = colorEl ? colorEl.dataset.color : '';
+  
+  if(!text && !color) {
+    delete userData[k];
+  } else {
+    userData[k] = { note: text, color: color };
+  }
+  saveUserData();
+  closeNoteModal();
+  
+  const activeTab = document.querySelector('.tab.active');
+  if(activeTab) {
+    const tabName = activeTab.getAttribute('data-tab');
+    if (tabName === 'read') fetchVerses();
+    else if (tabName === 'search' && document.getElementById('search-input').value.trim()) doSearch();
+    else if (tabName === 'quick' && document.getElementById('quick-ref').value.trim()) doQuickLookup();
+  }
+}
+
+document.querySelectorAll('#note-color-picker .color-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#note-color-picker .color-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+});
+
+function exportUserData() {
+  const data = {
+    historySearch: localStorage.getItem('bible-search-history'),
+    historyQuick: localStorage.getItem('bible-quick-history'),
+    userData: localStorage.getItem(USER_DATA_KEY)
+  };
+  const blob = new Blob([JSON.stringify(data)], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = "bible_backup.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importUserData(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const data = JSON.parse(evt.target.result);
+      if(data.historySearch) localStorage.setItem('bible-search-history', data.historySearch);
+      if(data.historyQuick) localStorage.setItem('bible-quick-history', data.historyQuick);
+      if(data.userData) {
+        localStorage.setItem(USER_DATA_KEY, data.userData);
+        userData = JSON.parse(data.userData);
+      }
+      toast('匯入成功');
+      loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
+      loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
+      const activeTab = document.querySelector('.tab.active');
+      if(activeTab && activeTab.getAttribute('data-tab') === 'read') fetchVerses();
+    } catch(err) {
+      alert('匯入失敗：檔案格式不正確');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
 // ========== Init ==========
 initBookSelector();
 initVersionToggles();
+loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
+loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
 
 loadLocalData().then(() => {
   document.getElementById('sel-book').value = 43;
-  onBookChange();
+  onBookChange(true);
   document.getElementById('sel-chap').value = 3;
-  onChapChange();
+  onChapChange(true);
   document.getElementById('sel-sec-start').value = 16;
   document.getElementById('sel-sec-end').value = 17;
   fetchVerses();
