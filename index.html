@@ -332,6 +332,36 @@ body {
   border-radius:10px; border:1px solid var(--border);
 }
 .chapter-nav .btn { padding:8px 16px; font-size:0.85rem; }
+
+/* 連讀模式 toggle */
+.continuous-toggle {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:6px 12px; border-radius:8px; cursor:pointer;
+  background:var(--bg2); color:var(--text2);
+  border:1px solid var(--border); font-size:0.85rem; font-weight:600;
+  transition:all 0.15s; user-select:none;
+}
+.continuous-toggle:hover { border-color:var(--accent); }
+.continuous-toggle input[type="checkbox"] {
+  width:16px; height:16px; accent-color:var(--accent); cursor:pointer; margin:0;
+}
+.continuous-toggle:has(input:checked) {
+  background:var(--tag-bg); color:var(--accent); border-color:var(--accent);
+}
+/* 連讀分隔線 */
+.continuous-divider {
+  margin:24px 0 12px; padding:8px 14px;
+  background:linear-gradient(135deg, var(--tag-bg), var(--card));
+  border-left:3px solid var(--accent2);
+  border-radius:6px;
+  font-size:0.85rem; font-weight:700; color:var(--accent);
+  letter-spacing:0.05em;
+}
+.continuous-end {
+  margin:24px 0; padding:14px;
+  text-align:center; color:var(--text2); font-size:0.85rem;
+  border:1px dashed var(--border); border-radius:8px;
+}
 .chapter-info { font-size:0.9rem; font-weight:600; color:var(--text2); }
 
 .search-box { display:flex; gap:8px; margin-bottom:16px; }
@@ -1166,6 +1196,9 @@ body {
       <button type="button" class="btn btn-read-copy-top" id="btn-copy-read" onclick="copyReadSelection()" title="有勾選經節時只複製勾選；未勾選則依起始／結束節（或全章）">複製所選經文</button>
       <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
       <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(false)">取消全選</button>
+      <label class="continuous-toggle" title="開啟後讀到章末會自動接上下一章">
+        <input type="checkbox" id="continuous-read-cb" onchange="setContinuousRead(this.checked)"> 📖 連讀
+      </label>
     </div>
     <div class="version-toggles" id="version-toggles"></div>
     <div class="chapter-nav" id="chap-nav-top" style="display:none;">
@@ -2251,21 +2284,108 @@ function loadLastRead() {
   } catch(e) { return null; }
 }
 
-function fetchVerses() {
+// ====== 連讀模式 ======
+const CONTINUOUS_READ_KEY = 'bible-continuous-read';
+let _continuousRead = false;
+let _continuousLoading = false;       // 防 IO 重入
+let _continuousObserver = null;       // 監看最末節
+let _continuousAppendBid = 0;         // append 時要接的書卷 id（不一定等於 sel-book）
+let _continuousAppendChap = 0;        // append 時要接的章節
+
+function loadContinuousReadPref() {
+  try { _continuousRead = localStorage.getItem(CONTINUOUS_READ_KEY) === '1'; } catch(e) {}
+  const cb = document.getElementById('continuous-read-cb');
+  if (cb) cb.checked = _continuousRead;
+}
+function setContinuousRead(on) {
+  _continuousRead = !!on;
+  try { localStorage.setItem(CONTINUOUS_READ_KEY, _continuousRead ? '1' : '0'); } catch(e) {}
+  if (_continuousRead) {
+    setupContinuousObserver();
+    toast('連讀已開啟，讀到章末自動接下一章');
+  } else {
+    teardownContinuousObserver();
+    // 移除已 append 的後續章節，恢復為單章顯示
+    const div = document.getElementById('results-read');
+    if (div) {
+      div.querySelectorAll('.continuous-divider, .continuous-end, .verse-group[data-continuous="1"]').forEach(el => el.remove());
+    }
+    _continuousAppendBid = 0;
+    _continuousAppendChap = 0;
+    toast('連讀已關閉');
+  }
+}
+
+function teardownContinuousObserver() {
+  if (_continuousObserver) {
+    _continuousObserver.disconnect();
+    _continuousObserver = null;
+  }
+}
+
+function setupContinuousObserver() {
+  teardownContinuousObserver();
+  if (!('IntersectionObserver' in window)) return;
+  const div = document.getElementById('results-read');
+  if (!div) return;
+  const groups = div.querySelectorAll('.verse-group');
+  if (groups.length === 0) return;
+  const sentinel = groups[groups.length - 1]; // 監看最後一節
+  _continuousObserver = new IntersectionObserver((entries) => {
+    for (const en of entries) {
+      if (en.isIntersecting) {
+        teardownContinuousObserver();
+        appendNextChapter();
+        break;
+      }
+    }
+  }, { rootMargin: '200px 0px 200px 0px' });
+  _continuousObserver.observe(sentinel);
+}
+
+function appendNextChapter() {
+  if (_continuousLoading) return;
+  // 計算下一章（跨書卷）
+  let bid = _continuousAppendBid || parseInt(document.getElementById('sel-book').value);
+  let chap = (_continuousAppendChap || parseInt(document.getElementById('sel-chap').value)) + 1;
+  let book = BOOKS.find(b => b.bid === bid);
+  if (!book) return;
+  if (chap > book.chapters) {
+    // 跨書卷
+    if (bid >= 66) {
+      const div = document.getElementById('results-read');
+      if (div && !div.querySelector('.continuous-end')) {
+        div.insertAdjacentHTML('beforeend', '<div class="continuous-end">📖 已讀至聖經末尾（啟示錄 22 章）</div>');
+      }
+      return;
+    }
+    bid = bid + 1;
+    chap = 1;
+    book = BOOKS.find(b => b.bid === bid);
+    if (!book) return;
+  }
+  _continuousLoading = true;
+  fetchVerses({ appendMode: true, bid, chap });
+  _continuousLoading = false;
+}
+
+function fetchVerses(opts) {
+  opts = opts || {};
+  const append = !!opts.appendMode;
   const t0 = performance.now();
-  const bid = parseInt(document.getElementById('sel-book').value);
-  const chap = parseInt(document.getElementById('sel-chap').value);
-  const secStart = document.getElementById('sel-sec-start').value;
-  const secEnd = document.getElementById('sel-sec-end').value;
+  const bid = append ? opts.bid : parseInt(document.getElementById('sel-book').value);
+  const chap = append ? opts.chap : parseInt(document.getElementById('sel-chap').value);
+  const secStart = append ? '' : document.getElementById('sel-sec-start').value;
+  const secEnd = append ? '' : document.getElementById('sel-sec-end').value;
   const book = BOOKS.find(b => b.bid === bid); if (!book) return;
-  saveLastRead(bid, chap, secStart, secEnd);
+  if (!append) saveLastRead(bid, chap, secStart, secEnd);
 
   let secRange = '';
   if (secStart && secEnd) secRange = `${secStart}-${secEnd}`;
   else if (secStart) secRange = secStart;
 
   const div = document.getElementById('results-read');
-  div.innerHTML = '<div class="loading">載入中...</div>';
+  if (!append) div.innerHTML = '<div class="loading">載入中...</div>';
 
   try {
     const vers = activeVersions.length > 0 ? [...activeVersions] : ['unv'];
@@ -2304,6 +2424,28 @@ function fetchVerses() {
 
     const elapsed = (performance.now() - t0).toFixed(0);
 
+    if (append) {
+      // append 模式：把章節接在現有 DOM 後面（在 .read-copy-footer 之前）
+      if (sorted.length === 0) return;
+      const dividerHtml = `<div class="continuous-divider">📖 ${book.chinesef} 第 ${chap} 章</div>`;
+      const versesHtml = sorted.map(k => {
+        const v = verseMap[k];
+        return renderVerseGroup(bid, v.chap, v.sec, `${book.chinesef} ${v.chap}:${v.sec}`, vers, v.texts, { copyHandler: 'copyReadSelection()' })
+          .replace('<div class="verse-group"', '<div class="verse-group" data-continuous="1"');
+      }).join('');
+      const footer = div.querySelector('.read-copy-footer');
+      if (footer) {
+        footer.insertAdjacentHTML('beforebegin', dividerHtml + versesHtml);
+      } else {
+        div.insertAdjacentHTML('beforeend', dividerHtml + versesHtml);
+      }
+      _continuousAppendBid = bid;
+      _continuousAppendChap = chap;
+      // 重新監看新的最末節
+      setupContinuousObserver();
+      return;
+    }
+
     if (sorted.length === 0) {
       div.innerHTML = '<div class="error-msg">查無經文資料（離線資料可能尚未載入）</div>';
     } else {
@@ -2314,6 +2456,12 @@ function fetchVerses() {
       }).join('') + readCopyFooterHtml();
     }
 
+    // 非 append 時重置連讀錨點，並重新建立監看
+    _continuousAppendBid = bid;
+    _continuousAppendChap = chap;
+    if (_continuousRead) setupContinuousObserver();
+    else teardownContinuousObserver();
+
     const navT = document.getElementById('chap-nav-top');
     const navB = document.getElementById('chap-nav-bottom');
     if (navT) navT.style.display = 'flex';
@@ -2321,12 +2469,12 @@ function fetchVerses() {
     const infoText = `${book.chinesef} 第 ${chap} 章`;
     if (document.getElementById('chap-info-top')) document.getElementById('chap-info-top').textContent = infoText;
     if (document.getElementById('chap-info-bot')) document.getElementById('chap-info-bot').textContent = infoText;
-    
+
     const prevDis = (chap <= 1);
     const nextDis = (chap >= book.chapters);
     ['btn-prev-chap-top','btn-prev-chap-bot'].forEach(id => { if (document.getElementById(id)) document.getElementById(id).disabled = prevDis; });
     ['btn-next-chap-top','btn-next-chap-bot'].forEach(id => { if (document.getElementById(id)) document.getElementById(id).disabled = nextDis; });
-    
+
     // Disable prev/next verse logic if selecting "全章" (whole chapter)
     const vc = VERSE_COUNTS[bid];
     const mx = vc && vc[chap-1] ? vc[chap-1] : 30;
@@ -2338,7 +2486,7 @@ function fetchVerses() {
     ['btn-next-sec-top','btn-next-sec-bot'].forEach(id => { if (document.getElementById(id)) document.getElementById(id).disabled = nextSecDis; });
 
   } catch (err) {
-    div.innerHTML = `<div class="error-msg">查詢失敗：${err.message}</div>`;
+    if (!append) div.innerHTML = `<div class="error-msg">查詢失敗：${err.message}</div>`;
   }
 }
 
@@ -4076,6 +4224,8 @@ updateSyncUi();
 renderSnapshotList();
 loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
 loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
+
+loadContinuousReadPref();
 
 loadLocalData().then(() => {
   // 「繼續閱讀」：若有上次紀錄則還原，否則用預設（約翰福音 3:16-17）

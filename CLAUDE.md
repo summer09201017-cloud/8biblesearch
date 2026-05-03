@@ -43,6 +43,14 @@ Everything user-facing lives in `index.html` — CSS, HTML, and ~2600 lines of i
 ```
 `bid` = 1..66 (Protestant book order). All numbers are JSON string keys. Books are mapped to abbreviations and English names via the `BOOKS` array near the top of the script. Per-chapter verse counts are baked into `VERSE_COUNTS` (used to populate the verse selectors before data has loaded).
 
+### 連讀模式（Continuous read）
+`fetchVerses(opts)` accepts an optional `{ appendMode, bid, chap }` to append a chapter to the existing DOM instead of replacing it. When `_continuousRead` is on:
+- 一個 `IntersectionObserver` 監看 `.verse-group:last-child`，進入視窗時自動 `appendNextChapter()`。
+- `appendNextChapter()` 處理跨書卷邊界（馬太 28→馬可 1，創世記 50→出埃及記 1）。讀到啟示錄 22 章末才停下並顯示「📖 已讀至聖經末尾」。
+- append 出來的 `.verse-group` 會打上 `data-continuous="1"`；關閉連讀時用此屬性清掉所有 append 內容，恢復為單章顯示。
+- 連讀只影響閱讀分頁；搜尋／快速查詢／我的筆記不受影響。
+- `bible-last-read` 只在使用者「主動查詢」（非 append）時更新；自動接章不會把「上次位置」推進到很遠。
+
 ### Three render paths converge on `sortedVers()`
 Read / Search / Quick-lookup all build a `verseMap` keyed by `chap:sec`, then render via `renderVerseGroup(...)` or inline equivalents. **All three paths sort their translation columns through `sortedVers()`**, which reads `userVersionOrder` from `localStorage`. If you add a new place that lists translations or builds copy/share text, run it through `sortedVers()` so the user's drag-to-reorder preference is respected.
 
@@ -70,6 +78,7 @@ A `flex-wrap:wrap` row: book+chapter ref on the left, then the right-side action
 | `bible-local-snapshots` | up to 3 pre-sync snapshots (safety fuse #1) |
 | `bible-theme` | `paper` (default) / `sepia` / `dark` / `black` |
 | `bible-last-read` | `{bid, chap, secStart, secEnd, ts}` — last successful `fetchVerses()` query, restored on next launch |
+| `bible-continuous-read` | `"1"` / `"0"` — 連讀模式開關（讀到章末自動接下一章） |
 
 The export/import JSON in 設定/資料 includes `userData`, `historySearch`, `historyQuick`, `exportedAt`. The cloud sync payload (schema 3) additionally carries `versionOrder`, `noteCount`, `timestamp`. Schema bumped 2 → 3 when notes gained type/tags/dates/status fields, but no read-side branching exists — `schema` is just a label, all readers do best-effort field access with fallbacks.
 
