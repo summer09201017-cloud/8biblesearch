@@ -46,6 +46,11 @@ Everything user-facing lives in `index.html` — CSS, HTML, and ~2400 lines of i
 ### Three render paths converge on `sortedVers()`
 Read / Search / Quick-lookup all build a `verseMap` keyed by `chap:sec`, then render via `renderVerseGroup(...)` or inline equivalents. **All three paths sort their translation columns through `sortedVers()`**, which reads `userVersionOrder` from `localStorage`. If you add a new place that lists translations or builds copy/share text, run it through `sortedVers()` so the user's drag-to-reorder preference is respected.
 
+`renderVerseGroup` accepts an optional `opts.copyHandler` string (a JS expression like `'copyReadSelection()'`) — when present, a 📋 button is added to the verse-header. The "read" path passes `copyReadSelection()`; the search path inlines a similar button calling `copyPickedSearchVerses()` directly in its template. Quick-lookup intentionally omits the inline copy button.
+
+### `verse-header` row layout
+The header is a single `nowrap` flex row: book+chapter ref on the left (truncates with ellipsis if overflowing), then 📖註釋 / 📝筆記 / 📋複製 / ☑勾選 pinned right. Don't let the right-side cluster wrap — on mobile the verse-read-check label is hidden via CSS instead. Any new header action should be `flex-shrink:0` and join this cluster.
+
 ### Translation visibility
 - `VERSIONS[].hideInUi: true` (currently WEB) — never appears as a toggle pill or in the order list, but data is still loadable if some other path activates it.
 - `LOCAL_VERSIONS` — codes that have a `data/<code>.json`. The current code assumes everything is local; there is no remote fetch fallback.
@@ -63,8 +68,17 @@ Read / Search / Quick-lookup all build a `verseMap` keyed by `chap:sec`, then re
 | `bible-note-fullscreen` | "1" / "0" — PC note modal fullscreen preference |
 | `bible-last-backup-time`, `bible-backup-snooze-until` | reminder banner timing |
 | `bible-local-snapshots` | up to 3 pre-sync snapshots (safety fuse #1) |
+| `bible-theme` | `paper` (default) / `sepia` / `dark` / `black` |
 
 The export/import JSON in 設定/資料 includes `userData`, `historySearch`, `historyQuick`, `exportedAt`. The cloud sync payload (schema 2) additionally carries `versionOrder`, `noteCount`, `timestamp`.
+
+### Theming
+Four themes selectable from chips under the brand title: `paper` (default 米紙) / `sepia` (印刷棕) / `dark` (深色) / `black` (純黑/OLED). Implementation:
+- All colors come from CSS variables on `:root` and `[data-theme="..."]`. Adding a new theme = adding one block of variable overrides.
+- `setTheme(name)` toggles `document.documentElement.dataset.theme`, syncs `<meta name="theme-color">` (mobile status bar tint), and persists to `bible-theme`.
+- Identity colors (translation badges, the red 📋 / 複製 gradient buttons) intentionally **stay constant across themes** — they're brand/recognition, not chrome.
+- Highlight color classes (`hl-yellow/green/pink/blue`) are remapped per theme so user-saved highlights stay readable on dark backgrounds.
+- The 信望愛 註釋 modal is an iframe to a third-party origin; theme cannot reach inside (cross-origin). Acceptable.
 
 ### Google Drive sync (manual, opt-in)
 Lives entirely client-side using Google Identity Services (GIS) + Drive REST. Configured by setting `GOOGLE_CLIENT_ID` near the bottom of the script. Scope is `drive.appdata` only (cannot read user's other Drive files).
