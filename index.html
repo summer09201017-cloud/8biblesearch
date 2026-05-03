@@ -707,13 +707,14 @@ body {
 .font-size-bar .fs-btn:hover { background:rgba(255,255,255,0.22); }
 .font-size-bar .fs-btn:active { transform:translateY(1px); }
 .font-size-bar input[type="range"] {
-  width:min(200px, 32vw);
-  min-width:80px; max-width:220px; flex:1 1 auto;
+  width:min(160px, 28vw);
+  min-width:70px; max-width:180px; flex:1 1 auto;
   accent-color:var(--accent2); cursor:pointer; vertical-align:middle;
 }
 .font-size-bar .fs-bar-value {
-  font-size:0.8rem; color:#f5e6c8; min-width:42px; text-align:center; font-weight:700;
-  white-space:nowrap;
+  font-size:0.78rem; color:#f5e6c8; min-width:40px; text-align:center; font-weight:700;
+  white-space:nowrap; padding:0 2px;
+  background:rgba(0,0,0,0.18); border-radius:4px;
 }
 @media (max-width:600px) {
   .app-header { padding:6px 12px; }
@@ -811,9 +812,9 @@ body {
       <div class="font-size-bar" role="group" aria-label="文字大小調整">
         <span class="fs-bar-label">文字大小</span>
         <button type="button" class="fs-btn" onclick="adjustFontSize(-2)" aria-label="縮小字體">A-</button>
-        <input id="fs-slider" type="range" min="10" max="40" step="1" value="16" oninput="setFontSize(this.value)" aria-label="文字大小滑桿">
-        <button type="button" class="fs-btn" onclick="adjustFontSize(2)" aria-label="放大字體">A+</button>
         <span id="fs-label" class="fs-bar-value">16px</span>
+        <button type="button" class="fs-btn" onclick="adjustFontSize(2)" aria-label="放大字體">A+</button>
+        <input id="fs-slider" type="range" min="10" max="40" step="1" value="16" oninput="setFontSize(this.value)" aria-label="文字大小滑桿">
       </div>
       <div class="app-header-actions">
         <button type="button" class="btn-install" id="btn-install-pwa" hidden>📲 安裝 App</button>
