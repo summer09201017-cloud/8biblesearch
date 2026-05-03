@@ -442,6 +442,33 @@ body {
   border-radius:10px; border:1px solid #f5c6cb; margin-bottom:12px;
 }
 
+/* ===== 譯本排序設定 ===== */
+.version-order-list { display:flex; flex-direction:column; gap:6px; }
+.version-order-item {
+  display:flex; gap:10px; align-items:center;
+  padding:10px 12px;
+  background:var(--bg2); border:1px solid var(--border); border-radius:8px;
+  user-select:none; transition:all 0.15s;
+}
+.version-order-item.dragging { opacity:0.4; }
+.version-order-item.drag-over { border-color:var(--accent); border-style:dashed; background:var(--tag-bg); }
+.version-order-handle {
+  font-size:1.2rem; color:var(--text2); cursor:grab; padding:0 4px;
+  flex-shrink:0;
+}
+.version-order-handle:active { cursor:grabbing; }
+.version-order-name { flex:1; font-weight:600; min-width:0; }
+.version-order-item .btn-sm { padding:6px 12px; min-width:auto; font-size:0.95rem; line-height:1; }
+.version-order-item .btn-sm:disabled { opacity:0.3; cursor:not-allowed; }
+.version-order-index {
+  font-size:0.75rem; color:var(--text2); font-weight:700;
+  min-width:22px; text-align:center;
+}
+@media (max-width:600px) {
+  .version-order-handle { display:none; }
+  .version-order-item { padding:8px 10px; gap:6px; }
+}
+
 /* ===== 備份提醒橫幅 ===== */
 .backup-reminder {
   display:flex; gap:10px; align-items:center; flex-wrap:wrap;
@@ -781,6 +808,15 @@ body {
   </div>
 
   <div id="panel-settings" class="panel">
+    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
+      <h3>譯本顯示順序</h3>
+      <p style="font-size:0.9rem;color:var(--text2);margin-bottom:14px;">
+        調整下列順序後，查詢／搜尋／快速查詢結果及複製文字都會依此排列。<br>
+        <span style="font-size:0.8rem;">電腦：可拖曳「☰」重新排列；手機：使用 ↑ ↓ 按鈕。</span>
+      </p>
+      <div id="version-order-list" class="version-order-list"></div>
+      <button class="btn btn-secondary btn-sm" onclick="resetVersionOrder()" style="margin-top:14px;">↺ 還原預設順序</button>
+    </div>
     <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border);">
       <h3>資料管理 (筆記/螢光筆/歷史)</h3>
       <p style="font-size:0.9rem;color:var(--text2);margin-bottom:16px;">匯出您的所有筆記、標記與歷史紀錄，以便在其他裝置上匯入使用。</p>
@@ -1413,9 +1449,40 @@ function toggleAllReadPicks(checked) {
   document.querySelectorAll('#results-read .read-pick-cb').forEach(function (cb) { cb.checked = checked; });
 }
 
+// ====== 使用者譯本排序 ======
+const VERSION_ORDER_KEY = 'bible-version-order';
+let userVersionOrder = null;
+
+function getDefaultVersionOrder() {
+  return VERSIONS.filter(v => !v.hideInUi).map(v => v.code);
+}
+
+function loadVersionOrder() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(VERSION_ORDER_KEY) || 'null');
+    if (Array.isArray(saved)) {
+      const defCodes = getDefaultVersionOrder();
+      const valid = saved.filter(c => defCodes.includes(c));
+      const missing = defCodes.filter(c => !valid.includes(c));
+      userVersionOrder = [...valid, ...missing];
+      return;
+    }
+  } catch(e) {}
+  userVersionOrder = getDefaultVersionOrder();
+}
+
+function saveVersionOrder() {
+  try { localStorage.setItem(VERSION_ORDER_KEY, JSON.stringify(userVersionOrder)); } catch(e) {}
+}
+
+function getOrderIndex(code) {
+  if (!userVersionOrder) loadVersionOrder();
+  const i = userVersionOrder.indexOf(code);
+  return i < 0 ? 999 : i;
+}
+
 function normalizeActiveVersionOrder() {
-  const order = VERSIONS.map(x => x.code);
-  activeVersions.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  activeVersions.sort((a, b) => getOrderIndex(a) - getOrderIndex(b));
 }
 
 async function setVersionChecked(code, checked) {
@@ -1445,6 +1512,10 @@ async function setVersionChecked(code, checked) {
 }
 
 function initVersionToggles() {
+  if (!userVersionOrder) loadVersionOrder();
+  const orderedVisibleVersions = userVersionOrder
+    .map(code => VERSIONS.find(v => v.code === code))
+    .filter(v => v && !v.hideInUi);
   ['version-toggles','version-toggles-quick','version-toggles-search'].forEach(id => {
     const c = document.getElementById(id); if (!c) return;
     c.innerHTML = '';
@@ -1452,8 +1523,7 @@ function initVersionToggles() {
     title.className = 'version-toggles-title';
     title.textContent = '顯示譯本（可勾選）';
     c.appendChild(title);
-    VERSIONS.forEach(v => {
-      if (v.hideInUi) return;
+    orderedVisibleVersions.forEach(v => {
       const on = activeVersions.includes(v.code);
       const l = document.createElement('label');
       l.className = 'version-toggle' + (on ? ' active' : '');
@@ -1473,8 +1543,100 @@ function initVersionToggles() {
 }
 
 function sortedVers(vers) {
-  const order = VERSIONS.map(v => v.code);
-  return [...vers].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  return [...vers].sort((a, b) => getOrderIndex(a) - getOrderIndex(b));
+}
+
+function refreshActivePanelByOrder() {
+  const activeTab = document.querySelector('.tab.active');
+  if (!activeTab) return;
+  const tabName = activeTab.getAttribute('data-tab');
+  if (tabName === 'read') fetchVerses();
+  else if (tabName === 'search' && document.getElementById('search-input').value.trim()) doSearch();
+  else if (tabName === 'quick' && document.getElementById('quick-ref').value.trim()) doQuickLookup();
+}
+
+function applyVersionOrderChange() {
+  saveVersionOrder();
+  normalizeActiveVersionOrder();
+  renderVersionOrderList();
+  initVersionToggles();
+  refreshActivePanelByOrder();
+}
+
+function moveVersion(code, dir) {
+  if (!userVersionOrder) loadVersionOrder();
+  const i = userVersionOrder.indexOf(code);
+  if (i < 0) return;
+  const j = i + dir;
+  if (j < 0 || j >= userVersionOrder.length) return;
+  [userVersionOrder[i], userVersionOrder[j]] = [userVersionOrder[j], userVersionOrder[i]];
+  applyVersionOrderChange();
+}
+
+function resetVersionOrder() {
+  userVersionOrder = getDefaultVersionOrder();
+  applyVersionOrderChange();
+  toast('已還原預設順序');
+}
+
+function renderVersionOrderList() {
+  const c = document.getElementById('version-order-list');
+  if (!c) return;
+  if (!userVersionOrder) loadVersionOrder();
+  c.innerHTML = userVersionOrder.map((code, idx) => {
+    const v = VERSIONS.find(x => x.code === code);
+    if (!v) return '';
+    const upDis = idx === 0 ? 'disabled' : '';
+    const downDis = idx === userVersionOrder.length - 1 ? 'disabled' : '';
+    return `<div class="version-order-item" data-code="${code}" draggable="true">
+      <span class="version-order-handle" title="拖曳重新排列">☰</span>
+      <span class="version-order-index">${idx+1}.</span>
+      <span class="version-badge ${v.badge}">${v.name}</span>
+      <span class="version-order-name">${v.name}</span>
+      <button class="btn btn-sm btn-secondary" onclick="moveVersion('${code}',-1)" ${upDis} title="上移">↑</button>
+      <button class="btn btn-sm btn-secondary" onclick="moveVersion('${code}',1)" ${downDis} title="下移">↓</button>
+    </div>`;
+  }).join('');
+  bindVersionOrderDrag();
+}
+
+function bindVersionOrderDrag() {
+  const list = document.getElementById('version-order-list');
+  if (!list) return;
+  let dragSrc = null;
+  list.querySelectorAll('.version-order-item').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      dragSrc = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', item.getAttribute('data-code')); } catch(err) {}
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      list.querySelectorAll('.version-order-item').forEach(el => el.classList.remove('drag-over'));
+      dragSrc = null;
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (dragSrc && item !== dragSrc) item.classList.add('drag-over');
+    });
+    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      if (!dragSrc || dragSrc === item) return;
+      const srcCode = dragSrc.getAttribute('data-code');
+      const dstCode = item.getAttribute('data-code');
+      const i = userVersionOrder.indexOf(srcCode);
+      const j = userVersionOrder.indexOf(dstCode);
+      if (i < 0 || j < 0) return;
+      userVersionOrder.splice(i, 1);
+      const newJ = userVersionOrder.indexOf(dstCode);
+      userVersionOrder.splice(newJ + (i < j ? 1 : 0), 0, srcCode);
+      applyVersionOrderChange();
+    });
+  });
 }
 
 function renderVerseGroup(bid, chap, sec, ref, versionsToShow, textsMap) {
@@ -1853,6 +2015,7 @@ function switchTab(name) {
   document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
   document.getElementById(`panel-${name}`).classList.add('active');
   if (name === 'notes') renderNotesList();
+  else if (name === 'settings') renderVersionOrderList();
 }
 
 // ====== 筆記列表頁 ======
@@ -2154,8 +2317,11 @@ function importUserData(e) {
 }
 
 // ========== Init ==========
+loadVersionOrder();
+normalizeActiveVersionOrder();
 initBookSelector();
 initVersionToggles();
+renderVersionOrderList();
 loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
 loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
 
