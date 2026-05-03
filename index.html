@@ -441,6 +441,28 @@ body {
   text-align:center; padding:20px; color:#c0392b; background:#fdf0ef;
   border-radius:10px; border:1px solid #f5c6cb; margin-bottom:12px;
 }
+
+/* ===== 備份提醒橫幅 ===== */
+.backup-reminder {
+  display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+  padding:10px 14px; margin-bottom:12px;
+  background:#fff8e1; border:1px solid #ffd54f;
+  border-radius:10px; font-size:0.88rem; color:#5c3d1a;
+}
+.backup-reminder[hidden] { display:none !important; }
+.backup-reminder-icon { font-size:1.3rem; flex-shrink:0; }
+.backup-reminder-text { flex:1; min-width:160px; line-height:1.5; }
+.backup-reminder-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.backup-reminder-actions button {
+  padding:5px 11px; font-size:0.8rem; border:1px solid #d4a017;
+  background:#fff; color:#5c3d1a; border-radius:6px; cursor:pointer;
+  font-family:inherit; font-weight:600;
+}
+.backup-reminder-actions button:hover { background:#fff3cd; }
+.backup-reminder-actions .btn-backup-now {
+  background:linear-gradient(135deg,#d4a017,#c49b2a); color:#fff; border-color:transparent;
+}
+.backup-reminder-actions .btn-backup-now:hover { filter:brightness(1.05); }
 .app-footer {
   text-align:center; padding:20px; font-size:0.75rem; color:var(--text2);
   border-top:1px solid var(--border); margin-top:40px;
@@ -644,6 +666,17 @@ body {
     <div style="font-size:0.95rem;">正在載入離線經文資料...</div>
     <div class="load-bar"><div class="load-bar-fill" id="load-bar-fill" style="width:0%"></div></div>
     <div id="load-detail" style="font-size:0.8rem;margin-top:4px;"></div>
+  </div>
+
+  <div id="backup-reminder" class="backup-reminder" hidden>
+    <span class="backup-reminder-icon">💾</span>
+    <span class="backup-reminder-text" id="backup-reminder-text"></span>
+    <div class="backup-reminder-actions">
+      <button class="btn-backup-now" onclick="exportUserDataAndDismiss()">立即備份</button>
+      <button onclick="snoozeBackup(7)">7 天後再提醒</button>
+      <button onclick="snoozeBackup(30)">30 天後</button>
+      <button onclick="snoozeBackup(7)" title="關閉此提醒">✕</button>
+    </div>
   </div>
 
   <div id="panel-read" class="panel active">
@@ -2016,19 +2049,78 @@ document.querySelectorAll('#note-color-picker .color-btn').forEach(btn => {
   });
 });
 
+// ====== 備份提醒 ======
+const BACKUP_TIME_KEY = 'bible-last-backup-time';
+const BACKUP_SNOOZE_KEY = 'bible-backup-snooze-until';
+
+function getNoteCount() {
+  return Object.keys(userData || {}).filter(k => {
+    const d = userData[k];
+    return d && ((d.note && String(d.note).trim()) || d.color);
+  }).length;
+}
+
+function checkBackupReminder() {
+  const banner = document.getElementById('backup-reminder');
+  if (!banner) return;
+  const noteCount = getNoteCount();
+  if (noteCount < 3) { banner.hidden = true; return; }
+
+  const now = Date.now();
+  let snoozeUntil = 0;
+  try { snoozeUntil = parseInt(localStorage.getItem(BACKUP_SNOOZE_KEY), 10) || 0; } catch(e) {}
+  if (now < snoozeUntil) { banner.hidden = true; return; }
+
+  let lastBackup = 0;
+  try { lastBackup = parseInt(localStorage.getItem(BACKUP_TIME_KEY), 10) || 0; } catch(e) {}
+
+  const textEl = document.getElementById('backup-reminder-text');
+  if (lastBackup === 0) {
+    if (textEl) textEl.innerHTML = `您有 <b>${noteCount}</b> 筆筆記但<b>從未備份</b>。建議立即匯出 JSON 備份檔（清除瀏覽器資料時會遺失）`;
+    banner.hidden = false;
+    return;
+  }
+  const daysSince = Math.floor((now - lastBackup) / (1000*60*60*24));
+  if (daysSince >= 7) {
+    if (textEl) textEl.innerHTML = `您已 <b>${daysSince}</b> 天未備份筆記資料（共 <b>${noteCount}</b> 筆），建議匯出 JSON 備份`;
+    banner.hidden = false;
+  } else {
+    banner.hidden = true;
+  }
+}
+
+function snoozeBackup(days) {
+  const until = Date.now() + days*24*60*60*1000;
+  try { localStorage.setItem(BACKUP_SNOOZE_KEY, until.toString()); } catch(e) {}
+  const banner = document.getElementById('backup-reminder');
+  if (banner) banner.hidden = true;
+  toast(`已暫緩，${days} 天後再提醒`);
+}
+
+function exportUserDataAndDismiss() {
+  exportUserData();
+  const banner = document.getElementById('backup-reminder');
+  if (banner) banner.hidden = true;
+}
+
 function exportUserData() {
   const data = {
     historySearch: localStorage.getItem('bible-search-history'),
     historyQuick: localStorage.getItem('bible-quick-history'),
-    userData: localStorage.getItem(USER_DATA_KEY)
+    userData: localStorage.getItem(USER_DATA_KEY),
+    exportedAt: new Date().toISOString()
   };
-  const blob = new Blob([JSON.stringify(data)], {type: "application/json"});
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
   const url = URL.createObjectURL(blob);
+  const ts = new Date().toISOString().slice(0,10).replace(/-/g, '');
   const a = document.createElement('a');
   a.href = url;
-  a.download = "bible_backup.json";
+  a.download = `bible_backup_${ts}.json`;
   a.click();
   URL.revokeObjectURL(url);
+  try { localStorage.setItem(BACKUP_TIME_KEY, Date.now().toString()); } catch(e) {}
+  toast('已匯出備份檔');
+  checkBackupReminder();
 }
 
 function importUserData(e) {
@@ -2044,6 +2136,7 @@ function importUserData(e) {
         localStorage.setItem(USER_DATA_KEY, data.userData);
         userData = JSON.parse(data.userData);
       }
+      try { localStorage.setItem(BACKUP_TIME_KEY, Date.now().toString()); } catch(e2) {}
       toast('匯入成功');
       loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
       loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
@@ -2051,6 +2144,7 @@ function importUserData(e) {
       const tabName = activeTab && activeTab.getAttribute('data-tab');
       if (tabName === 'read') fetchVerses();
       else if (tabName === 'notes') renderNotesList();
+      checkBackupReminder();
     } catch(err) {
       alert('匯入失敗：檔案格式不正確');
     }
@@ -2074,6 +2168,7 @@ loadLocalData().then(() => {
   document.getElementById('sel-sec-end').value = 17;
   fetchVerses();
   _autoQueryEnabled = true;
+  checkBackupReminder();
 });
 
 // PWA 安裝：iOS 不支援 beforeinstallprompt，手機上改為一律顯示按鈕並可展開說明
