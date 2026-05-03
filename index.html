@@ -292,10 +292,10 @@ body {
   padding:10px 16px; background:linear-gradient(135deg,#f5eed8,#ebe3cf);
   font-weight:700; font-size:0.95rem; color:var(--accent);
   border-bottom:1px solid var(--border);
-  flex-wrap:nowrap;
+  flex-wrap:wrap; row-gap:6px;
 }
-.verse-ref-title { flex:0 0 auto; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.verse-read-pick { flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:6px; flex-wrap:nowrap; justify-content:flex-end; }
+.verse-ref-title { flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.verse-read-pick { flex:0 1 auto; min-width:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
 .verse-read-pick .verse-comment-link,
 .verse-read-pick .fhl-com-link,
 .verse-read-pick .btn-copy-inline { flex-shrink:0; }
@@ -482,6 +482,120 @@ body {
 .hl-blue { background-color: #d1ecf1; }
 .hl-none { background-color: #eee; text-align:center; line-height:28px; font-size:12px;}
 
+/* ===== 筆記 modal：類型 chips ＋ 標籤 ===== */
+.note-meta-row {
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  margin-bottom:10px;
+}
+.note-meta-label {
+  font-size:0.75rem; color:var(--text2); font-weight:700;
+  flex-shrink:0; min-width:36px;
+}
+.note-type-picker { display:flex; gap:6px; flex-wrap:wrap; flex:1; }
+.note-type-chip {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:5px 10px; border-radius:14px; cursor:pointer;
+  background:var(--bg2); color:var(--text2);
+  border:1px solid var(--border); font-size:0.8rem; font-weight:600;
+  transition:all 0.15s; user-select:none;
+}
+.note-type-chip:hover { border-color:var(--accent); }
+.note-type-chip.selected {
+  background:var(--tag-bg); color:var(--accent);
+  border-color:var(--accent);
+}
+.note-tags-input {
+  flex:1; min-width:140px; padding:5px 10px;
+  border:1px solid var(--border); border-radius:14px;
+  background:var(--bg2); color:var(--text);
+  font-family:inherit; font-size:0.85rem;
+}
+.note-tags-input:focus { outline:none; border-color:var(--accent); }
+.note-tags-current { display:flex; gap:5px; flex-wrap:wrap; flex:1; min-width:0; }
+.note-tag-chip {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 8px; border-radius:12px;
+  background:var(--tag-bg); color:var(--accent);
+  font-size:0.78rem; font-weight:600;
+  border:1px solid var(--border);
+}
+.note-tag-chip .tag-x {
+  cursor:pointer; opacity:0.6; font-size:0.85rem; line-height:1;
+}
+.note-tag-chip .tag-x:hover { opacity:1; color:#c0392b; }
+.note-meta-dates {
+  font-size:0.72rem; color:var(--text2); margin-bottom:10px;
+  display:flex; gap:10px; flex-wrap:wrap;
+}
+.note-meta-dates span b { font-weight:600; color:var(--text); }
+
+/* 類型專屬子區塊（禱告 / 問題） */
+.note-type-block {
+  margin-bottom:12px; padding:10px 12px;
+  background:var(--bg2); border:1px dashed var(--border);
+  border-radius:8px;
+  display:none; flex-direction:column; gap:8px;
+}
+.note-type-block.show { display:flex; }
+.note-type-block-title {
+  font-size:0.75rem; color:var(--accent); font-weight:700;
+  letter-spacing:0.05em;
+}
+.note-status-row {
+  display:flex; gap:6px; flex-wrap:wrap; align-items:center;
+}
+.note-status-chip {
+  display:inline-flex; align-items:center; gap:3px;
+  padding:4px 10px; border-radius:12px; cursor:pointer;
+  background:var(--card); color:var(--text2);
+  border:1px solid var(--border); font-size:0.78rem; font-weight:600;
+  transition:all 0.15s; user-select:none;
+}
+.note-status-chip:hover { border-color:var(--accent); }
+.note-status-chip.selected { background:var(--accent); color:#fff; border-color:var(--accent); }
+.note-status-chip.selected.status-answered,
+.note-status-chip.selected.status-resolved { background:#2e7d4f; border-color:#2e7d4f; }
+.note-status-chip.selected.status-paused { background:#8a7a4a; border-color:#8a7a4a; }
+.note-extra-input {
+  width:100%; padding:6px 10px;
+  border:1px solid var(--border); border-radius:8px;
+  background:var(--card); color:var(--text);
+  font-family:inherit; font-size:0.85rem;
+}
+.note-extra-input:focus { outline:none; border-color:var(--accent); }
+.note-extra-textarea {
+  width:100%; min-height:50px; padding:8px 10px;
+  border:1px solid var(--border); border-radius:8px;
+  background:var(--card); color:var(--text);
+  font-family:inherit; font-size:0.85rem; line-height:1.5;
+  resize:vertical;
+}
+.note-extra-textarea:focus { outline:none; border-color:var(--accent); }
+.note-extra-row {
+  display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+}
+.note-extra-row label {
+  font-size:0.75rem; color:var(--text2); font-weight:600; flex-shrink:0;
+}
+
+/* 列表卡片：狀態徽章 */
+.note-list-status {
+  display:inline-flex; align-items:center; gap:3px;
+  padding:2px 8px; border-radius:10px;
+  font-size:0.72rem; font-weight:700;
+  border:1px solid var(--border);
+}
+.note-list-status.s-open    { background:var(--bg2); color:var(--text2); }
+.note-list-status.s-answered,
+.note-list-status.s-resolved { background:#d4edda; color:#1e5a35; border-color:#7fc095; }
+.note-list-status.s-paused  { background:#fff3cd; color:#7a5a10; border-color:#d4b860; }
+[data-theme="dark"] .note-list-status.s-answered,
+[data-theme="dark"] .note-list-status.s-resolved { background:#1f3a26; color:#a8e6b8; border-color:#2e7d4f; }
+[data-theme="dark"] .note-list-status.s-paused  { background:#3a2f12; color:#f0d890; border-color:#7a5a20; }
+[data-theme="black"] .note-list-status.s-answered,
+[data-theme="black"] .note-list-status.s-resolved { background:#102a18; color:#a8e6b8; border-color:#2e7d4f; }
+[data-theme="black"] .note-list-status.s-paused  { background:#2a2010; color:#f5d890; border-color:#7a5a20; }
+
 .user-note-box {
   margin:8px 16px; padding:8px 12px; background:rgba(255,255,255,0.5);
   border-left:4px solid var(--accent); border-radius:4px; font-size:0.9rem;
@@ -532,10 +646,125 @@ body {
 .note-list-ref-link:hover { color:var(--accent2); text-decoration-thickness:2px; }
 .note-list-text { font-size:0.92rem; color:var(--text); white-space:pre-wrap; word-break:break-word; line-height:1.6; }
 .note-list-actions { display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+.note-list-meta {
+  display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+  margin-top:6px; font-size:0.75rem; color:var(--text2);
+}
+.note-list-type {
+  display:inline-flex; align-items:center; gap:3px;
+  padding:2px 8px; border-radius:10px;
+  background:var(--tag-bg); color:var(--accent);
+  font-weight:600; border:1px solid var(--border);
+}
+.note-list-tag {
+  display:inline-flex; align-items:center;
+  padding:2px 7px; border-radius:9px;
+  background:var(--bg2); color:var(--text2);
+  border:1px solid var(--border); cursor:pointer;
+  transition:all 0.15s;
+}
+.note-list-tag:hover { border-color:var(--accent); color:var(--accent); }
+.note-list-tag.active {
+  background:var(--accent); color:#fff; border-color:var(--accent);
+}
+.note-list-date { color:var(--text2); font-size:0.72rem; }
 @media (max-width:600px) {
   .note-list-item { flex-wrap:wrap; }
   .note-list-actions { flex-direction:row; width:100%; justify-content:flex-end; margin-top:4px; }
   .notes-filters { padding:8px 10px; }
+}
+
+/* 筆記頁：視圖切換 + 統計面板 */
+.notes-view-bar {
+  display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+  margin-bottom:10px; padding:10px 12px;
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+}
+.notes-view-chips {
+  display:flex; gap:6px; flex-wrap:wrap; align-items:center;
+}
+.notes-view-chip {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:6px 12px; border-radius:14px; cursor:pointer;
+  background:var(--bg2); color:var(--text2);
+  border:1px solid var(--border); font-size:0.85rem; font-weight:700;
+  transition:all 0.15s; user-select:none;
+}
+.notes-view-chip:hover { border-color:var(--accent); color:var(--accent); }
+.notes-view-chip.selected {
+  background:var(--accent); color:#fff; border-color:var(--accent);
+  box-shadow:0 2px 6px var(--shadow);
+}
+.notes-stats {
+  display:flex; gap:6px; flex-wrap:wrap; align-items:center;
+  margin-left:auto; font-size:0.78rem;
+}
+.notes-stats-item {
+  display:inline-flex; align-items:center; gap:3px;
+  padding:3px 9px; border-radius:10px;
+  background:var(--bg2); border:1px solid var(--border);
+  color:var(--text2); font-weight:600;
+}
+.notes-stats-item b { color:var(--text); font-weight:700; }
+.notes-stats-item.s-prayer { background:#fff8e1; border-color:#d4b860; color:#7a5a10; }
+.notes-stats-item.s-prayer b { color:#5a3f0a; }
+.notes-stats-item.s-answered { background:#d4edda; border-color:#7fc095; color:#1e5a35; }
+.notes-stats-item.s-answered b { color:#0f3a20; }
+.notes-stats-item.s-question { background:#e2eaf5; border-color:#9bafd0; color:#2d4d7a; }
+.notes-stats-item.s-question b { color:#15305a; }
+[data-theme="dark"] .notes-stats-item.s-prayer { background:#3a2f12; border-color:#7a5a20; color:#f0d890; }
+[data-theme="dark"] .notes-stats-item.s-prayer b { color:#f5e6a0; }
+[data-theme="dark"] .notes-stats-item.s-answered { background:#1f3a26; border-color:#2e7d4f; color:#a8e6b8; }
+[data-theme="dark"] .notes-stats-item.s-answered b { color:#c5f0d0; }
+[data-theme="dark"] .notes-stats-item.s-question { background:#1f2a3a; border-color:#4a5a7a; color:#a8c0e0; }
+[data-theme="dark"] .notes-stats-item.s-question b { color:#c5d8f0; }
+[data-theme="black"] .notes-stats-item.s-prayer { background:#2a2010; border-color:#7a5a20; color:#f5d890; }
+[data-theme="black"] .notes-stats-item.s-prayer b { color:#f5e6a0; }
+[data-theme="black"] .notes-stats-item.s-answered { background:#102a18; border-color:#2e7d4f; color:#a8e6b8; }
+[data-theme="black"] .notes-stats-item.s-answered b { color:#c5f0d0; }
+[data-theme="black"] .notes-stats-item.s-question { background:#101a2a; border-color:#4a5a7a; color:#a8c0e0; }
+[data-theme="black"] .notes-stats-item.s-question b { color:#c5d8f0; }
+
+.timeline-group-header {
+  font-size:0.85rem; font-weight:700; color:var(--accent);
+  padding:6px 4px; margin:4px 0 2px;
+  border-bottom:1px dashed var(--border);
+  letter-spacing:0.05em;
+}
+.timeline-group-header:first-child { margin-top:0; }
+
+.note-list-wait {
+  display:inline-flex; align-items:center;
+  padding:2px 7px; border-radius:9px;
+  background:var(--bg2); color:var(--accent);
+  border:1px dashed var(--border);
+  font-size:0.72rem; font-weight:700;
+}
+
+@media (max-width:600px) {
+  .notes-stats { margin-left:0; width:100%; }
+  .notes-view-chip { padding:5px 10px; font-size:0.8rem; }
+}
+
+/* 列表頁：類型/標籤篩選列 */
+.notes-type-filter, .notes-tag-filter {
+  display:flex; gap:6px; flex-wrap:wrap; align-items:center;
+  width:100%; margin-top:6px;
+}
+.notes-filter-label {
+  font-size:0.78rem; color:var(--text2); font-weight:700; flex-shrink:0;
+}
+.notes-filter-chip {
+  display:inline-flex; align-items:center; gap:3px;
+  padding:3px 9px; border-radius:11px;
+  background:var(--bg2); color:var(--text2);
+  border:1px solid var(--border); cursor:pointer;
+  font-size:0.78rem; font-weight:600;
+  transition:all 0.15s; user-select:none;
+}
+.notes-filter-chip:hover { border-color:var(--accent); }
+.notes-filter-chip.selected {
+  background:var(--accent); color:#fff; border-color:var(--accent);
 }
 
 .error-msg {
@@ -974,8 +1203,17 @@ body {
   </div>
 
   <div id="panel-notes" class="panel">
+    <div class="notes-view-bar">
+      <div class="notes-view-chips" id="notes-view-chips">
+        <span class="notes-view-chip selected" data-view="list">📚 列表</span>
+        <span class="notes-view-chip" data-view="timeline">🕐 時間軸</span>
+        <span class="notes-view-chip" data-view="prayer">🙏 禱告牆</span>
+        <span class="notes-view-chip" data-view="question">❓ 問題清單</span>
+      </div>
+      <div class="notes-stats" id="notes-stats"></div>
+    </div>
     <div class="notes-filters">
-      <input type="text" id="notes-search-input" placeholder="搜尋筆記內容或經文參照..." oninput="renderNotesList()">
+      <input type="text" id="notes-search-input" placeholder="搜尋筆記內容、經文參照或 #標籤..." oninput="renderNotesList()">
       <div class="notes-color-filter">
         <span class="notes-color-filter-label">顏色：</span>
         <div class="notes-color-chip all selected" data-color="" onclick="setNotesColorFilter('')" title="全部"></div>
@@ -985,6 +1223,9 @@ body {
         <div class="notes-color-chip hl-blue" data-color="#d1ecf1" onclick="setNotesColorFilter('#d1ecf1')" title="藍"></div>
       </div>
       <span id="notes-count" class="notes-count"></span>
+      <div class="notes-type-filter" id="notes-type-filter"></div>
+      <div class="notes-tag-filter" id="notes-status-filter"></div>
+      <div class="notes-tag-filter" id="notes-tag-filter"></div>
     </div>
     <div id="results-notes">
       <div class="empty-state"><div class="icon">📝</div><p>尚未建立任何筆記</p><p style="font-size:0.8rem;">在閱讀／搜尋／快速查詢中點「📝 筆記」即可新增</p></div>
@@ -1082,6 +1323,40 @@ body {
       <div class="color-btn hl-pink" data-color="#f8d7da"></div>
       <div class="color-btn hl-blue" data-color="#d1ecf1"></div>
     </div>
+    <div class="note-meta-row">
+      <span class="note-meta-label">類型</span>
+      <div class="note-type-picker" id="note-type-picker"></div>
+    </div>
+    <div class="note-meta-row">
+      <span class="note-meta-label">標籤</span>
+      <div class="note-tags-current" id="note-tags-current"></div>
+      <input type="text" class="note-tags-input" id="note-tags-input" placeholder="輸入標籤後按 Enter 或逗號" autocomplete="off">
+    </div>
+    <div class="note-meta-dates" id="note-meta-dates" hidden></div>
+
+    <div class="note-type-block" id="note-block-prayer">
+      <div class="note-type-block-title">🙏 禱告紀錄</div>
+      <div class="note-status-row" id="note-prayer-status">
+        <span class="note-status-chip" data-st="open">⏳ 持續禱告中</span>
+        <span class="note-status-chip" data-st="answered">✅ 已蒙應允</span>
+        <span class="note-status-chip" data-st="paused">⏸ 暫停</span>
+      </div>
+      <div class="note-extra-row" id="note-prayer-answered-row" style="display:none;">
+        <label>應允日期：</label>
+        <input type="date" class="note-extra-input" id="note-prayer-answered-date" style="flex:0 0 auto;">
+      </div>
+      <textarea class="note-extra-textarea" id="note-prayer-answer-note" placeholder="神的回應 / 見證紀錄（選填）"></textarea>
+    </div>
+
+    <div class="note-type-block" id="note-block-question">
+      <div class="note-type-block-title">❓ 問題追蹤</div>
+      <div class="note-status-row" id="note-question-status">
+        <span class="note-status-chip" data-st="open">❔ 未解答</span>
+        <span class="note-status-chip" data-st="resolved">✅ 已解答</span>
+      </div>
+      <textarea class="note-extra-textarea" id="note-question-answer" placeholder="解答 / 查考結果（選填）"></textarea>
+    </div>
+
     <textarea id="note-text" placeholder="在此輸入您的筆記..."></textarea>
     <div class="note-modal-footer">
       <button class="btn btn-secondary" onclick="closeNoteModal()">取消</button>
@@ -1911,7 +2186,7 @@ function renderVerseGroup(bid, chap, sec, ref, versionsToShow, textsMap, opts) {
   const copyBtn = opts.copyHandler
     ? `<button type="button" class="btn-copy-inline" onclick="event.preventDefault();event.stopPropagation();${opts.copyHandler}" title="複製目前所有勾選的經文（未勾選則依目前查詢範圍）">📋 複製</button>`
     : '';
-  return `<div class="verse-group" data-bid="${bid}" data-chap="${chap}" data-sec="${sec}"><div class="verse-header"><span class="verse-ref-title">${ref} ${links}</span><div class="verse-read-pick" onclick="event.stopPropagation()"><a class="fhl-com-link" href="#" onclick="event.preventDefault();openNoteModal(${bid},${chap},${sec},'${ref}')" title="筆記與標記">📝 筆記</a>${copyBtn}<label class="verse-read-check"><span class="verse-read-check-label">勾選複製經文</span><input type="checkbox" class="read-pick-cb" aria-label="勾選複製經文"></label></div></div><div class="verse-translations ${parallelClass}">${trs}</div>${noteHtml}</div>`;
+  return `<div class="verse-group" data-bid="${bid}" data-chap="${chap}" data-sec="${sec}"><div class="verse-header"><span class="verse-ref-title">${ref}</span><div class="verse-read-pick" onclick="event.stopPropagation()">${links}<a class="fhl-com-link" href="#" onclick="event.preventDefault();openNoteModal(${bid},${chap},${sec},'${ref}')" title="筆記與標記">📝 筆記</a>${copyBtn}<label class="verse-read-check"><span class="verse-read-check-label">勾選複製經文</span><input type="checkbox" class="read-pick-cb" aria-label="勾選複製經文"></label></div></div><div class="verse-translations ${parallelClass}">${trs}</div>${noteHtml}</div>`;
 }
 
 function fetchVerses() {
@@ -2282,6 +2557,11 @@ function switchTab(name) {
 
 // ====== 筆記列表頁 ======
 let _notesColorFilter = '';
+let _notesTypeFilter = '';   // '' = 全部、'__none__' = 未分類、其他 = NOTE_TYPES.id
+let _notesTagFilter = '';    // '' = 不過濾；其他 = 標籤名
+let _notesStatusFilter = ''; // 僅當 effectiveType==='prayer' / 'question' 時生效
+let _notesView = 'list';     // 'list' / 'timeline' / 'prayer' / 'question'
+
 function setNotesColorFilter(c) {
   _notesColorFilter = c;
   document.querySelectorAll('#panel-notes .notes-color-chip').forEach(el => {
@@ -2289,9 +2569,165 @@ function setNotesColorFilter(c) {
   });
   renderNotesList();
 }
+function setNotesTypeFilter(t) {
+  _notesTypeFilter = (_notesTypeFilter === t) ? '' : t;
+  _notesStatusFilter = ''; // 切換類型時清掉狀態篩選
+  renderNotesList();
+}
+function setNotesTagFilter(tag) {
+  _notesTagFilter = (_notesTagFilter === tag) ? '' : tag;
+  renderNotesList();
+}
+function setNotesStatusFilter(st) {
+  _notesStatusFilter = (_notesStatusFilter === st) ? '' : st;
+  renderNotesList();
+}
+function setNotesView(v) {
+  _notesView = v;
+  // 切到禱告牆／問題清單時清掉狀態次篩選（避免「禱告·已解答」這種荒謬組合殘留）
+  _notesStatusFilter = '';
+  // 切到禱告牆/問題清單時，把手動的類型篩選清掉（由視圖決定）
+  if (v === 'prayer' || v === 'question') _notesTypeFilter = '';
+  renderNotesList();
+}
 
 function escapeHtmlForNotes(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function fmtDateShort(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function fmtYearMonth(ts) {
+  if (!ts) return '（無日期）';
+  const d = new Date(ts);
+  return `${d.getFullYear()} 年 ${d.getMonth()+1} 月`;
+}
+function daysSince(ts) {
+  if (!ts) return 0;
+  return Math.max(0, Math.floor((Date.now() - ts) / (1000*60*60*24)));
+}
+function daysBetween(a, b) {
+  if (!a || !b) return 0;
+  return Math.max(0, Math.floor((b - a) / (1000*60*60*24)));
+}
+
+function computeNotesStats(allEntries) {
+  const stats = {
+    total: allEntries.length,
+    devotion: 0, action: 0, sermon: 0,
+    prayer: 0, prayerOpen: 0, prayerAnswered: 0, prayerPaused: 0,
+    question: 0, questionOpen: 0, questionResolved: 0,
+    tagsTotal: 0
+  };
+  const tagSet = new Set();
+  for (const e of allEntries) {
+    if (e.type === 'devotion') stats.devotion++;
+    else if (e.type === 'action') stats.action++;
+    else if (e.type === 'sermon') stats.sermon++;
+    else if (e.type === 'prayer') {
+      stats.prayer++;
+      const st = e.prayerStatus || 'open';
+      if (st === 'answered') stats.prayerAnswered++;
+      else if (st === 'paused') stats.prayerPaused++;
+      else stats.prayerOpen++;
+    } else if (e.type === 'question') {
+      stats.question++;
+      const st = e.questionStatus || 'open';
+      if (st === 'resolved') stats.questionResolved++;
+      else stats.questionOpen++;
+    }
+    e.tags.forEach(t => tagSet.add(t));
+  }
+  stats.tagsTotal = tagSet.size;
+  return stats;
+}
+
+function renderNotesStats(stats) {
+  const box = document.getElementById('notes-stats');
+  if (!box) return;
+  if (!stats || stats.total === 0) { box.innerHTML = ''; return; }
+  const items = [`<span class="notes-stats-item">總計 <b>${stats.total}</b></span>`];
+  if (stats.prayerOpen)     items.push(`<span class="notes-stats-item s-prayer" title="持續禱告中">🙏 持續 <b>${stats.prayerOpen}</b></span>`);
+  if (stats.prayerAnswered) items.push(`<span class="notes-stats-item s-answered" title="已蒙應允">✅ 應允 <b>${stats.prayerAnswered}</b></span>`);
+  if (stats.questionOpen)   items.push(`<span class="notes-stats-item s-question" title="未解問題">❓ 未解 <b>${stats.questionOpen}</b></span>`);
+  if (stats.devotion)       items.push(`<span class="notes-stats-item" title="默想">💡 <b>${stats.devotion}</b></span>`);
+  if (stats.action)         items.push(`<span class="notes-stats-item" title="應用">✅ <b>${stats.action}</b></span>`);
+  if (stats.sermon)         items.push(`<span class="notes-stats-item" title="講道">📜 <b>${stats.sermon}</b></span>`);
+  if (stats.tagsTotal)      items.push(`<span class="notes-stats-item" title="不同標籤數">🏷 <b>${stats.tagsTotal}</b></span>`);
+  box.innerHTML = items.join('');
+}
+
+function renderNoteCardHtml(e, opts) {
+  opts = opts || {};
+  const ref = `${e.book.chinesef} ${e.chap}:${e.sec}`;
+  const refEsc = ref.replace(/'/g, "\\'");
+  const colorDot = e.color
+    ? `<div class="note-list-color" style="background-color:${e.color};"></div>`
+    : '<div class="note-list-color" style="background:transparent;border-style:dashed;"></div>';
+  const noteHtml = e.note
+    ? escapeHtmlForNotes(e.note).replace(/\n/g, '<br>')
+    : '<span style="color:var(--text2);font-style:italic;">（僅標記顏色，無文字筆記）</span>';
+
+  const typeChip = (e.type && NOTE_TYPE_MAP[e.type] && !opts.hideTypeChip)
+    ? `<span class="note-list-type">${NOTE_TYPE_MAP[e.type].icon} ${NOTE_TYPE_MAP[e.type].label}</span>`
+    : '';
+
+  // 狀態徽章
+  let statusChip = '';
+  let waitChip = '';
+  if (e.type === 'prayer') {
+    const st = e.prayerStatus || 'open';
+    if (st === 'answered') {
+      const dateStr = e.prayerAnsweredAt ? fmtDateShort(e.prayerAnsweredAt) : '';
+      statusChip = `<span class="note-list-status s-answered">✅ 已蒙應允${dateStr?' · '+dateStr:''}</span>`;
+      if (opts.showWait && e.createdAt && e.prayerAnsweredAt) {
+        const d = daysBetween(e.createdAt, e.prayerAnsweredAt);
+        if (d > 0) waitChip = `<span class="note-list-wait" title="從建立到蒙應允">等候了 ${d} 天</span>`;
+      }
+    } else if (st === 'paused') {
+      statusChip = `<span class="note-list-status s-paused">⏸ 暫停</span>`;
+    } else {
+      statusChip = `<span class="note-list-status s-open">⏳ 持續中</span>`;
+      if (opts.showWait && e.createdAt) {
+        const d = daysSince(e.createdAt);
+        waitChip = `<span class="note-list-wait" title="從建立至今">等候 ${d} 天</span>`;
+      }
+    }
+  } else if (e.type === 'question') {
+    const st = e.questionStatus || 'open';
+    statusChip = (st === 'resolved')
+      ? `<span class="note-list-status s-resolved">✅ 已解答</span>`
+      : `<span class="note-list-status s-open">❔ 未解答</span>`;
+  }
+
+  const tagChips = e.tags.map(t => {
+    const safe = escapeHtmlForNotes(t);
+    const isActive = _notesTagFilter === t;
+    return `<span class="note-list-tag${isActive?' active':''}" onclick="setNotesTagFilter('${t.replace(/'/g, "\\'")}')">#${safe}</span>`;
+  }).join('');
+  const dateLabel = e.updatedAt
+    ? `<span class="note-list-date" title="最後修改">${fmtDateShort(e.updatedAt)}</span>`
+    : '';
+  const metaHtml = (typeChip || statusChip || waitChip || tagChips || dateLabel)
+    ? `<div class="note-list-meta">${typeChip}${statusChip}${waitChip}${tagChips}${dateLabel}</div>`
+    : '';
+
+  return `<div class="note-list-item">
+    ${colorDot}
+    <div class="note-list-main">
+      <div class="note-list-ref"><span class="note-list-ref-link" onclick="goToVerse(${e.bid},${e.chap},${e.sec})" title="開啟此節閱讀">${ref}</span></div>
+      <div class="note-list-text">${noteHtml}</div>
+      ${metaHtml}
+    </div>
+    <div class="note-list-actions">
+      <button class="btn btn-sm" onclick="openNoteModal(${e.bid},${e.chap},${e.sec},'${refEsc}')">編輯</button>
+      <button class="btn btn-sm btn-secondary" onclick="deleteNoteEntry(${e.bid},${e.chap},${e.sec})">刪除</button>
+    </div>
+  </div>`;
 }
 
 function renderNotesList() {
@@ -2300,55 +2736,202 @@ function renderNotesList() {
   const qInp = document.getElementById('notes-search-input');
   const q = qInp ? qInp.value.trim().toLowerCase() : '';
 
-  const entries = Object.entries(userData)
-    .filter(([k, d]) => d && ((d.note && String(d.note).trim()) || d.color))
+  const allEntries = Object.entries(userData)
+    .filter(([k, d]) => d && ((d.note && String(d.note).trim()) || d.color || d.type || (Array.isArray(d.tags) && d.tags.length)))
     .map(([k, d]) => {
       const [bid, chap, sec] = k.split('-').map(Number);
       const book = BOOKS.find(b => b.bid === bid);
-      return { k, bid, chap, sec, book, note: d.note || '', color: d.color || '' };
+      return {
+        k, bid, chap, sec, book,
+        note: d.note || '', color: d.color || '',
+        type: d.type || '',
+        tags: Array.isArray(d.tags) ? d.tags : [],
+        createdAt: d.createdAt || 0,
+        updatedAt: d.updatedAt || 0,
+        prayerStatus: d.prayerStatus || '',
+        prayerAnsweredAt: d.prayerAnsweredAt || 0,
+        prayerAnswerNote: d.prayerAnswerNote || '',
+        questionStatus: d.questionStatus || '',
+        questionAnswer: d.questionAnswer || ''
+      };
     })
-    .filter(e => e.book)
+    .filter(e => e.book);
+
+  // 視圖切換 chip 狀態
+  document.querySelectorAll('#notes-view-chips .notes-view-chip').forEach(el => {
+    el.classList.toggle('selected', el.dataset.view === _notesView);
+    if (!el._bound) {
+      el.addEventListener('click', () => setNotesView(el.dataset.view));
+      el._bound = true;
+    }
+  });
+
+  // 統計面板（永遠用全量資料計算）
+  const stats = computeNotesStats(allEntries);
+  renderNotesStats(stats);
+
+  // 視圖隱含的類型限制
+  const viewType = (_notesView === 'prayer') ? 'prayer'
+                 : (_notesView === 'question') ? 'question' : '';
+  const effectiveType = viewType || _notesTypeFilter;
+
+  // 算所有標籤的次數（在套類型/顏色篩選之前算，方便看到全集）
+  const tagCount = {};
+  allEntries.forEach(e => e.tags.forEach(t => { tagCount[t] = (tagCount[t]||0) + 1; }));
+
+  const entries = allEntries
     .filter(e => !_notesColorFilter || e.color === _notesColorFilter)
+    .filter(e => {
+      if (!effectiveType) return true;
+      if (effectiveType === '__none__') return !e.type;
+      return e.type === effectiveType;
+    })
+    .filter(e => !_notesTagFilter || e.tags.includes(_notesTagFilter))
+    .filter(e => {
+      if (!_notesStatusFilter) return true;
+      if (effectiveType === 'prayer') return (e.prayerStatus || 'open') === _notesStatusFilter;
+      if (effectiveType === 'question') return (e.questionStatus || 'open') === _notesStatusFilter;
+      return true;
+    })
     .filter(e => {
       if (!q) return true;
       const ref = `${e.book.chinesef} ${e.book.chineses} ${e.chap}:${e.sec}`.toLowerCase();
-      return ref.includes(q) || e.note.toLowerCase().includes(q);
-    })
-    .sort((a, b) => a.bid - b.bid || a.chap - b.chap || a.sec - b.sec);
+      const tagJoin = e.tags.join(' ').toLowerCase();
+      const extra = (e.prayerAnswerNote + ' ' + e.questionAnswer).toLowerCase();
+      return ref.includes(q) || e.note.toLowerCase().includes(q) || tagJoin.includes(q) || extra.includes(q);
+    });
+
+  // 渲染類型篩選列（禱告牆/問題清單視圖時隱藏）
+  const typeBox = document.getElementById('notes-type-filter');
+  if (typeBox) {
+    if (viewType) {
+      typeBox.innerHTML = ''; typeBox.style.display = 'none';
+    } else {
+      typeBox.style.display = '';
+      const typeChips = [
+        `<span class="notes-filter-chip${_notesTypeFilter===''?' selected':''}" data-tf="">全部</span>`,
+        ...NOTE_TYPES.map(t =>
+          `<span class="notes-filter-chip${_notesTypeFilter===t.id?' selected':''}" data-tf="${t.id}">${t.icon} ${t.label}</span>`
+        ),
+        `<span class="notes-filter-chip${_notesTypeFilter==='__none__'?' selected':''}" data-tf="__none__">未分類</span>`
+      ];
+      typeBox.innerHTML = `<span class="notes-filter-label">類型：</span>${typeChips.join('')}`;
+      typeBox.querySelectorAll('.notes-filter-chip').forEach(el => {
+        el.addEventListener('click', () => setNotesTypeFilter(el.dataset.tf));
+      });
+    }
+  }
+
+  // 渲染狀態次篩選列（依 effectiveType 而非 _notesTypeFilter，禱告牆/問題清單也要顯示）
+  const statusBox = document.getElementById('notes-status-filter');
+  if (statusBox) {
+    let items = null;
+    if (effectiveType === 'prayer') {
+      items = [['', '全部'], ['open', '⏳ 持續中'], ['answered', '✅ 已蒙應允'], ['paused', '⏸ 暫停']];
+    } else if (effectiveType === 'question') {
+      items = [['', '全部'], ['open', '❔ 未解答'], ['resolved', '✅ 已解答']];
+    }
+    if (items) {
+      statusBox.innerHTML = `<span class="notes-filter-label">狀態：</span>` +
+        items.map(([v,label]) =>
+          `<span class="notes-filter-chip${(_notesStatusFilter===v||(v===''&&!_notesStatusFilter))?' selected':''}" data-st="${v}">${label}</span>`
+        ).join('');
+      statusBox.querySelectorAll('.notes-filter-chip').forEach(el => {
+        el.addEventListener('click', () => {
+          _notesStatusFilter = el.dataset.st;
+          renderNotesList();
+        });
+      });
+    } else {
+      statusBox.innerHTML = '';
+    }
+  }
+
+  // 渲染標籤篩選列（只列出存在於資料中的標籤）
+  const tagBox = document.getElementById('notes-tag-filter');
+  if (tagBox) {
+    const tagNames = Object.keys(tagCount).sort((a,b) => tagCount[b]-tagCount[a] || a.localeCompare(b));
+    if (tagNames.length === 0) {
+      tagBox.innerHTML = '';
+    } else {
+      const chips = tagNames.map(t =>
+        `<span class="notes-filter-chip${_notesTagFilter===t?' selected':''}" data-tag="${escapeHtmlForNotes(t)}">#${escapeHtmlForNotes(t)} <span style="opacity:0.6;font-weight:400;">${tagCount[t]}</span></span>`
+      );
+      tagBox.innerHTML = `<span class="notes-filter-label">標籤：</span>${chips.join('')}`;
+      tagBox.querySelectorAll('.notes-filter-chip').forEach(el => {
+        el.addEventListener('click', () => setNotesTagFilter(el.dataset.tag));
+      });
+    }
+  }
 
   const countEl = document.getElementById('notes-count');
   if (countEl) countEl.textContent = `共 ${entries.length} 筆`;
 
   if (entries.length === 0) {
-    const total = Object.keys(userData).length;
-    const msg = total === 0
-      ? '尚未建立任何筆記'
-      : '沒有符合條件的筆記';
-    div.innerHTML = `<div class="empty-state"><div class="icon">📝</div><p>${msg}</p><p style="font-size:0.8rem;">在閱讀／搜尋／快速查詢中點「📝 筆記」即可新增</p></div>`;
+    const totalAll = allEntries.length;
+    let msg;
+    if (totalAll === 0) {
+      msg = '尚未建立任何筆記';
+    } else if (_notesView === 'prayer') {
+      msg = '還沒有禱告類型的筆記';
+    } else if (_notesView === 'question') {
+      msg = '還沒有問題類型的筆記';
+    } else {
+      msg = '沒有符合條件的筆記';
+    }
+    const hint = (_notesView === 'prayer')
+      ? '在筆記內把類型選為「🙏 禱告」即可加入禱告牆'
+      : (_notesView === 'question')
+      ? '在筆記內把類型選為「❓ 問題」即可加入問題清單'
+      : '在閱讀／搜尋／快速查詢中點「📝 筆記」即可新增';
+    div.innerHTML = `<div class="empty-state"><div class="icon">📝</div><p>${msg}</p><p style="font-size:0.8rem;">${hint}</p></div>`;
     return;
   }
 
-  div.innerHTML = '<div class="note-list">' + entries.map(e => {
-    const ref = `${e.book.chinesef} ${e.chap}:${e.sec}`;
-    const refEsc = ref.replace(/'/g, "\\'");
-    const colorDot = e.color
-      ? `<div class="note-list-color" style="background-color:${e.color};"></div>`
-      : '<div class="note-list-color" style="background:transparent;border-style:dashed;"></div>';
-    const noteHtml = e.note
-      ? escapeHtmlForNotes(e.note).replace(/\n/g, '<br>')
-      : '<span style="color:var(--text2);font-style:italic;">（僅標記顏色，無文字筆記）</span>';
-    return `<div class="note-list-item">
-      ${colorDot}
-      <div class="note-list-main">
-        <div class="note-list-ref"><span class="note-list-ref-link" onclick="goToVerse(${e.bid},${e.chap},${e.sec})" title="開啟此節閱讀">${ref}</span></div>
-        <div class="note-list-text">${noteHtml}</div>
-      </div>
-      <div class="note-list-actions">
-        <button class="btn btn-sm" onclick="openNoteModal(${e.bid},${e.chap},${e.sec},'${refEsc}')">編輯</button>
-        <button class="btn btn-sm btn-secondary" onclick="deleteNoteEntry(${e.bid},${e.chap},${e.sec})">刪除</button>
-      </div>
-    </div>`;
-  }).join('') + '</div>';
+  // 視圖排序與分組
+  if (_notesView === 'prayer') {
+    // 持續中(等候最久優先) → 暫停(等候最久優先) → 已蒙應允(最近應允優先)
+    const order = { open: 0, paused: 1, answered: 2 };
+    entries.sort((a, b) => {
+      const sa = a.prayerStatus || 'open', sb = b.prayerStatus || 'open';
+      if (sa !== sb) return order[sa] - order[sb];
+      if (sa === 'answered') return (b.prayerAnsweredAt||0) - (a.prayerAnsweredAt||0);
+      return (a.createdAt||0) - (b.createdAt||0); // 越早建立越上面
+    });
+    div.innerHTML = '<div class="note-list">' +
+      entries.map(e => renderNoteCardHtml(e, { showWait:true, hideTypeChip:true })).join('') +
+      '</div>';
+  } else if (_notesView === 'question') {
+    const order = { open: 0, resolved: 1 };
+    entries.sort((a, b) => {
+      const sa = a.questionStatus || 'open', sb = b.questionStatus || 'open';
+      if (sa !== sb) return order[sa] - order[sb];
+      return (b.updatedAt||0) - (a.updatedAt||0);
+    });
+    div.innerHTML = '<div class="note-list">' +
+      entries.map(e => renderNoteCardHtml(e, { hideTypeChip:true })).join('') +
+      '</div>';
+  } else if (_notesView === 'timeline') {
+    // 依 updatedAt 倒序，依年-月分組
+    entries.sort((a, b) => (b.updatedAt||0) - (a.updatedAt||0));
+    let lastGroup = null;
+    const parts = [];
+    entries.forEach(e => {
+      const g = e.updatedAt ? fmtYearMonth(e.updatedAt) : '（無日期）';
+      if (g !== lastGroup) {
+        parts.push(`<div class="timeline-group-header">📅 ${g}</div>`);
+        lastGroup = g;
+      }
+      parts.push(renderNoteCardHtml(e));
+    });
+    div.innerHTML = '<div class="note-list">' + parts.join('') + '</div>';
+  } else {
+    // list（預設）：按書卷順序
+    entries.sort((a, b) => a.bid - b.bid || a.chap - b.chap || a.sec - b.sec);
+    div.innerHTML = '<div class="note-list">' +
+      entries.map(e => renderNoteCardHtml(e)).join('') +
+      '</div>';
+  }
 }
 
 function deleteNoteEntry(bid, chap, sec) {
@@ -2401,7 +2984,37 @@ function triggerQuickHistory(val) {
 }
 
 const USER_DATA_KEY = 'bible-user-data';
+// 筆記類型（單選）。空字串 = 未分類。
+const NOTE_TYPES = [
+  { id: 'devotion', label: '默想', icon: '💡' },
+  { id: 'prayer',   label: '禱告', icon: '🙏' },
+  { id: 'question', label: '問題', icon: '❓' },
+  { id: 'action',   label: '應用', icon: '✅' },
+  { id: 'sermon',   label: '講道', icon: '📜' }
+];
+const NOTE_TYPE_MAP = NOTE_TYPES.reduce((m,t) => (m[t.id]=t, m), {});
+
+// 舊資料（只有 note/color）惰性升級為 v3：補 type/tags/createdAt/updatedAt 預設值。
+// 安全：寫過一次後 dirty=false 不再寫；對已升級資料是 no-op。
+function migrateUserDataLazy() {
+  if (!userData || typeof userData !== 'object') { userData = {}; return; }
+  let dirty = false;
+  const now = Date.now();
+  for (const k of Object.keys(userData)) {
+    const d = userData[k];
+    if (!d || typeof d !== 'object') continue;
+    if (typeof d.type !== 'string')         { d.type = ''; dirty = true; }
+    if (!Array.isArray(d.tags))             { d.tags = []; dirty = true; }
+    if (typeof d.createdAt !== 'number')    { d.createdAt = now; dirty = true; }
+    if (typeof d.updatedAt !== 'number')    { d.updatedAt = d.createdAt || now; dirty = true; }
+  }
+  if (dirty) {
+    try { localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData)); } catch(e) {}
+  }
+}
+
 let userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
+migrateUserDataLazy();
 let currentNoteRef = null;
 
 function saveUserData() {
@@ -2418,15 +3031,158 @@ function toggleNoteFullscreen() {
   try { localStorage.setItem(NOTE_FS_KEY, isFs ? '1' : '0'); } catch(e) {}
 }
 
+// ====== 筆記 modal：類型 chips ＋ 標籤 ======
+let currentNoteType = '';
+let currentNoteTags = [];
+let currentPrayerStatus = '';     // '' | 'open' | 'answered' | 'paused'
+let currentQuestionStatus = '';   // '' | 'open' | 'resolved'
+
+function renderNoteTypePicker() {
+  const box = document.getElementById('note-type-picker');
+  if (!box) return;
+  box.innerHTML = NOTE_TYPES.map(t =>
+    `<span class="note-type-chip${t.id===currentNoteType?' selected':''}" data-type-id="${t.id}">${t.icon} ${t.label}</span>`
+  ).join('');
+  box.querySelectorAll('.note-type-chip').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.typeId;
+      currentNoteType = (currentNoteType === id) ? '' : id;
+      renderNoteTypePicker();
+      refreshTypeBlockVisibility();
+    });
+  });
+}
+
+function refreshTypeBlockVisibility() {
+  const pBlock = document.getElementById('note-block-prayer');
+  const qBlock = document.getElementById('note-block-question');
+  if (pBlock) pBlock.classList.toggle('show', currentNoteType === 'prayer');
+  if (qBlock) qBlock.classList.toggle('show', currentNoteType === 'question');
+  // 第一次切到 prayer 時，若還沒設過狀態，預設「持續中」
+  if (currentNoteType === 'prayer' && !currentPrayerStatus) {
+    currentPrayerStatus = 'open';
+    renderPrayerStatus();
+  }
+  if (currentNoteType === 'question' && !currentQuestionStatus) {
+    currentQuestionStatus = 'open';
+    renderQuestionStatus();
+  }
+}
+
+function renderPrayerStatus() {
+  const row = document.getElementById('note-prayer-status');
+  if (!row) return;
+  row.querySelectorAll('.note-status-chip').forEach(el => {
+    const st = el.dataset.st;
+    el.classList.toggle('selected', st === currentPrayerStatus);
+    el.classList.toggle('status-answered', st === 'answered');
+    el.classList.toggle('status-paused', st === 'paused');
+  });
+  const dateRow = document.getElementById('note-prayer-answered-row');
+  if (dateRow) dateRow.style.display = (currentPrayerStatus === 'answered') ? 'flex' : 'none';
+}
+
+function renderQuestionStatus() {
+  const row = document.getElementById('note-question-status');
+  if (!row) return;
+  row.querySelectorAll('.note-status-chip').forEach(el => {
+    const st = el.dataset.st;
+    el.classList.toggle('selected', st === currentQuestionStatus);
+    el.classList.toggle('status-resolved', st === 'resolved');
+  });
+}
+
+function tsToYmd(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function ymdToTs(ymd) {
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return 0;
+  const [y,m,dd] = ymd.split('-').map(Number);
+  return new Date(y, m-1, dd, 12, 0, 0, 0).getTime(); // 中午避免時區邊界
+}
+function todayYmd() { return tsToYmd(Date.now()); }
+
+function renderNoteTagsCurrent() {
+  const box = document.getElementById('note-tags-current');
+  if (!box) return;
+  box.innerHTML = currentNoteTags.map((t, i) =>
+    `<span class="note-tag-chip">#${escapeHtmlForNotes(t)}<span class="tag-x" data-idx="${i}">✕</span></span>`
+  ).join('');
+  box.querySelectorAll('.tag-x').forEach(el => {
+    el.addEventListener('click', () => {
+      const i = parseInt(el.dataset.idx, 10);
+      currentNoteTags.splice(i, 1);
+      renderNoteTagsCurrent();
+    });
+  });
+}
+
+function commitTagInput() {
+  const inp = document.getElementById('note-tags-input');
+  if (!inp) return;
+  const raw = inp.value;
+  const parts = raw.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+  for (const p of parts) {
+    const tag = p.replace(/^#/, '').slice(0, 24);
+    if (tag && !currentNoteTags.includes(tag)) currentNoteTags.push(tag);
+  }
+  inp.value = '';
+  renderNoteTagsCurrent();
+}
+
+function fmtTs(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function openNoteModal(bid, chap, sec, refName) {
   currentNoteRef = {bid, chap, sec};
   document.getElementById('note-modal-ref').textContent = refName;
   const k = `${bid}-${chap}-${sec}`;
-  const d = userData[k] || {note:'', color:''};
+  const d = userData[k] || {note:'', color:'', type:'', tags:[]};
   document.getElementById('note-text').value = d.note || '';
   document.querySelectorAll('#note-color-picker .color-btn').forEach(b => {
     b.classList.toggle('selected', b.dataset.color === (d.color || ''));
   });
+  currentNoteType = (typeof d.type === 'string') ? d.type : '';
+  currentNoteTags = Array.isArray(d.tags) ? d.tags.slice() : [];
+  renderNoteTypePicker();
+  renderNoteTagsCurrent();
+  const tagInp = document.getElementById('note-tags-input');
+  if (tagInp) tagInp.value = '';
+
+  // 還原禱告／問題狀態欄位
+  currentPrayerStatus = (typeof d.prayerStatus === 'string') ? d.prayerStatus : '';
+  currentQuestionStatus = (typeof d.questionStatus === 'string') ? d.questionStatus : '';
+  const pDate = document.getElementById('note-prayer-answered-date');
+  const pAns = document.getElementById('note-prayer-answer-note');
+  const qAns = document.getElementById('note-question-answer');
+  if (pDate) pDate.value = d.prayerAnsweredAt ? tsToYmd(d.prayerAnsweredAt) : '';
+  if (pAns) pAns.value = d.prayerAnswerNote || '';
+  if (qAns) qAns.value = d.questionAnswer || '';
+  renderPrayerStatus();
+  renderQuestionStatus();
+  refreshTypeBlockVisibility();
+
+  // 顯示建立／更新時間（已存在時才顯示）
+  const datesBox = document.getElementById('note-meta-dates');
+  if (datesBox) {
+    if (d.createdAt || d.updatedAt) {
+      const parts = [];
+      if (d.createdAt) parts.push(`<span>建立：<b>${fmtTs(d.createdAt)}</b></span>`);
+      if (d.updatedAt && d.updatedAt !== d.createdAt) parts.push(`<span>更新：<b>${fmtTs(d.updatedAt)}</b></span>`);
+      datesBox.innerHTML = parts.join('');
+      datesBox.hidden = parts.length === 0;
+    } else {
+      datesBox.hidden = true;
+    }
+  }
+
   // 還原使用者上次的全螢幕偏好（PC）
   const modal = document.querySelector('#note-modal .note-modal');
   let wantFs = false;
@@ -2440,23 +3196,66 @@ function openNoteModal(bid, chap, sec, refName) {
 function closeNoteModal() {
   document.getElementById('note-modal').style.display = 'none';
   currentNoteRef = null;
+  currentNoteType = '';
+  currentNoteTags = [];
+  currentPrayerStatus = '';
+  currentQuestionStatus = '';
 }
 
 function saveNote() {
   if(!currentNoteRef) return;
   const k = `${currentNoteRef.bid}-${currentNoteRef.chap}-${currentNoteRef.sec}`;
+  // 先把使用者尚未按 Enter 的標籤輸入吃掉
+  commitTagInput();
   const text = document.getElementById('note-text').value.trim();
   const colorEl = document.querySelector('#note-color-picker .color-btn.selected');
   const color = colorEl ? colorEl.dataset.color : '';
-  
-  if(!text && !color) {
+  const type = currentNoteType || '';
+  const tags = currentNoteTags.slice();
+
+  // 收集類型專屬欄位（只在當下 type 對應時才寫；切到別的 type 會自動拋掉）
+  let prayerStatus, prayerAnsweredAt, prayerAnswerNote;
+  if (type === 'prayer') {
+    prayerStatus = currentPrayerStatus || 'open';
+    if (prayerStatus === 'answered') {
+      const dateEl = document.getElementById('note-prayer-answered-date');
+      const ymd = dateEl ? dateEl.value : '';
+      prayerAnsweredAt = ymd ? ymdToTs(ymd) : Date.now();
+    }
+    const ansEl = document.getElementById('note-prayer-answer-note');
+    if (ansEl && ansEl.value.trim()) prayerAnswerNote = ansEl.value.trim();
+  }
+  let questionStatus, questionAnswer;
+  if (type === 'question') {
+    questionStatus = currentQuestionStatus || 'open';
+    const ansEl = document.getElementById('note-question-answer');
+    if (ansEl && ansEl.value.trim()) questionAnswer = ansEl.value.trim();
+  }
+
+  const isEmpty = !text && !color && !type && tags.length === 0;
+  if (isEmpty) {
     delete userData[k];
   } else {
-    userData[k] = { note: text, color: color };
+    const prev = userData[k] || {};
+    const now = Date.now();
+    const entry = {
+      note: text,
+      color: color,
+      type: type,
+      tags: tags,
+      createdAt: typeof prev.createdAt === 'number' ? prev.createdAt : now,
+      updatedAt: now
+    };
+    if (prayerStatus !== undefined) entry.prayerStatus = prayerStatus;
+    if (prayerAnsweredAt !== undefined) entry.prayerAnsweredAt = prayerAnsweredAt;
+    if (prayerAnswerNote !== undefined) entry.prayerAnswerNote = prayerAnswerNote;
+    if (questionStatus !== undefined) entry.questionStatus = questionStatus;
+    if (questionAnswer !== undefined) entry.questionAnswer = questionAnswer;
+    userData[k] = entry;
   }
   saveUserData();
   closeNoteModal();
-  
+
   const activeTab = document.querySelector('.tab.active');
   if(activeTab) {
     const tabName = activeTab.getAttribute('data-tab');
@@ -2473,6 +3272,51 @@ document.querySelectorAll('#note-color-picker .color-btn').forEach(btn => {
     btn.classList.add('selected');
   });
 });
+
+// 禱告／問題狀態 chips 點擊綁定（靜態 HTML，綁一次即可）
+(function bindStatusChips(){
+  const pRow = document.getElementById('note-prayer-status');
+  if (pRow) {
+    pRow.querySelectorAll('.note-status-chip').forEach(el => {
+      el.addEventListener('click', () => {
+        currentPrayerStatus = el.dataset.st;
+        // 切到「已蒙應允」時若日期欄位空白則自動填今天
+        if (currentPrayerStatus === 'answered') {
+          const dateEl = document.getElementById('note-prayer-answered-date');
+          if (dateEl && !dateEl.value) dateEl.value = todayYmd();
+        }
+        renderPrayerStatus();
+      });
+    });
+  }
+  const qRow = document.getElementById('note-question-status');
+  if (qRow) {
+    qRow.querySelectorAll('.note-status-chip').forEach(el => {
+      el.addEventListener('click', () => {
+        currentQuestionStatus = el.dataset.st;
+        renderQuestionStatus();
+      });
+    });
+  }
+})();
+
+// 標籤輸入：Enter 或逗號送出
+(function bindTagInput(){
+  const inp = document.getElementById('note-tags-input');
+  if (!inp) return;
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ',' || e.key === '，') {
+      e.preventDefault();
+      commitTagInput();
+    } else if (e.key === 'Backspace' && inp.value === '' && currentNoteTags.length) {
+      currentNoteTags.pop();
+      renderNoteTagsCurrent();
+    }
+  });
+  inp.addEventListener('blur', () => {
+    if (inp.value.trim()) commitTagInput();
+  });
+})();
 
 // ====== 備份提醒 ======
 const BACKUP_TIME_KEY = 'bible-last-backup-time';
@@ -2560,6 +3404,7 @@ function importUserData(e) {
       if(data.userData) {
         localStorage.setItem(USER_DATA_KEY, data.userData);
         userData = JSON.parse(data.userData);
+        migrateUserDataLazy();
       }
       try { localStorage.setItem(BACKUP_TIME_KEY, Date.now().toString()); } catch(e2) {}
       toast('匯入成功');
@@ -2650,6 +3495,7 @@ function restoreLocalSnapshot(idx) {
   if (snap.historyQuick) localStorage.setItem('bible-quick-history', snap.historyQuick);
   if (snap.versionOrder && snap.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, snap.versionOrder);
   userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
+  migrateUserDataLazy();
   loadVersionOrder();
   initVersionToggles();
   renderVersionOrderList();
@@ -2900,7 +3746,7 @@ function openSyncConfirm(opts) {
 
 function buildCloudPayload() {
   return JSON.stringify({
-    schema: 2,
+    schema: 3,
     timestamp: Date.now(),
     noteCount: getNoteCount(),
     userData: localStorage.getItem(USER_DATA_KEY) || '{}',
@@ -3008,6 +3854,7 @@ async function cloudRestore() {
     if (payload.versionOrder && payload.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, payload.versionOrder);
 
     userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
+    migrateUserDataLazy();
     loadVersionOrder();
     initVersionToggles();
     renderVersionOrderList();
