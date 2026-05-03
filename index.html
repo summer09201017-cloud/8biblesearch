@@ -1382,16 +1382,64 @@ body {
   </div>
 
   <div id="panel-settings" class="panel">
+
+    <!-- 1. 譯本顯示順序 -->
     <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
-      <h3>☁️ 雲端同步 (Google Drive)</h3>
+      <h3>🔄 譯本顯示順序</h3>
+      <p style="font-size:0.9rem;color:var(--text2);margin-bottom:14px;">
+        調整下列順序後，查詢／搜尋／快速查詢結果及複製文字都會依此排列。<br>
+        <span style="font-size:0.8rem;">電腦：可拖曳「☰」重新排列；手機：使用 ↑ ↓ 按鈕。</span>
+      </p>
+      <div id="version-order-list" class="version-order-list"></div>
+      <button class="btn btn-secondary btn-sm" onclick="resetVersionOrder()" style="margin-top:14px;">↺ 還原預設順序</button>
+    </div>
+
+    <!-- 2. 備份您的筆記（建議！）— 永遠可用、離線優先 -->
+    <div class="settings-card-primary" style="background:var(--card); padding:20px; border-radius:12px; border:2px solid var(--accent); margin-bottom:16px; box-shadow:0 2px 8px var(--shadow);">
+      <h3>💾 備份您的筆記（建議！）</h3>
+      <p style="font-size:0.9rem;color:var(--text2);margin-bottom:6px;">
+        定期把資料匯出成 JSON 檔（可傳 LINE / Email 給自己，或存雲端硬碟）。
+        <b style="color:var(--accent);">換手機、清瀏覽器資料時，這個檔案就是您的救命錢。</b>
+      </p>
+      <p id="last-export-hint" style="font-size:0.8rem;color:var(--text2);margin-bottom:14px;" hidden>
+        🕐 上次匯出：<b id="last-export-when"></b>
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-query-large" onclick="exportUserData()" style="background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;border-color:#27ae60;">📤 匯出資料 (JSON)</button>
+        <label class="btn btn-secondary" style="cursor:pointer; margin:0;">
+          📥 匯入資料 (JSON)
+          <input type="file" id="import-file" style="display:none;" accept=".json" onchange="importUserData(event)">
+        </label>
+      </div>
+      <p style="font-size:0.78rem;color:var(--text2);margin-top:10px;">
+        💡 換新手機？把 .json 傳到新手機（LINE / Email 給自己即可），打開 App 點「匯入資料」即可還原。
+      </p>
+    </div>
+
+    <!-- 3. 匯出筆記（人類可讀格式） -->
+    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
+      <h3>📝 匯出筆記（給人看的格式）</h3>
+      <p style="font-size:0.9rem;color:var(--text2);margin-bottom:16px;">適合分享、貼到 Notion / Obsidian / Word，或印成紙本。</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn" onclick="exportNotesMarkdown()" title="產生 Markdown 文字，可複製或下載 .md 檔">📋 匯出 Markdown</button>
+        <button class="btn btn-secondary" onclick="exportNotesPrint()" title="開新視窗顯示排版好的筆記，可直接列印或瀏覽器另存 PDF">🖨 列印 / 另存 PDF</button>
+      </div>
+      <p style="font-size:0.78rem;color:var(--text2);margin-top:10px;">
+        Markdown 適合貼到 Notion / Obsidian / 講道筆記；列印頁可用 <code>Ctrl+P</code>（Mac 為 <code>⌘+P</code>）「另存為 PDF」獲得最佳中文 PDF。
+      </p>
+    </div>
+
+    <!-- 4. 雲端自動同步（選用、放最後） -->
+    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
+      <h3>☁️ 跨裝置自動同步 <span style="font-size:0.75rem;font-weight:400;color:var(--text2);">（選用）</span></h3>
       <p style="font-size:0.9rem;color:var(--text2);margin-bottom:14px;">
         登入 Google 帳號後，可手動將筆記、標記、歷史備份到您 Drive 的 App 隱藏資料夾，並在其他裝置還原。<br>
         <span style="font-size:0.8rem;">這個資料夾<b>只有本 App 看得到</b>，不會干擾您 Drive 中的其他檔案。</span>
       </p>
 
       <div id="sync-not-configured" class="sync-not-configured" hidden>
-        雲端同步尚未啟用。<br>
-        請依 <code>GOOGLE_DRIVE_SETUP.md</code> 在 Google Cloud Console 建立 OAuth Client ID，並填入 <code>index.html</code> 內的 <code>GOOGLE_CLIENT_ID</code> 常數。
+        <b>☁️ 雲端同步功能尚未啟用</b><br>
+        <span style="font-size:0.85rem;">這是 App 維運者的設定（一次性）。在啟用之前，您可以使用上方<b style="color:var(--accent);">「📤 匯出資料 (JSON)」</b>備份；換手機時把檔案傳過去再「📥 匯入資料」即可，免登入、免設定，幾秒完成。</span>
       </div>
 
       <div id="sync-signed-out" hidden>
@@ -1419,37 +1467,6 @@ body {
       </details>
     </div>
 
-    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
-      <h3>譯本顯示順序</h3>
-      <p style="font-size:0.9rem;color:var(--text2);margin-bottom:14px;">
-        調整下列順序後，查詢／搜尋／快速查詢結果及複製文字都會依此排列。<br>
-        <span style="font-size:0.8rem;">電腦：可拖曳「☰」重新排列；手機：使用 ↑ ↓ 按鈕。</span>
-      </p>
-      <div id="version-order-list" class="version-order-list"></div>
-      <button class="btn btn-secondary btn-sm" onclick="resetVersionOrder()" style="margin-top:14px;">↺ 還原預設順序</button>
-    </div>
-    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
-      <h3>資料管理 (筆記/螢光筆/歷史)</h3>
-      <p style="font-size:0.9rem;color:var(--text2);margin-bottom:16px;">匯出您的所有筆記、標記與歷史紀錄，以便在其他裝置上匯入使用。</p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <button class="btn" onclick="exportUserData()">匯出資料 (JSON)</button>
-        <label class="btn btn-secondary" style="cursor:pointer; margin:0;">
-          匯入資料 (JSON)
-          <input type="file" id="import-file" style="display:none;" accept=".json" onchange="importUserData(event)">
-        </label>
-      </div>
-    </div>
-    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border);">
-      <h3>📝 匯出筆記（給人看的格式）</h3>
-      <p style="font-size:0.9rem;color:var(--text2);margin-bottom:16px;">JSON 格式適合備份/還原，下方兩種格式適合分享、貼到 Notion/Obsidian/Word，或印成紙本。</p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <button class="btn" onclick="exportNotesMarkdown()" title="產生 Markdown 文字，可複製或下載 .md 檔">📋 匯出 Markdown</button>
-        <button class="btn btn-secondary" onclick="exportNotesPrint()" title="開新視窗顯示排版好的筆記，可直接列印或瀏覽器另存 PDF">🖨 列印 / 另存 PDF</button>
-      </div>
-      <p style="font-size:0.78rem;color:var(--text2);margin-top:10px;">
-        Markdown 適合貼到 Notion / Obsidian / 講道筆記；列印頁可用 <code>Ctrl+P</code>（Mac 為 <code>⌘+P</code>）「另存為 PDF」獲得最佳中文 PDF。
-      </p>
-    </div>
   </div>
 
 </div>
@@ -2934,6 +2951,7 @@ function switchTab(name) {
     renderVersionOrderList();
     updateSyncUi();
     renderSnapshotList();
+    refreshLastExportHint();
   }
 }
 
@@ -4207,6 +4225,24 @@ function exportUserData() {
   try { localStorage.setItem(BACKUP_TIME_KEY, Date.now().toString()); } catch(e) {}
   toast('已匯出備份檔');
   checkBackupReminder();
+  refreshLastExportHint();
+}
+
+function refreshLastExportHint() {
+  const hint = document.getElementById('last-export-hint');
+  const when = document.getElementById('last-export-when');
+  if (!hint || !when) return;
+  let lastTs = 0;
+  try { lastTs = parseInt(localStorage.getItem(BACKUP_TIME_KEY), 10) || 0; } catch(e) {}
+  if (!lastTs) { hint.hidden = true; return; }
+  const days = Math.floor((Date.now() - lastTs) / (1000*60*60*24));
+  let label;
+  if (days <= 0) label = '今天';
+  else if (days === 1) label = '昨天';
+  else if (days < 30) label = `${days} 天前`;
+  else label = fmtDateShort(lastTs);
+  when.textContent = `${label}（${fmtDateShort(lastTs)}）`;
+  hint.hidden = false;
 }
 
 function importUserData(e) {
