@@ -416,21 +416,27 @@ body {
 }
 .search-actions-label { font-size:0.8rem; color:var(--text2); font-weight:600; margin-right:4px; }
 .search-result-item {
-  display:flex; gap:12px; align-items:flex-start;
+  display:flex; gap:0; align-items:flex-start;
   padding:14px 16px; background:var(--card); border-radius:10px;
   border:1px solid var(--border); margin-bottom:10px; transition:all 0.2s;
 }
 .search-result-item:hover { border-color:var(--accent); box-shadow:0 2px 12px var(--shadow); }
-.search-result-check { flex-shrink:0; padding-top:4px; cursor:pointer; }
+.search-result-check {
+  flex-shrink:0; cursor:pointer;
+  display:inline-flex; align-items:center; margin-left:6px;
+}
 .search-result-check input.search-pick-cb {
-  width:26px; height:26px; min-width:26px; min-height:26px;
+  width:18px; height:18px; min-width:18px; min-height:18px;
   cursor:pointer; accent-color:#c0392b;
 }
 .search-actions-footer { margin-top:16px; margin-bottom:0; }
 .btn-search-pick-copy {
   background:linear-gradient(135deg,#c0392b,#e74c3c) !important;
   color:#fff !important; border:none !important;
-  padding:10px 20px !important; font-size:0.95rem !important; font-weight:700 !important;
+  padding:6px 14px !important; font-size:0.85rem !important; font-weight:700 !important;
+}
+.btn-read-copy-large.btn-search-pick-copy {
+  padding:12px 32px !important; font-size:1.08rem !important;
 }
 .btn-search-pick-copy:hover { filter:brightness(1.06); box-shadow:0 4px 14px rgba(192,57,43,0.35) !important; transform:translateY(-1px); }
 .read-copy-footer {
@@ -442,7 +448,15 @@ body {
   padding:12px 32px !important; font-size:1.08rem !important;
 }
 .search-result-main { flex:1; min-width:0; }
-.search-ref { font-weight:700; color:var(--accent); font-size:0.9rem; margin-bottom:4px; }
+.search-ref {
+  font-weight:700; color:var(--accent); font-size:0.9rem; margin-bottom:4px;
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+}
+.search-ref .search-ref-link { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.search-ref .verse-comment-link,
+.search-ref .fhl-com-link,
+.search-ref .btn-copy-inline,
+.search-ref .search-result-check { flex-shrink:0; }
 .search-ref-link {
   color:var(--accent); text-decoration:underline; cursor:pointer;
   text-decoration-thickness:1px; text-underline-offset:2px;
@@ -2698,9 +2712,8 @@ function doSearch() {
       const refStr = `${v.bookName} ${v.chap}:${v.sec}`;
       
       return `<div class="search-result-item" data-idx="${idx}">
-        <label class="search-result-check" onclick="event.stopPropagation()"><input type="checkbox" class="search-pick-cb" aria-label="選取此節"></label>
         <div class="search-result-main">
-        <div class="search-ref"><span class="search-ref-link" onclick="goToVerse(${v.bid},${v.chap},${v.sec})" title="開啟此章閱讀此節">${refStr}</span> ${srLinks} <a class="fhl-com-link" href="#" onclick="event.preventDefault();event.stopPropagation();openNoteModal(${v.bid},${v.chap},${v.sec},'${refStr}')" title="筆記與標記">📝 筆記</a><button type="button" class="btn-copy-inline" onclick="event.preventDefault();event.stopPropagation();copyPickedSearchVerses()" title="複製目前所有勾選的經文">📋 複製</button></div>${trs}${noteHtml}</div></div>`;
+        <div class="search-ref"><span class="search-ref-link" onclick="goToVerse(${v.bid},${v.chap},${v.sec})" title="開啟此章閱讀此節">${refStr}</span>${srLinks}<a class="fhl-com-link" href="#" onclick="event.preventDefault();event.stopPropagation();openNoteModal(${v.bid},${v.chap},${v.sec},'${refStr}')" title="筆記與標記">📝 筆記</a><button type="button" class="btn-copy-inline" onclick="event.preventDefault();event.stopPropagation();copyPickedSearchVerses()" title="複製目前所有勾選的經文">📋 複製</button><label class="search-result-check" onclick="event.stopPropagation()" title="勾選此節（用於批次複製/分享）"><input type="checkbox" class="search-pick-cb" aria-label="選取此節"></label></div>${trs}${noteHtml}</div></div>`;
     }).join('');
 
     div.innerHTML = statsHtml + html + searchActionsFooterHtml();
