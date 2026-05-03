@@ -348,6 +348,17 @@ body {
 .continuous-toggle:has(input:checked) {
   background:var(--tag-bg); color:var(--accent); border-color:var(--accent);
 }
+/* 放大版（與查詢按鈕並排時） */
+.continuous-toggle-large {
+  padding:10px 16px; font-size:1rem; gap:7px;
+  border-width:2px;
+}
+.continuous-toggle-large input[type="checkbox"] {
+  width:18px; height:18px;
+}
+.btn.btn-query-large {
+  padding:10px 22px; font-size:1rem; font-weight:700;
+}
 /* 連讀分隔線 */
 .continuous-divider {
   margin:24px 0 12px; padding:8px 14px;
@@ -1192,13 +1203,13 @@ body {
       <div class="selector-group"><label>章</label><select id="sel-chap" onchange="onChapChange()"></select></div>
       <div class="selector-group"><label>起始節</label><select id="sel-sec-start" onchange="fetchVerses()"></select></div>
       <div class="selector-group"><label>結束節</label><select id="sel-sec-end" onchange="fetchVerses()"></select></div>
-      <button class="btn" onclick="fetchVerses()">查詢</button>
+      <button class="btn btn-query-large" onclick="fetchVerses()">查詢</button>
+      <label class="continuous-toggle continuous-toggle-large" title="開啟後讀到章末會自動接上下一章">
+        <input type="checkbox" id="continuous-read-cb" onchange="setContinuousRead(this.checked)"> 📖 連讀
+      </label>
       <button type="button" class="btn btn-read-copy-top" id="btn-copy-read" onclick="copyReadSelection()" title="有勾選經節時只複製勾選；未勾選則依起始／結束節（或全章）">複製所選經文</button>
       <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
       <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(false)">取消全選</button>
-      <label class="continuous-toggle" title="開啟後讀到章末會自動接上下一章">
-        <input type="checkbox" id="continuous-read-cb" onchange="setContinuousRead(this.checked)"> 📖 連讀
-      </label>
     </div>
     <div class="version-toggles" id="version-toggles"></div>
     <div class="chapter-nav" id="chap-nav-top" style="display:none;">
