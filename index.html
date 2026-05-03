@@ -359,6 +359,21 @@ body {
 .btn.btn-query-large {
   padding:10px 22px; font-size:1rem; font-weight:700;
 }
+/* 並排／堆疊 layout chips */
+.layout-toggle {
+  display:inline-flex; gap:0; align-items:center;
+  border:1px solid var(--border); border-radius:8px;
+  background:var(--bg2); padding:2px;
+}
+.layout-toggle .layout-chip {
+  padding:5px 10px; font-size:0.78rem; font-weight:700;
+  color:var(--text2); cursor:pointer; border-radius:6px;
+  user-select:none; transition:all 0.15s;
+}
+.layout-toggle .layout-chip:hover { color:var(--accent); }
+.layout-toggle .layout-chip.active {
+  background:var(--accent); color:#fff;
+}
 /* 連讀分隔線 */
 .continuous-divider {
   margin:24px 0 12px; padding:8px 14px;
@@ -987,14 +1002,16 @@ body {
   .quick-input { flex-direction:column; }
   .tab { padding:9px 8px; font-size:0.82rem; }
 }
-@media (min-width:900px) {
-  .verse-translations.parallel-mode {
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-  }
-  .verse-translations.parallel-mode .verse-translation {
-    border-bottom:none; border-right:1px solid #f0ebe0;
-  }
-  .verse-translations.parallel-mode .verse-translation:last-child { border-right:none; }
+.verse-translations.parallel-mode {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+}
+.verse-translations.parallel-mode .verse-translation {
+  border-bottom:none; border-right:1px solid #f0ebe0;
+  flex-direction:column; gap:4px;
+}
+.verse-translations.parallel-mode .verse-translation:last-child { border-right:none; }
+@media (max-width:600px) {
+  .verse-translations.parallel-mode { grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); }
 }
 /* ===== 字體大小列（在標題右側，隨 sticky header 固定、永遠浮在最上層） ===== */
 .font-size-bar {
@@ -1207,6 +1224,11 @@ body {
       <label class="continuous-toggle continuous-toggle-large" title="開啟後讀到章末會自動接上下一章">
         <input type="checkbox" id="continuous-read-cb" onchange="setContinuousRead(this.checked)"> 📖 連讀
       </label>
+      <div class="layout-toggle" id="layout-toggle" title="多譯本顯示方式：自動（桌機並排）／強制堆疊／強制並排">
+        <span class="layout-chip" data-layout="auto">自動</span>
+        <span class="layout-chip" data-layout="stacked">⇅ 堆疊</span>
+        <span class="layout-chip" data-layout="parallel">⇆ 並排</span>
+      </div>
       <button type="button" class="btn btn-read-copy-top" id="btn-copy-read" onclick="copyReadSelection()" title="有勾選經節時只複製勾選；未勾選則依起始／結束節（或全章）">複製所選經文</button>
       <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
       <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(false)">取消全選</button>
@@ -2255,7 +2277,7 @@ function bindVersionOrderDrag() {
 function renderVerseGroup(bid, chap, sec, ref, versionsToShow, textsMap, opts) {
   opts = opts || {};
   const ordered = sortedVers(versionsToShow);
-  const parallelClass = ordered.length > 1 && window.innerWidth >= 900 ? 'parallel-mode' : '';
+  const parallelClass = shouldUseParallel(ordered.length) ? 'parallel-mode' : '';
   const k = `${bid}-${chap}-${sec}`;
   const d = userData[k] || {};
   const bgColor = d.color ? `background-color:${d.color};` : '';
@@ -2293,6 +2315,42 @@ function loadLastRead() {
     if (!BOOKS.find(b => b.bid === o.bid)) return null;
     return o;
   } catch(e) { return null; }
+}
+
+// ====== 多譯本排版（並排／堆疊）======
+const LAYOUT_MODE_KEY = 'bible-layout-mode';
+let _layoutMode = 'auto'; // 'auto' | 'stacked' | 'parallel'
+
+function loadLayoutModePref() {
+  try {
+    const v = localStorage.getItem(LAYOUT_MODE_KEY);
+    if (v === 'stacked' || v === 'parallel' || v === 'auto') _layoutMode = v;
+  } catch(e) {}
+  refreshLayoutChips();
+}
+function refreshLayoutChips() {
+  document.querySelectorAll('#layout-toggle .layout-chip').forEach(el => {
+    el.classList.toggle('active', el.dataset.layout === _layoutMode);
+  });
+}
+function setLayoutMode(mode) {
+  if (mode !== 'auto' && mode !== 'stacked' && mode !== 'parallel') return;
+  _layoutMode = mode;
+  try { localStorage.setItem(LAYOUT_MODE_KEY, mode); } catch(e) {}
+  refreshLayoutChips();
+  // 重新渲染目前閱讀內容（同時清掉連讀已 append 的章節，避免新舊樣式混合）
+  const div = document.getElementById('results-read');
+  if (div) {
+    div.querySelectorAll('.continuous-divider, .continuous-end, .verse-group[data-continuous="1"]').forEach(el => el.remove());
+  }
+  if (typeof fetchVerses === 'function') fetchVerses();
+}
+function shouldUseParallel(versionCount) {
+  if (versionCount < 2) return false;
+  if (_layoutMode === 'parallel') return true;
+  if (_layoutMode === 'stacked') return false;
+  // auto：桌機才並排
+  return window.innerWidth >= 900;
 }
 
 // ====== 連讀模式 ======
@@ -4237,6 +4295,10 @@ loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
 loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
 
 loadContinuousReadPref();
+loadLayoutModePref();
+document.querySelectorAll('#layout-toggle .layout-chip').forEach(el => {
+  el.addEventListener('click', () => setLayoutMode(el.dataset.layout));
+});
 
 loadLocalData().then(() => {
   // 「繼續閱讀」：若有上次紀錄則還原，否則用預設（約翰福音 3:16-17）
