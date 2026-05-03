@@ -100,9 +100,10 @@
 
 /* ===== 主題切換 chip ===== */
 .theme-bar {
-  display:inline-flex; align-items:center; gap:4px;
-  padding:3px 6px; background:rgba(0,0,0,0.2);
-  border:1px solid rgba(255,255,255,0.1); border-radius:8px;
+  display:inline-flex; align-items:center; gap:6px;
+  margin-top:8px; padding:5px 12px;
+  background:rgba(0,0,0,0.22);
+  border:1px solid rgba(240,216,144,0.18); border-radius:10px;
 }
 .theme-bar-label { font-size:0.7rem; color:#f0d890; font-weight:700; margin-right:2px; }
 .theme-chip {
@@ -814,13 +815,6 @@ body {
         <button type="button" class="fs-btn" onclick="adjustFontSize(2)" aria-label="放大字體">A+</button>
         <span id="fs-label" class="fs-bar-value">16px</span>
       </div>
-      <div class="theme-bar" role="group" aria-label="主題切換">
-        <span class="theme-bar-label">主題</span>
-        <button type="button" class="theme-chip" data-theme-set="paper" onclick="setTheme('paper')" title="米紙（預設）" aria-label="米紙">📄</button>
-        <button type="button" class="theme-chip" data-theme-set="sepia" onclick="setTheme('sepia')" title="印刷棕（護眼）" aria-label="印刷棕">📜</button>
-        <button type="button" class="theme-chip" data-theme-set="dark" onclick="setTheme('dark')" title="深色（夜間）" aria-label="深色">🌙</button>
-        <button type="button" class="theme-chip" data-theme-set="black" onclick="setTheme('black')" title="純黑（OLED 省電）" aria-label="純黑">⬛</button>
-      </div>
       <div class="app-header-actions">
         <button type="button" class="btn-install" id="btn-install-pwa" hidden>📲 安裝 App</button>
       </div>
@@ -831,6 +825,13 @@ body {
 <div class="app-brand">
   <h1>多譯本聖經查詢</h1>
   <div class="subtitle">Multi-Version Bible Reader</div>
+  <div class="theme-bar" role="group" aria-label="主題切換">
+    <span class="theme-bar-label">主題</span>
+    <button type="button" class="theme-chip" data-theme-set="paper" onclick="setTheme('paper')" title="米紙（預設）" aria-label="米紙">📄</button>
+    <button type="button" class="theme-chip" data-theme-set="sepia" onclick="setTheme('sepia')" title="印刷棕（護眼）" aria-label="印刷棕">📜</button>
+    <button type="button" class="theme-chip" data-theme-set="dark" onclick="setTheme('dark')" title="深色（夜間）" aria-label="深色">🌙</button>
+    <button type="button" class="theme-chip" data-theme-set="black" onclick="setTheme('black')" title="純黑（OLED 省電）" aria-label="純黑">⬛</button>
+  </div>
   <p class="ios-install-hint" id="ios-install-hint">iPhone／iPad：請用 Safari 開啟本頁，點 <b>分享</b> → <b>加入主畫面</b>，即可像 App 使用。</p>
 </div>
 
