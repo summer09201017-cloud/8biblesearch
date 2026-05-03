@@ -442,6 +442,61 @@ body {
   border-radius:10px; border:1px solid #f5c6cb; margin-bottom:12px;
 }
 
+/* ===== 雲端同步 (Google Drive) ===== */
+.sync-not-configured {
+  background:#fff8e1; border:1px solid #ffd54f; padding:12px;
+  border-radius:8px; font-size:0.85rem; color:#5c3d1a; line-height:1.6;
+}
+.sync-not-configured code {
+  background:#fff; padding:2px 6px; border-radius:4px; font-size:0.85em;
+  border:1px solid #ffd54f;
+}
+.sync-account-row {
+  font-size:0.88rem; margin-bottom:12px;
+  display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+}
+.sync-account-email { font-weight:700; color:var(--accent); word-break:break-all; }
+.sync-buttons-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+.sync-status { font-size:0.82rem; color:var(--text2); min-height:1.2em; margin-top:8px; }
+.sync-status.error { color:#c0392b; }
+.sync-status.success { color:#27ae60; }
+.snapshot-list { margin-top:8px; display:flex; flex-direction:column; gap:6px; }
+.snapshot-item {
+  display:flex; gap:10px; align-items:center; padding:8px 10px;
+  background:var(--bg2); border:1px solid var(--border); border-radius:6px;
+  font-size:0.82rem; flex-wrap:wrap;
+}
+.snapshot-item-info { flex:1; min-width:0; }
+.snapshot-item-time { font-weight:700; }
+.snapshot-item-meta { color:var(--text2); font-size:0.78rem; }
+
+/* 同步確認對話框 */
+.sync-confirm-row {
+  display:flex; gap:14px; align-items:stretch;
+  margin:14px 0; padding:12px;
+  background:var(--bg2); border-radius:8px; border:1px solid var(--border);
+}
+.sync-confirm-side {
+  flex:1; text-align:center; padding:10px;
+  background:var(--card); border-radius:6px; border:1px solid var(--border);
+}
+.sync-confirm-side-label { font-size:0.85rem; font-weight:700; margin-bottom:4px; }
+.sync-confirm-side-count { font-size:1.5rem; font-weight:700; color:var(--accent); margin:4px 0; }
+.sync-confirm-side-time { font-size:0.78rem; color:var(--text2); }
+.sync-confirm-vs { display:flex; align-items:center; font-weight:700; color:var(--text2); }
+.sync-confirm-warning {
+  padding:10px 12px; background:#fdf0ef; border:1px solid #f5c6cb;
+  border-radius:6px; color:#c0392b; font-size:0.88rem; margin:8px 0;
+}
+.btn-warning {
+  background:linear-gradient(135deg,#c0392b,#e74c3c) !important;
+  color:#fff !important; border:none !important;
+}
+@media (max-width:600px) {
+  .sync-confirm-row { flex-direction:column; gap:8px; }
+  .sync-confirm-vs { justify-content:center; }
+}
+
 /* ===== 譯本排序設定 ===== */
 .version-order-list { display:flex; flex-direction:column; gap:6px; }
 .version-order-item {
@@ -809,6 +864,43 @@ body {
 
   <div id="panel-settings" class="panel">
     <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
+      <h3>☁️ 雲端同步 (Google Drive)</h3>
+      <p style="font-size:0.9rem;color:var(--text2);margin-bottom:14px;">
+        登入 Google 帳號後，可手動將筆記、標記、歷史備份到您 Drive 的 App 隱藏資料夾，並在其他裝置還原。<br>
+        <span style="font-size:0.8rem;">這個資料夾<b>只有本 App 看得到</b>，不會干擾您 Drive 中的其他檔案。</span>
+      </p>
+
+      <div id="sync-not-configured" class="sync-not-configured" hidden>
+        雲端同步尚未啟用。<br>
+        請依 <code>GOOGLE_DRIVE_SETUP.md</code> 在 Google Cloud Console 建立 OAuth Client ID，並填入 <code>index.html</code> 內的 <code>GOOGLE_CLIENT_ID</code> 常數。
+      </div>
+
+      <div id="sync-signed-out" hidden>
+        <button class="btn" onclick="gisSignIn()">🔗 連結 Google 帳號</button>
+      </div>
+
+      <div id="sync-signed-in" hidden>
+        <div class="sync-account-row">
+          已連結：<span class="sync-account-email" id="sync-user-email">-</span>
+          <button class="btn btn-sm btn-secondary" onclick="gisSignOut()">登出</button>
+        </div>
+        <div class="sync-buttons-row">
+          <button class="btn" onclick="cloudUpload()">☁️ 備份到 Google Drive</button>
+          <button class="btn btn-secondary" onclick="cloudRestore()">📥 從 Google Drive 還原</button>
+        </div>
+        <div id="sync-status" class="sync-status"></div>
+      </div>
+
+      <details style="margin-top:14px; font-size:0.88rem;">
+        <summary style="cursor:pointer; color:var(--accent); font-weight:600;">🛟 進階：本地備份快照（萬一同步出問題可從這裡還原）</summary>
+        <p style="margin-top:8px; color:var(--text2); font-size:0.82rem;">
+          每次雲端備份／還原前，系統會自動將當下本地資料留存一份快照（最多保留 3 份）。
+        </p>
+        <div id="snapshot-list" class="snapshot-list"></div>
+      </details>
+    </div>
+
+    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
       <h3>譯本顯示順序</h3>
       <p style="font-size:0.9rem;color:var(--text2);margin-bottom:14px;">
         調整下列順序後，查詢／搜尋／快速查詢結果及複製文字都會依此排列。<br>
@@ -830,6 +922,19 @@ body {
     </div>
   </div>
 
+</div>
+
+<div id="sync-confirm-modal" class="note-modal-overlay">
+  <div class="note-modal" style="max-width:520px;">
+    <div class="note-modal-header">
+      <h3 id="sync-confirm-title">確認同步方向</h3>
+    </div>
+    <div id="sync-confirm-detail"></div>
+    <div class="note-modal-footer">
+      <button class="btn btn-secondary" id="sync-confirm-cancel">取消</button>
+      <button class="btn" id="sync-confirm-action">繼續</button>
+    </div>
+  </div>
 </div>
 
 <div id="note-modal" class="note-modal-overlay">
@@ -2015,7 +2120,11 @@ function switchTab(name) {
   document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
   document.getElementById(`panel-${name}`).classList.add('active');
   if (name === 'notes') renderNotesList();
-  else if (name === 'settings') renderVersionOrderList();
+  else if (name === 'settings') {
+    renderVersionOrderList();
+    updateSyncUi();
+    renderSnapshotList();
+  }
 }
 
 // ====== 筆記列表頁 ======
@@ -2316,12 +2425,463 @@ function importUserData(e) {
   e.target.value = '';
 }
 
+// ========== ☁️ 雲端同步 (Google Drive) ==========
+//
+// 設定步驟詳見專案根目錄的 GOOGLE_DRIVE_SETUP.md
+// 沒有設定 GOOGLE_CLIENT_ID 時，UI 會顯示「尚未啟用」訊息，不會影響其他功能
+const GOOGLE_CLIENT_ID = '';
+const DRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.appdata profile email openid';
+const CLOUD_FILES = ['bible_backup_a.json','bible_backup_b.json','bible_backup_c.json'];
+const LOCAL_SNAPSHOTS_KEY = 'bible-local-snapshots';
+const SNAPSHOT_MAX = 3;
+
+let gisTokenClient = null;
+let gisAccessToken = null;
+let gisAccessTokenExpiry = 0;
+let gisUserEmail = '';
+
+// 保險絲 1：寫入前先把當下本地資料留存快照（最多 3 份）
+function snapshotLocal(reason) {
+  let arr = [];
+  try { arr = JSON.parse(localStorage.getItem(LOCAL_SNAPSHOTS_KEY) || '[]'); } catch(e) { arr = []; }
+  arr.unshift({
+    timestamp: Date.now(),
+    reason: reason || '備份',
+    userData: localStorage.getItem(USER_DATA_KEY) || '{}',
+    historySearch: localStorage.getItem('bible-search-history') || '[]',
+    historyQuick: localStorage.getItem('bible-quick-history') || '[]',
+    versionOrder: localStorage.getItem(VERSION_ORDER_KEY) || 'null'
+  });
+  arr = arr.slice(0, SNAPSHOT_MAX);
+  try { localStorage.setItem(LOCAL_SNAPSHOTS_KEY, JSON.stringify(arr)); } catch(e) {
+    // localStorage 滿了：丟掉最舊的再試
+    try { localStorage.setItem(LOCAL_SNAPSHOTS_KEY, JSON.stringify(arr.slice(0, 1))); } catch(e2) {}
+  }
+}
+
+function getLocalSnapshots() {
+  try { return JSON.parse(localStorage.getItem(LOCAL_SNAPSHOTS_KEY) || '[]'); } catch(e) { return []; }
+}
+
+function renderSnapshotList() {
+  const c = document.getElementById('snapshot-list');
+  if (!c) return;
+  const arr = getLocalSnapshots();
+  if (arr.length === 0) {
+    c.innerHTML = '<div style="color:var(--text2); font-style:italic; font-size:0.82rem;">（目前沒有快照）</div>';
+    return;
+  }
+  c.innerHTML = arr.map((snap, i) => {
+    let ud = {};
+    try { ud = JSON.parse(snap.userData); } catch(e) {}
+    const noteCount = Object.keys(ud).filter(k => ud[k] && ((ud[k].note && String(ud[k].note).trim()) || ud[k].color)).length;
+    const date = new Date(snap.timestamp).toLocaleString('zh-TW');
+    return `<div class="snapshot-item">
+      <div class="snapshot-item-info">
+        <span class="snapshot-item-time">${date}</span>
+        <span class="snapshot-item-meta">｜${snap.reason} ｜ ${noteCount} 筆筆記</span>
+      </div>
+      <button class="btn btn-sm btn-secondary" onclick="restoreLocalSnapshot(${i})">還原</button>
+    </div>`;
+  }).join('');
+}
+
+function restoreLocalSnapshot(idx) {
+  const arr = getLocalSnapshots();
+  const snap = arr[idx];
+  if (!snap) return;
+  if (!confirm('確定還原此快照？目前的本地資料會被覆寫（系統會先建立另一份快照保留現況）。')) return;
+  snapshotLocal('還原快照前自動快照');
+  if (snap.userData) localStorage.setItem(USER_DATA_KEY, snap.userData);
+  if (snap.historySearch) localStorage.setItem('bible-search-history', snap.historySearch);
+  if (snap.historyQuick) localStorage.setItem('bible-quick-history', snap.historyQuick);
+  if (snap.versionOrder && snap.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, snap.versionOrder);
+  userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
+  loadVersionOrder();
+  initVersionToggles();
+  renderVersionOrderList();
+  loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
+  loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
+  refreshActivePanelByOrder();
+  renderSnapshotList();
+  toast('已還原本地快照');
+}
+
+// ---- GIS / OAuth ----
+async function ensureGisLoaded() {
+  if (window.google && window.google.accounts && window.google.accounts.oauth2) return;
+  await new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-gis="1"]');
+    if (existing) {
+      if (window.google && window.google.accounts) return resolve();
+      existing.addEventListener('load', resolve);
+      existing.addEventListener('error', reject);
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true; s.defer = true;
+    s.dataset.gis = '1';
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+function setSyncStatus(msg, kind) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  el.className = 'sync-status' + (kind ? ' ' + kind : '');
+  el.textContent = msg || '';
+}
+
+function updateSyncUi() {
+  const notCfg = document.getElementById('sync-not-configured');
+  const sOut = document.getElementById('sync-signed-out');
+  const sIn = document.getElementById('sync-signed-in');
+  const emailEl = document.getElementById('sync-user-email');
+  if (!notCfg || !sOut || !sIn) return;
+  if (!GOOGLE_CLIENT_ID) {
+    notCfg.hidden = false;
+    sOut.hidden = true;
+    sIn.hidden = true;
+    return;
+  }
+  notCfg.hidden = true;
+  if (gisAccessToken && Date.now() < gisAccessTokenExpiry) {
+    sOut.hidden = true;
+    sIn.hidden = false;
+    if (emailEl) emailEl.textContent = gisUserEmail || '(已連結)';
+  } else {
+    sOut.hidden = false;
+    sIn.hidden = true;
+  }
+}
+
+async function gisSignIn() {
+  if (!GOOGLE_CLIENT_ID) { toast('尚未設定 Google Client ID'); return; }
+  try {
+    await ensureGisLoaded();
+  } catch(e) {
+    toast('無法載入 Google 登入元件，請檢查網路連線');
+    return;
+  }
+  if (!gisTokenClient) {
+    gisTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: DRIVE_SCOPES,
+      callback: () => {} // 動態指派
+    });
+  }
+  gisTokenClient.callback = async (resp) => {
+    if (resp.error) {
+      toast('登入失敗：' + resp.error);
+      return;
+    }
+    gisAccessToken = resp.access_token;
+    gisAccessTokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
+    try {
+      const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: 'Bearer ' + gisAccessToken }
+      });
+      if (r.ok) {
+        const j = await r.json();
+        gisUserEmail = j.email || '(已連結)';
+      }
+    } catch(e) { gisUserEmail = '(已連結)'; }
+    updateSyncUi();
+    setSyncStatus('已連結 Google 帳號', 'success');
+  };
+  gisTokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+function gisSignOut() {
+  if (gisAccessToken) {
+    try { google.accounts.oauth2.revoke(gisAccessToken, () => {}); } catch(e) {}
+  }
+  gisAccessToken = null;
+  gisAccessTokenExpiry = 0;
+  gisUserEmail = '';
+  updateSyncUi();
+  setSyncStatus('已登出');
+  toast('已登出 Google 帳號');
+}
+
+async function ensureValidToken() {
+  if (gisAccessToken && Date.now() < gisAccessTokenExpiry) return gisAccessToken;
+  if (!gisTokenClient) throw new Error('尚未連結 Google 帳號');
+  return new Promise((resolve, reject) => {
+    gisTokenClient.callback = (resp) => {
+      if (resp.error) { reject(new Error(resp.error)); return; }
+      gisAccessToken = resp.access_token;
+      gisAccessTokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
+      resolve(gisAccessToken);
+    };
+    gisTokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+// ---- Drive API ----
+async function driveListAppDataFiles() {
+  const token = await ensureValidToken();
+  const r = await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name,modifiedTime,size)&pageSize=100', {
+    headers: { Authorization: 'Bearer ' + token }
+  });
+  if (!r.ok) throw new Error('Drive 列表失敗 (' + r.status + ')');
+  const j = await r.json();
+  return j.files || [];
+}
+
+async function driveDownloadFileContent(fileId) {
+  const token = await ensureValidToken();
+  const r = await fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
+    headers: { Authorization: 'Bearer ' + token }
+  });
+  if (!r.ok) throw new Error('Drive 下載失敗 (' + r.status + ')');
+  return r.text();
+}
+
+async function driveUploadFile(fileName, content, existingId) {
+  const token = await ensureValidToken();
+  const metadata = existingId ? {} : { name: fileName, parents: ['appDataFolder'] };
+  const boundary = '-------bible-sync-' + Date.now();
+  const delim = '\r\n--' + boundary + '\r\n';
+  const closeDelim = '\r\n--' + boundary + '--';
+  const body = delim
+    + 'Content-Type: application/json; charset=UTF-8\r\n\r\n'
+    + JSON.stringify(metadata)
+    + delim
+    + 'Content-Type: application/json; charset=UTF-8\r\n\r\n'
+    + content
+    + closeDelim;
+  const url = existingId
+    ? 'https://www.googleapis.com/upload/drive/v3/files/' + existingId + '?uploadType=multipart'
+    : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+  const r = await fetch(url, {
+    method: existingId ? 'PATCH' : 'POST',
+    headers: {
+      Authorization: 'Bearer ' + token,
+      'Content-Type': 'multipart/related; boundary=' + boundary
+    },
+    body
+  });
+  if (!r.ok) {
+    const errText = await r.text().catch(() => '');
+    throw new Error('Drive 上傳失敗 (' + r.status + ') ' + errText);
+  }
+  return r.json();
+}
+
+// 保險絲 2：三份輪替
+async function getCloudSlots() {
+  const files = await driveListAppDataFiles();
+  const byName = {};
+  files.forEach(f => { byName[f.name] = f; });
+  return CLOUD_FILES.map(name => byName[name] || null);
+}
+
+async function getLatestCloudBackup() {
+  const slots = await getCloudSlots();
+  const valid = slots.filter(Boolean).sort(
+    (a, b) => new Date(b.modifiedTime).getTime() - new Date(a.modifiedTime).getTime()
+  );
+  return valid[0] || null;
+}
+
+async function pickSlotForUpload() {
+  const slots = await getCloudSlots();
+  for (let i = 0; i < CLOUD_FILES.length; i++) {
+    if (!slots[i]) return { name: CLOUD_FILES[i], existingId: null };
+  }
+  let oldest = 0;
+  for (let i = 1; i < slots.length; i++) {
+    if (new Date(slots[i].modifiedTime).getTime() < new Date(slots[oldest].modifiedTime).getTime()) oldest = i;
+  }
+  return { name: CLOUD_FILES[oldest], existingId: slots[oldest].id };
+}
+
+// 保險絲 3：差異顯著時要使用者確認方向
+function openSyncConfirm(opts) {
+  return new Promise(resolve => {
+    const modal = document.getElementById('sync-confirm-modal');
+    const titleEl = document.getElementById('sync-confirm-title');
+    const detailEl = document.getElementById('sync-confirm-detail');
+    const actionBtn = document.getElementById('sync-confirm-action');
+    const cancelBtn = document.getElementById('sync-confirm-cancel');
+    if (!modal) return resolve(true);
+
+    titleEl.textContent = opts.title || '確認同步方向';
+    actionBtn.textContent = opts.actionLabel || '繼續';
+    actionBtn.classList.toggle('btn-warning', !!opts.warning);
+
+    const fmtTime = ts => ts ? new Date(parseInt(ts) || ts).toLocaleString('zh-TW') : '從未備份';
+    const localCount = opts.localCount || 0;
+    const cloudCount = opts.cloudCount || 0;
+    detailEl.innerHTML = (opts.message ? '<p style="margin-bottom:8px;">' + opts.message + '</p>' : '')
+      + '<div class="sync-confirm-row">'
+      + '  <div class="sync-confirm-side">'
+      + '    <div class="sync-confirm-side-label">📱 本地</div>'
+      + '    <div class="sync-confirm-side-count">' + localCount + '</div>'
+      + '    <div class="sync-confirm-side-time">筆筆記<br>' + fmtTime(opts.localTime) + '</div>'
+      + '  </div>'
+      + '  <div class="sync-confirm-vs">vs</div>'
+      + '  <div class="sync-confirm-side">'
+      + '    <div class="sync-confirm-side-label">☁️ 雲端</div>'
+      + '    <div class="sync-confirm-side-count">' + cloudCount + '</div>'
+      + '    <div class="sync-confirm-side-time">筆筆記<br>' + fmtTime(opts.cloudTime) + '</div>'
+      + '  </div>'
+      + '</div>'
+      + (opts.warning ? '<div class="sync-confirm-warning">⚠️ 兩邊資料差異較大，請仔細確認方向！</div>' : '');
+
+    modal.style.display = 'flex';
+
+    const cleanup = (ans) => {
+      modal.style.display = 'none';
+      actionBtn.onclick = null;
+      cancelBtn.onclick = null;
+      resolve(ans);
+    };
+    actionBtn.onclick = () => cleanup(true);
+    cancelBtn.onclick = () => cleanup(false);
+  });
+}
+
+function buildCloudPayload() {
+  return JSON.stringify({
+    schema: 2,
+    timestamp: Date.now(),
+    noteCount: getNoteCount(),
+    userData: localStorage.getItem(USER_DATA_KEY) || '{}',
+    historySearch: localStorage.getItem('bible-search-history') || '[]',
+    historyQuick: localStorage.getItem('bible-quick-history') || '[]',
+    versionOrder: localStorage.getItem(VERSION_ORDER_KEY) || 'null'
+  }, null, 2);
+}
+
+async function cloudUpload() {
+  if (!gisAccessToken) { toast('請先連結 Google 帳號'); return; }
+  setSyncStatus('正在比對雲端資料…');
+  try {
+    const localCount = getNoteCount();
+    const localTime = parseInt(localStorage.getItem(BACKUP_TIME_KEY)) || 0;
+
+    let cloudCount = 0, cloudTime = 0, latest = null;
+    try {
+      latest = await getLatestCloudBackup();
+      if (latest) {
+        const c = await driveDownloadFileContent(latest.id);
+        try {
+          const p = JSON.parse(c);
+          cloudCount = p.noteCount || 0;
+          cloudTime = p.timestamp || 0;
+        } catch(e) {}
+      }
+    } catch(e) {
+      console.warn('讀取雲端最新備份失敗：', e.message);
+    }
+
+    // 保險絲 3：雲端比本地多很多時要確認
+    const warning = cloudCount > localCount + 5;
+    const ok = await openSyncConfirm({
+      title: '☁️ 備份到 Google Drive',
+      actionLabel: '確定備份（本地 → 雲端）',
+      localCount, localTime,
+      cloudCount, cloudTime,
+      warning,
+      message: warning
+        ? '<b style="color:#c0392b;">雲端備份的筆記數比本地多。</b>繼續會在雲端輪替槽中新增一份本地版本（舊備份仍會保留）。'
+        : '系統會將本地資料寫入雲端輪替槽（保留最近 3 份歷史）。'
+    });
+    if (!ok) { setSyncStatus('已取消'); return; }
+
+    // 保險絲 1：寫入前先快照本地
+    snapshotLocal('上傳雲端前自動快照');
+
+    // 保險絲 2：選擇空槽或最舊的槽
+    setSyncStatus('正在上傳到 Google Drive…');
+    const slot = await pickSlotForUpload();
+    await driveUploadFile(slot.name, buildCloudPayload(), slot.existingId);
+    try { localStorage.setItem(BACKUP_TIME_KEY, Date.now().toString()); } catch(e) {}
+    checkBackupReminder();
+    renderSnapshotList();
+    setSyncStatus('已備份到 Google Drive（' + slot.name + '）', 'success');
+    toast('已備份到 Google Drive');
+  } catch (e) {
+    console.error(e);
+    setSyncStatus('備份失敗：' + e.message, 'error');
+    toast('備份失敗：' + e.message);
+  }
+}
+
+async function cloudRestore() {
+  if (!gisAccessToken) { toast('請先連結 Google 帳號'); return; }
+  setSyncStatus('正在讀取雲端備份…');
+  try {
+    const latest = await getLatestCloudBackup();
+    if (!latest) {
+      setSyncStatus('雲端尚無任何備份');
+      toast('Google Drive 上沒有備份檔');
+      return;
+    }
+    const content = await driveDownloadFileContent(latest.id);
+    let payload;
+    try { payload = JSON.parse(content); } catch(e) {
+      throw new Error('雲端備份格式錯誤，可能已損毀');
+    }
+    const localCount = getNoteCount();
+    const localTime = parseInt(localStorage.getItem(BACKUP_TIME_KEY)) || 0;
+    const cloudCount = payload.noteCount || 0;
+    const cloudTime = payload.timestamp || 0;
+
+    // 保險絲 3：本地比雲端多很多時要警告
+    const warning = localCount > cloudCount + 5;
+    const ok = await openSyncConfirm({
+      title: '📥 從 Google Drive 還原',
+      actionLabel: '確定還原（雲端 → 本地）',
+      localCount, localTime,
+      cloudCount, cloudTime,
+      warning,
+      message: warning
+        ? '<b style="color:#c0392b;">本地的筆記數比雲端多！</b>還原會將本地資料覆寫成雲端版本（系統會先自動建立本地快照）。'
+        : '系統會將雲端最新備份覆寫到本地（會先自動建立本地快照可還原）。'
+    });
+    if (!ok) { setSyncStatus('已取消'); return; }
+
+    // 保險絲 1：覆寫前先快照本地
+    snapshotLocal('還原雲端前自動快照');
+
+    if (payload.userData) localStorage.setItem(USER_DATA_KEY, payload.userData);
+    if (payload.historySearch) localStorage.setItem('bible-search-history', payload.historySearch);
+    if (payload.historyQuick) localStorage.setItem('bible-quick-history', payload.historyQuick);
+    if (payload.versionOrder && payload.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, payload.versionOrder);
+
+    userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
+    loadVersionOrder();
+    initVersionToggles();
+    renderVersionOrderList();
+    loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
+    loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
+    refreshActivePanelByOrder();
+    renderSnapshotList();
+
+    try { localStorage.setItem(BACKUP_TIME_KEY, Date.now().toString()); } catch(e) {}
+    checkBackupReminder();
+    setSyncStatus('已從 Google Drive 還原（共 ' + cloudCount + ' 筆筆記）', 'success');
+    toast('已從雲端還原');
+  } catch (e) {
+    console.error(e);
+    setSyncStatus('還原失敗：' + e.message, 'error');
+    toast('還原失敗：' + e.message);
+  }
+}
+
 // ========== Init ==========
 loadVersionOrder();
 normalizeActiveVersionOrder();
 initBookSelector();
 initVersionToggles();
 renderVersionOrderList();
+updateSyncUi();
+renderSnapshotList();
 loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
 loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
 
