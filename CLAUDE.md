@@ -35,7 +35,7 @@ For local OAuth/Drive testing, the `http://localhost:8081` origin **must** be ad
 ## Architecture
 
 ### Single-file design
-Everything user-facing lives in `index.html` — CSS, HTML, and ~2400 lines of inline JS. There is no module system. Globals (`bibleData`, `userData`, `activeVersions`, `userVersionOrder`) are intentional. Don't introduce a build step or framework unless explicitly requested.
+Everything user-facing lives in `index.html` — CSS, HTML, and ~2600 lines of inline JS (≈4000 lines total). There is no module system. Globals (`bibleData`, `userData`, `activeVersions`, `userVersionOrder`, `_notesView`, `_notesTypeFilter`, etc.) are intentional. Don't introduce a build step or framework unless explicitly requested.
 
 ### Data shape (`data/<ver>.json`)
 ```
@@ -49,7 +49,7 @@ Read / Search / Quick-lookup all build a `verseMap` keyed by `chap:sec`, then re
 `renderVerseGroup` accepts an optional `opts.copyHandler` string (a JS expression like `'copyReadSelection()'`) — when present, a 📋 button is added to the verse-header. The "read" path passes `copyReadSelection()`; the search path inlines a similar button calling `copyPickedSearchVerses()` directly in its template. Quick-lookup intentionally omits the inline copy button.
 
 ### `verse-header` row layout
-The header is a single `nowrap` flex row: book+chapter ref on the left (truncates with ellipsis if overflowing), then 📖註釋 / 📝筆記 / 📋複製 / ☑勾選 pinned right. Don't let the right-side cluster wrap — on mobile the verse-read-check label is hidden via CSS instead. Any new header action should be `flex-shrink:0` and join this cluster.
+A `flex-wrap:wrap` row: book+chapter ref on the left, then the right-side action cluster `📖註釋 / 📝筆記 / 📋複製 / ☑勾選` (in that order) inside `.verse-read-pick`. On wide screens or short refs both stay on one line; on narrow screens or with long book names (e.g. 撒迦利亞) the cluster wraps to a second line — this is intentional and replaces an earlier `nowrap` design where 📝 筆記 visually overlapped 📖 註釋. Keep all four actions in the right cluster (don't put 📖 註釋 inside `.verse-ref-title` again — `text-overflow:ellipsis` can't truncate `<a>` children, and the layout breaks). On mobile the verse-read-check label is also hidden via CSS to keep the cluster compact.
 
 ### Translation visibility
 - `VERSIONS[].hideInUi: true` (currently WEB) — never appears as a toggle pill or in the order list, but data is still loadable if some other path activates it.
@@ -61,7 +61,7 @@ The header is a single `nowrap` flex row: book+chapter ref on the left (truncate
 ### localStorage keys (all writes are best-effort, wrapped in try/catch)
 | Key | Contents |
 |---|---|
-| `bible-user-data` | `{ "<bid>-<chap>-<sec>": { note, color } }` — notes & highlights |
+| `bible-user-data` | `{ "<bid>-<chap>-<sec>": <NoteEntry> }` — see "Notes data shape" below |
 | `bible-search-history`, `bible-quick-history` | last-10 query string arrays |
 | `bible-version-order` | array of version codes (drag/reorder result) |
 | `bible-verse-px`, `bible-comment-fs` | font-size sliders |
@@ -70,7 +70,47 @@ The header is a single `nowrap` flex row: book+chapter ref on the left (truncate
 | `bible-local-snapshots` | up to 3 pre-sync snapshots (safety fuse #1) |
 | `bible-theme` | `paper` (default) / `sepia` / `dark` / `black` |
 
-The export/import JSON in 設定/資料 includes `userData`, `historySearch`, `historyQuick`, `exportedAt`. The cloud sync payload (schema 2) additionally carries `versionOrder`, `noteCount`, `timestamp`.
+The export/import JSON in 設定/資料 includes `userData`, `historySearch`, `historyQuick`, `exportedAt`. The cloud sync payload (schema 3) additionally carries `versionOrder`, `noteCount`, `timestamp`. Schema bumped 2 → 3 when notes gained type/tags/dates/status fields, but no read-side branching exists — `schema` is just a label, all readers do best-effort field access with fallbacks.
+
+### Notes data shape (`NoteEntry` in `bible-user-data`)
+Each entry keyed by `bid-chap-sec`. Schema is **forward-only and tolerant** — readers must default-coalesce missing fields. Required (since v3):
+
+```js
+{
+  note: '',                    // free text
+  color: '',                   // '' or '#fff3cd'/'#d4edda'/'#f8d7da'/'#d1ecf1'
+  type: '',                    // '' | 'devotion' | 'prayer' | 'question' | 'action' | 'sermon'
+  tags: [],                    // string[]
+  createdAt: 0,                // ms timestamp
+  updatedAt: 0,                // ms timestamp
+  pinnedAt: 0,                 // ms timestamp; 0 / absent = 未釘選；釘選永遠置頂於每個視圖
+  // optional, only present when type matches:
+  prayerStatus: 'open',        // 'open' | 'answered' | 'paused'  (only when type==='prayer')
+  prayerAnsweredAt: 0,         // ms timestamp                     (only when type==='prayer' && prayerStatus==='answered')
+  prayerAnswerNote: '',        // free text                        (only when type==='prayer')
+  questionStatus: 'open',      // 'open' | 'resolved'              (only when type==='question')
+  questionAnswer: '',          // free text                        (only when type==='question')
+}
+```
+
+`NOTE_TYPES` is the single source of truth (id/label/icon) — read it instead of hard-coding the 5 types in new code. `NOTE_TYPE_MAP[id]` gives O(1) lookup.
+
+`saveNote()` strips type-specific fields when the user changes type (e.g. switching prayer→devotion drops `prayerStatus`). This avoids polluted entries; readers should still tolerate stray fields from old data.
+
+### `migrateUserDataLazy()` — pattern for schema upgrades
+Called at every entry point that sets `userData`: page load, JSON import, snapshot restore, Drive restore. Idempotent — only writes back to `localStorage` when at least one entry is missing a required field. New schema versions should extend this function rather than do eager migration in a separate codepath. The function intentionally tolerates partial entries — it never deletes user data, only fills defaults.
+
+### "我的筆記" tab views
+Single state var `_notesView` ∈ `{'list', 'timeline', 'prayer', 'question'}` drives `renderNotesList()`'s dispatch at the bottom. The function:
+1. Builds `allEntries` from `userData` once (used for both stats and filtering).
+2. Updates view-chip selected state and `renderNotesStats(...)` using the unfiltered set.
+3. Computes `effectiveType = viewType || _notesTypeFilter` (prayer/question views imply a type without the user picking).
+4. Hides the type-filter row when `viewType` is set; status-filter row keys off `effectiveType`.
+5. Splits entries into `pinnedEntries` / `otherEntries`; **pinned always sort to top** of every view. In list/prayer/question this is a flat prepend; in timeline pinned forms its own `📌 釘選 (N)` group above the month groups.
+6. Sorts/groups per view: list = bid/chap/sec; timeline = `updatedAt` desc grouped by `YYYY 年 M 月`; prayer = `open(by createdAt asc) → paused → answered(by prayerAnsweredAt desc)`; question = `open → resolved` each `updatedAt` desc.
+7. Cards rendered through shared `renderNoteCardHtml(e, opts)`. `opts.showWait` adds the "等候 N 天" chip used by the prayer wall; `opts.hideTypeChip` suppresses the type chip in views where it'd be redundant. Pinning shows a 📌 marker before the ref and a `.pinned` class on the card. `togglePinFromList(bid,chap,sec)` writes immediately to `userData` (no modal needed); modal-side toggle (`toggleNotePinInModal`) only updates `currentNotePinnedAt` and is persisted by `saveNote()`.
+
+When adding a new view, add a chip in the HTML, a branch in `setNotesView()` if it implies a type, and a branch in the dispatch — don't introduce a parallel render function.
 
 ### Theming
 Four themes selectable from chips under the brand title: `paper` (default 米紙) / `sepia` (印刷棕) / `dark` (深色) / `black` (純黑/OLED). Implementation:
@@ -114,3 +154,7 @@ Setup procedure for the OAuth Client ID is documented in `GOOGLE_DRIVE_SETUP.md`
 - **`download_bible.js` won't redownload existing files** — by design (skips when file exists and is "big enough"). Delete the file to force.
 - **Empty `data/_tmp_bbe.json`** — gitignored scratch file from the download script.
 - **`download_err.log` / `download.log`** — runtime logs, gitignored.
+- **Most `NoteEntry` objects don't have `prayerStatus` / `questionStatus` / `questionAnswer` fields** — by design. They're only written when `type` matches; absence means "not applicable", not "data lost". Readers default-coalesce.
+- **`createdAt` looks identical across many old notes after first launch of a new build** — `migrateUserDataLazy()` stamps `Date.now()` on entries that pre-date the v3 schema. Real creation dates for pre-v3 notes are unrecoverable; this is the best fallback.
+- **`schema: 3` field in cloud payload is never read** — it's a label for humans/future-debugging, not a runtime gate. All payload fields are read with `?? defaults`.
+- **`verse-header` wraps to 2 lines on narrow screens** — intentional fix for the long-book-name overlap bug; do not revert to `flex-wrap:nowrap`.

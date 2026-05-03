@@ -646,6 +646,33 @@ body {
 .note-list-ref-link:hover { color:var(--accent2); text-decoration-thickness:2px; }
 .note-list-text { font-size:0.92rem; color:var(--text); white-space:pre-wrap; word-break:break-word; line-height:1.6; }
 .note-list-actions { display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+.note-list-item.pinned {
+  border-left:3px solid var(--accent2);
+  background:linear-gradient(to right, var(--tag-bg) 0%, var(--card) 6%);
+}
+.note-list-item .pinned-marker {
+  display:inline-block; margin-right:4px; font-size:0.95em;
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,0.15));
+}
+.btn-pin {
+  background:transparent; color:var(--text2);
+  border:1px solid var(--border);
+}
+.btn-pin:hover { color:var(--accent); border-color:var(--accent); background:var(--tag-bg); }
+.btn-pin.active {
+  background:var(--accent2); color:#fff; border-color:var(--accent2);
+}
+.btn-pin.active:hover { filter:brightness(0.95); }
+/* modal header 釘選 toggle */
+#btn-note-pin {
+  background:transparent; color:var(--text2);
+  border:1px solid var(--border);
+  padding:6px 10px; font-size:0.8rem;
+}
+#btn-note-pin:hover { color:var(--accent); border-color:var(--accent); background:var(--tag-bg); }
+#btn-note-pin.active {
+  background:var(--accent2); color:#fff; border-color:var(--accent2);
+}
 .note-list-meta {
   display:flex; gap:8px; flex-wrap:wrap; align-items:center;
   margin-top:6px; font-size:0.75rem; color:var(--text2);
@@ -1312,6 +1339,7 @@ body {
     <div class="note-modal-header">
       <h3>筆記與標記 <span id="note-modal-ref" style="font-size:0.9rem;color:var(--accent);"></span></h3>
       <div class="note-modal-header-actions">
+        <button type="button" class="btn btn-secondary" id="btn-note-pin" onclick="toggleNotePinInModal()" title="釘選此筆記，置頂顯示">📌 釘選</button>
         <button type="button" class="btn btn-secondary" id="btn-note-fullscreen" onclick="toggleNoteFullscreen()" title="切換全螢幕編輯">⛶ 全螢幕</button>
         <button type="button" class="btn btn-secondary" onclick="closeNoteModal()" title="關閉">✕</button>
       </div>
@@ -2618,6 +2646,7 @@ function daysBetween(a, b) {
 function computeNotesStats(allEntries) {
   const stats = {
     total: allEntries.length,
+    pinned: 0,
     devotion: 0, action: 0, sermon: 0,
     prayer: 0, prayerOpen: 0, prayerAnswered: 0, prayerPaused: 0,
     question: 0, questionOpen: 0, questionResolved: 0,
@@ -2625,6 +2654,7 @@ function computeNotesStats(allEntries) {
   };
   const tagSet = new Set();
   for (const e of allEntries) {
+    if (e.pinnedAt) stats.pinned++;
     if (e.type === 'devotion') stats.devotion++;
     else if (e.type === 'action') stats.action++;
     else if (e.type === 'sermon') stats.sermon++;
@@ -2651,6 +2681,7 @@ function renderNotesStats(stats) {
   if (!box) return;
   if (!stats || stats.total === 0) { box.innerHTML = ''; return; }
   const items = [`<span class="notes-stats-item">總計 <b>${stats.total}</b></span>`];
+  if (stats.pinned)         items.push(`<span class="notes-stats-item" title="釘選筆記">📌 <b>${stats.pinned}</b></span>`);
   if (stats.prayerOpen)     items.push(`<span class="notes-stats-item s-prayer" title="持續禱告中">🙏 持續 <b>${stats.prayerOpen}</b></span>`);
   if (stats.prayerAnswered) items.push(`<span class="notes-stats-item s-answered" title="已蒙應允">✅ 應允 <b>${stats.prayerAnswered}</b></span>`);
   if (stats.questionOpen)   items.push(`<span class="notes-stats-item s-question" title="未解問題">❓ 未解 <b>${stats.questionOpen}</b></span>`);
@@ -2716,14 +2747,24 @@ function renderNoteCardHtml(e, opts) {
     ? `<div class="note-list-meta">${typeChip}${statusChip}${waitChip}${tagChips}${dateLabel}</div>`
     : '';
 
-  return `<div class="note-list-item">
+  const isPinned = !!e.pinnedAt;
+  const pinnedClass = isPinned ? ' pinned' : '';
+  const pinnedMarker = isPinned
+    ? '<span class="pinned-marker" title="已釘選">📌</span>'
+    : '';
+  const pinBtn = isPinned
+    ? `<button class="btn btn-sm btn-pin active" onclick="togglePinFromList(${e.bid},${e.chap},${e.sec})" title="取消釘選">📌 取消</button>`
+    : `<button class="btn btn-sm btn-pin" onclick="togglePinFromList(${e.bid},${e.chap},${e.sec})" title="釘選此筆記">📌 釘選</button>`;
+
+  return `<div class="note-list-item${pinnedClass}">
     ${colorDot}
     <div class="note-list-main">
-      <div class="note-list-ref"><span class="note-list-ref-link" onclick="goToVerse(${e.bid},${e.chap},${e.sec})" title="開啟此節閱讀">${ref}</span></div>
+      <div class="note-list-ref">${pinnedMarker}<span class="note-list-ref-link" onclick="goToVerse(${e.bid},${e.chap},${e.sec})" title="開啟此節閱讀">${ref}</span></div>
       <div class="note-list-text">${noteHtml}</div>
       ${metaHtml}
     </div>
     <div class="note-list-actions">
+      ${pinBtn}
       <button class="btn btn-sm" onclick="openNoteModal(${e.bid},${e.chap},${e.sec},'${refEsc}')">編輯</button>
       <button class="btn btn-sm btn-secondary" onclick="deleteNoteEntry(${e.bid},${e.chap},${e.sec})">刪除</button>
     </div>
@@ -2748,6 +2789,7 @@ function renderNotesList() {
         tags: Array.isArray(d.tags) ? d.tags : [],
         createdAt: d.createdAt || 0,
         updatedAt: d.updatedAt || 0,
+        pinnedAt: d.pinnedAt || 0,
         prayerStatus: d.prayerStatus || '',
         prayerAnsweredAt: d.prayerAnsweredAt || 0,
         prayerAnswerNote: d.prayerAnswerNote || '',
@@ -2888,35 +2930,48 @@ function renderNotesList() {
     return;
   }
 
+  // 釘選分流：每個視圖共同邏輯 — pinned 先按 pinnedAt 倒序排在最上面
+  const pinnedEntries = entries.filter(e => e.pinnedAt).sort((a,b) => b.pinnedAt - a.pinnedAt);
+  const otherEntries  = entries.filter(e => !e.pinnedAt);
+
   // 視圖排序與分組
   if (_notesView === 'prayer') {
     // 持續中(等候最久優先) → 暫停(等候最久優先) → 已蒙應允(最近應允優先)
     const order = { open: 0, paused: 1, answered: 2 };
-    entries.sort((a, b) => {
+    const sortFn = (a, b) => {
       const sa = a.prayerStatus || 'open', sb = b.prayerStatus || 'open';
       if (sa !== sb) return order[sa] - order[sb];
       if (sa === 'answered') return (b.prayerAnsweredAt||0) - (a.prayerAnsweredAt||0);
-      return (a.createdAt||0) - (b.createdAt||0); // 越早建立越上面
-    });
+      return (a.createdAt||0) - (b.createdAt||0);
+    };
+    pinnedEntries.sort(sortFn); // 釘選內仍依禱告排序，但放最上方
+    otherEntries.sort(sortFn);
     div.innerHTML = '<div class="note-list">' +
-      entries.map(e => renderNoteCardHtml(e, { showWait:true, hideTypeChip:true })).join('') +
+      [...pinnedEntries, ...otherEntries].map(e => renderNoteCardHtml(e, { showWait:true, hideTypeChip:true })).join('') +
       '</div>';
   } else if (_notesView === 'question') {
     const order = { open: 0, resolved: 1 };
-    entries.sort((a, b) => {
+    const sortFn = (a, b) => {
       const sa = a.questionStatus || 'open', sb = b.questionStatus || 'open';
       if (sa !== sb) return order[sa] - order[sb];
       return (b.updatedAt||0) - (a.updatedAt||0);
-    });
+    };
+    pinnedEntries.sort(sortFn);
+    otherEntries.sort(sortFn);
     div.innerHTML = '<div class="note-list">' +
-      entries.map(e => renderNoteCardHtml(e, { hideTypeChip:true })).join('') +
+      [...pinnedEntries, ...otherEntries].map(e => renderNoteCardHtml(e, { hideTypeChip:true })).join('') +
       '</div>';
   } else if (_notesView === 'timeline') {
-    // 依 updatedAt 倒序，依年-月分組
-    entries.sort((a, b) => (b.updatedAt||0) - (a.updatedAt||0));
-    let lastGroup = null;
+    // 釘選獨立成「📌 釘選」分組，置頂；其餘依 updatedAt 倒序、依年-月分組
+    pinnedEntries.sort((a,b) => b.pinnedAt - a.pinnedAt);
+    otherEntries.sort((a, b) => (b.updatedAt||0) - (a.updatedAt||0));
     const parts = [];
-    entries.forEach(e => {
+    if (pinnedEntries.length) {
+      parts.push(`<div class="timeline-group-header">📌 釘選 (${pinnedEntries.length})</div>`);
+      pinnedEntries.forEach(e => parts.push(renderNoteCardHtml(e)));
+    }
+    let lastGroup = null;
+    otherEntries.forEach(e => {
       const g = e.updatedAt ? fmtYearMonth(e.updatedAt) : '（無日期）';
       if (g !== lastGroup) {
         parts.push(`<div class="timeline-group-header">📅 ${g}</div>`);
@@ -2926,10 +2981,10 @@ function renderNotesList() {
     });
     div.innerHTML = '<div class="note-list">' + parts.join('') + '</div>';
   } else {
-    // list（預設）：按書卷順序
-    entries.sort((a, b) => a.bid - b.bid || a.chap - b.chap || a.sec - b.sec);
+    // list（預設）：釘選置頂；其餘按書卷順序
+    otherEntries.sort((a, b) => a.bid - b.bid || a.chap - b.chap || a.sec - b.sec);
     div.innerHTML = '<div class="note-list">' +
-      entries.map(e => renderNoteCardHtml(e)).join('') +
+      [...pinnedEntries, ...otherEntries].map(e => renderNoteCardHtml(e)).join('') +
       '</div>';
   }
 }
@@ -3036,6 +3091,7 @@ let currentNoteType = '';
 let currentNoteTags = [];
 let currentPrayerStatus = '';     // '' | 'open' | 'answered' | 'paused'
 let currentQuestionStatus = '';   // '' | 'open' | 'resolved'
+let currentNotePinnedAt = 0;      // 0 = 未釘選；其他 = 釘選時間戳
 
 function renderNoteTypePicker() {
   const box = document.getElementById('note-type-picker');
@@ -3169,6 +3225,10 @@ function openNoteModal(bid, chap, sec, refName) {
   renderQuestionStatus();
   refreshTypeBlockVisibility();
 
+  // 還原釘選狀態
+  currentNotePinnedAt = (typeof d.pinnedAt === 'number') ? d.pinnedAt : 0;
+  renderNotePinButton();
+
   // 顯示建立／更新時間（已存在時才顯示）
   const datesBox = document.getElementById('note-meta-dates');
   if (datesBox) {
@@ -3200,6 +3260,38 @@ function closeNoteModal() {
   currentNoteTags = [];
   currentPrayerStatus = '';
   currentQuestionStatus = '';
+  currentNotePinnedAt = 0;
+}
+
+function renderNotePinButton() {
+  const btn = document.getElementById('btn-note-pin');
+  if (!btn) return;
+  if (currentNotePinnedAt) {
+    btn.classList.add('active');
+    btn.textContent = '📌 已釘選';
+    btn.title = '取消釘選';
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = '📌 釘選';
+    btn.title = '釘選此筆記，置頂顯示';
+  }
+}
+
+function toggleNotePinInModal() {
+  currentNotePinnedAt = currentNotePinnedAt ? 0 : Date.now();
+  renderNotePinButton();
+}
+
+// 從筆記列表卡片直接切換釘選（即時落盤）
+function togglePinFromList(bid, chap, sec) {
+  const k = `${bid}-${chap}-${sec}`;
+  const d = userData[k];
+  if (!d) return;
+  d.pinnedAt = d.pinnedAt ? 0 : Date.now();
+  if (!d.pinnedAt) delete d.pinnedAt;
+  saveUserData();
+  renderNotesList();
+  toast(d.pinnedAt ? '已釘選' : '已取消釘選');
 }
 
 function saveNote() {
@@ -3251,6 +3343,7 @@ function saveNote() {
     if (prayerAnswerNote !== undefined) entry.prayerAnswerNote = prayerAnswerNote;
     if (questionStatus !== undefined) entry.questionStatus = questionStatus;
     if (questionAnswer !== undefined) entry.questionAnswer = questionAnswer;
+    if (currentNotePinnedAt) entry.pinnedAt = currentNotePinnedAt;
     userData[k] = entry;
   }
   saveUserData();
