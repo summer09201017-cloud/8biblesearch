@@ -1269,7 +1269,7 @@ body {
 
   <div id="panel-search" class="panel">
     <div class="search-box">
-      <input type="text" id="search-input" placeholder="輸入關鍵字搜尋經文..." onkeydown="if(event.key==='Enter'){clearTimeout(_searchDebounce);doSearchWithFlash()}" oninput="autoSearch()">
+      <input type="text" id="search-input" placeholder="輸入關鍵字後按 Enter 或點搜尋鈕..." onkeydown="if(event.key==='Enter')doSearchWithFlash()">
       <button class="btn" id="btn-search" onclick="doSearchWithFlash()">搜尋</button>
     </div>
     <div id="search-history" class="history-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
@@ -2605,7 +2605,6 @@ function nextVerse() {
   }
 }
 
-let _searchDebounce;
 let _searchFlashTimer;
 function doSearchWithFlash() {
   const btn = document.getElementById('btn-search');
@@ -2621,13 +2620,6 @@ function doSearchWithFlash() {
     setTimeout(() => btn.classList.remove('btn-search-flash-up'), 200);
   }, 200);
   doSearch();
-}
-function autoSearch() {
-  clearTimeout(_searchDebounce);
-  const q = document.getElementById('search-input').value.trim();
-  if (q.length < 2) return;
-  const delay = q.length === 2 ? 0 : 120;
-  _searchDebounce = setTimeout(doSearchWithFlash, delay);
 }
 
 function doSearch() {
