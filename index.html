@@ -1428,7 +1428,7 @@ body {
       <div id="version-order-list" class="version-order-list"></div>
       <button class="btn btn-secondary btn-sm" onclick="resetVersionOrder()" style="margin-top:14px;">↺ 還原預設順序</button>
     </div>
-    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border);">
+    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
       <h3>資料管理 (筆記/螢光筆/歷史)</h3>
       <p style="font-size:0.9rem;color:var(--text2);margin-bottom:16px;">匯出您的所有筆記、標記與歷史紀錄，以便在其他裝置上匯入使用。</p>
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
@@ -1439,8 +1439,37 @@ body {
         </label>
       </div>
     </div>
+    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border);">
+      <h3>📝 匯出筆記（給人看的格式）</h3>
+      <p style="font-size:0.9rem;color:var(--text2);margin-bottom:16px;">JSON 格式適合備份/還原，下方兩種格式適合分享、貼到 Notion/Obsidian/Word，或印成紙本。</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn" onclick="exportNotesMarkdown()" title="產生 Markdown 文字，可複製或下載 .md 檔">📋 匯出 Markdown</button>
+        <button class="btn btn-secondary" onclick="exportNotesPrint()" title="開新視窗顯示排版好的筆記，可直接列印或瀏覽器另存 PDF">🖨 列印 / 另存 PDF</button>
+      </div>
+      <p style="font-size:0.78rem;color:var(--text2);margin-top:10px;">
+        Markdown 適合貼到 Notion / Obsidian / 講道筆記；列印頁可用 <code>Ctrl+P</code>（Mac 為 <code>⌘+P</code>）「另存為 PDF」獲得最佳中文 PDF。
+      </p>
+    </div>
   </div>
 
+</div>
+
+<div id="export-md-modal" class="note-modal-overlay">
+  <div class="note-modal" style="max-width:720px;">
+    <div class="note-modal-header">
+      <h3>📋 Markdown 匯出</h3>
+      <div class="note-modal-header-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeMdModal()" title="關閉">✕</button>
+      </div>
+    </div>
+    <p style="font-size:0.85rem;color:var(--text2);margin:0 0 8px;">下方為您所有筆記的 Markdown 文字。可直接複製，或下載 .md 檔案。</p>
+    <textarea id="export-md-textarea" readonly style="flex:1;min-height:280px;font-family:ui-monospace,Consolas,'Microsoft JhengHei',monospace;font-size:0.85rem;line-height:1.5;"></textarea>
+    <div class="note-modal-footer">
+      <button class="btn btn-secondary" onclick="closeMdModal()">關閉</button>
+      <button class="btn btn-secondary" onclick="downloadNotesMarkdown()">💾 下載 .md</button>
+      <button class="btn" onclick="copyNotesMarkdown()">📋 複製到剪貼簿</button>
+    </div>
+  </div>
 </div>
 
 <div id="sync-confirm-modal" class="note-modal-overlay">
@@ -3846,6 +3875,312 @@ function snoozeBackup(days) {
   const banner = document.getElementById('backup-reminder');
   if (banner) banner.hidden = true;
   toast(`已暫緩，${days} 天後再提醒`);
+}
+
+// ====== 筆記匯出（Markdown / 列印）======
+function gatherNotesForExport() {
+  const list = Object.entries(userData)
+    .filter(([k, d]) => d && ((d.note && String(d.note).trim()) || d.color || d.type || (Array.isArray(d.tags) && d.tags.length)))
+    .map(([k, d]) => {
+      const [bid, chap, sec] = k.split('-').map(Number);
+      const book = BOOKS.find(b => b.bid === bid);
+      return {
+        bid, chap, sec, book,
+        note: d.note || '', color: d.color || '',
+        type: d.type || '',
+        tags: Array.isArray(d.tags) ? d.tags : [],
+        createdAt: d.createdAt || 0,
+        updatedAt: d.updatedAt || 0,
+        pinnedAt: d.pinnedAt || 0,
+        bookmarkedAt: d.bookmarkedAt || 0,
+        prayerStatus: d.prayerStatus || '',
+        prayerAnsweredAt: d.prayerAnsweredAt || 0,
+        prayerAnswerNote: d.prayerAnswerNote || '',
+        questionStatus: d.questionStatus || '',
+        questionAnswer: d.questionAnswer || ''
+      };
+    })
+    .filter(e => e.book);
+  return list;
+}
+
+function buildNotesMarkdown() {
+  const list = gatherNotesForExport();
+  if (list.length === 0) return '# 我的聖經筆記\n\n（目前沒有任何筆記）\n';
+  // 釘選優先；其餘按 updatedAt 倒序、依年-月分組
+  const pinned = list.filter(e => e.pinnedAt).sort((a,b) => b.pinnedAt - a.pinnedAt);
+  const other  = list.filter(e => !e.pinnedAt).sort((a,b) => (b.updatedAt||0) - (a.updatedAt||0));
+
+  const stats = computeNotesStats(list);
+  const headerLines = [
+    `# 我的聖經筆記`,
+    ``,
+    `匯出於 ${fmtTs(Date.now())}　｜　共 ${list.length} 則`,
+    `📌 釘選 ${stats.pinned}　🔖 書籤 ${stats.bookmarked}　🙏 持續禱告 ${stats.prayerOpen}　✅ 已蒙應允 ${stats.prayerAnswered}　❓ 未解問題 ${stats.questionOpen}`,
+    ``,
+    `---`,
+    ``
+  ];
+
+  function entryToMd(e) {
+    const ref = `${e.book.chinesef} ${e.chap}:${e.sec}`;
+    const typeLbl = e.type && NOTE_TYPE_MAP[e.type] ? `${NOTE_TYPE_MAP[e.type].icon} ${NOTE_TYPE_MAP[e.type].label}` : '';
+    const markers = [];
+    if (e.pinnedAt) markers.push('📌');
+    if (e.bookmarkedAt) markers.push('🔖');
+    let statusLine = '';
+    if (e.type === 'prayer') {
+      const st = e.prayerStatus || 'open';
+      if (st === 'answered') {
+        const dStr = e.prayerAnsweredAt ? `（${fmtDateShort(e.prayerAnsweredAt)}）` : '';
+        statusLine = `**狀態**：✅ 已蒙應允${dStr}`;
+        if (e.createdAt && e.prayerAnsweredAt) {
+          const wd = daysBetween(e.createdAt, e.prayerAnsweredAt);
+          if (wd > 0) statusLine += `　・等候了 ${wd} 天`;
+        }
+      } else if (st === 'paused') {
+        statusLine = `**狀態**：⏸ 暫停`;
+      } else {
+        statusLine = `**狀態**：⏳ 持續禱告中`;
+        if (e.createdAt) statusLine += `　・等候 ${daysSince(e.createdAt)} 天`;
+      }
+    } else if (e.type === 'question') {
+      const st = e.questionStatus || 'open';
+      statusLine = (st === 'resolved') ? `**狀態**：✅ 已解答` : `**狀態**：❔ 未解答`;
+    }
+
+    const headerParts = [`### ${ref}`];
+    if (typeLbl) headerParts.push(typeLbl);
+    if (markers.length) headerParts.push(markers.join(' '));
+    const headerLine = headerParts.join('　・　');
+
+    const lines = [headerLine, ``];
+    if (e.note) {
+      // 把每行加上 > 變引用塊，避免內含 ## 之類干擾結構
+      lines.push(...e.note.split('\n').map(l => `> ${l}`));
+      lines.push(``);
+    }
+    if (statusLine) { lines.push(statusLine); lines.push(``); }
+    if (e.type === 'prayer' && e.prayerAnswerNote) {
+      lines.push(`**回應紀錄**：${e.prayerAnswerNote}`);
+      lines.push(``);
+    }
+    if (e.type === 'question' && e.questionAnswer) {
+      lines.push(`**解答**：${e.questionAnswer}`);
+      lines.push(``);
+    }
+    if (e.tags.length) {
+      lines.push(`**標籤**：${e.tags.map(t => '#'+t).join(' ')}`);
+      lines.push(``);
+    }
+    const dates = [];
+    if (e.createdAt) dates.push(`建立 ${fmtTs(e.createdAt)}`);
+    if (e.updatedAt && e.updatedAt !== e.createdAt) dates.push(`更新 ${fmtTs(e.updatedAt)}`);
+    if (dates.length) {
+      lines.push(`*${dates.join('　・　')}*`);
+      lines.push(``);
+    }
+    return lines.join('\n');
+  }
+
+  const parts = headerLines.slice();
+  if (pinned.length) {
+    parts.push(`## 📌 釘選筆記 (${pinned.length})`);
+    parts.push(``);
+    pinned.forEach(e => parts.push(entryToMd(e)));
+    parts.push(`---`);
+    parts.push(``);
+  }
+  // 月份分組
+  let lastGroup = null;
+  other.forEach(e => {
+    const g = e.updatedAt ? fmtYearMonth(e.updatedAt) : '（無日期）';
+    if (g !== lastGroup) {
+      parts.push(`## 🗓 ${g}`);
+      parts.push(``);
+      lastGroup = g;
+    }
+    parts.push(entryToMd(e));
+  });
+  return parts.join('\n');
+}
+
+let _exportMdContent = '';
+function exportNotesMarkdown() {
+  _exportMdContent = buildNotesMarkdown();
+  const ta = document.getElementById('export-md-textarea');
+  if (ta) ta.value = _exportMdContent;
+  document.getElementById('export-md-modal').style.display = 'flex';
+}
+function closeMdModal() {
+  document.getElementById('export-md-modal').style.display = 'none';
+}
+function copyNotesMarkdown() {
+  const ta = document.getElementById('export-md-textarea');
+  if (!ta) return;
+  ta.select();
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(_exportMdContent);
+    } else {
+      document.execCommand('copy');
+    }
+    toast('已複製到剪貼簿');
+  } catch(e) {
+    toast('複製失敗：' + e.message);
+  }
+}
+function downloadNotesMarkdown() {
+  const blob = new Blob([_exportMdContent], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const ts = new Date().toISOString().slice(0,10).replace(/-/g, '');
+  const a = document.createElement('a');
+  a.href = url; a.download = `bible_notes_${ts}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('已下載 .md 檔');
+}
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function buildNotesPrintHtml() {
+  const list = gatherNotesForExport();
+  const stats = computeNotesStats(list);
+  const pinned = list.filter(e => e.pinnedAt).sort((a,b) => b.pinnedAt - a.pinnedAt);
+  const other  = list.filter(e => !e.pinnedAt).sort((a,b) => (b.updatedAt||0) - (a.updatedAt||0));
+
+  function entryToHtml(e) {
+    const ref = `${e.book.chinesef} ${e.chap}:${e.sec}`;
+    const typeLbl = e.type && NOTE_TYPE_MAP[e.type] ? `<span class="t-type">${NOTE_TYPE_MAP[e.type].icon} ${NOTE_TYPE_MAP[e.type].label}</span>` : '';
+    const pinChip = e.pinnedAt ? `<span class="t-mark">📌</span>` : '';
+    const bmChip  = e.bookmarkedAt ? `<span class="t-mark">🔖</span>` : '';
+    let statusHtml = '';
+    if (e.type === 'prayer') {
+      const st = e.prayerStatus || 'open';
+      if (st === 'answered') {
+        const dStr = e.prayerAnsweredAt ? `（${fmtDateShort(e.prayerAnsweredAt)}）` : '';
+        const wd = (e.createdAt && e.prayerAnsweredAt) ? daysBetween(e.createdAt, e.prayerAnsweredAt) : 0;
+        statusHtml = `<div class="t-status answered">✅ 已蒙應允${dStr}${wd>0?`　・等候了 ${wd} 天`:''}</div>`;
+      } else if (st === 'paused') {
+        statusHtml = `<div class="t-status paused">⏸ 暫停</div>`;
+      } else {
+        const wd = e.createdAt ? daysSince(e.createdAt) : 0;
+        statusHtml = `<div class="t-status open">⏳ 持續禱告中${wd>0?`　・等候 ${wd} 天`:''}</div>`;
+      }
+    } else if (e.type === 'question') {
+      const st = e.questionStatus || 'open';
+      statusHtml = (st === 'resolved') ? `<div class="t-status answered">✅ 已解答</div>` : `<div class="t-status open">❔ 未解答</div>`;
+    }
+    const noteHtml = e.note ? `<blockquote>${escHtml(e.note).replace(/\n/g, '<br>')}</blockquote>` : '';
+    const ansHtml = (e.type==='prayer' && e.prayerAnswerNote) ? `<div class="t-extra"><b>回應紀錄：</b>${escHtml(e.prayerAnswerNote)}</div>` : '';
+    const qansHtml = (e.type==='question' && e.questionAnswer) ? `<div class="t-extra"><b>解答：</b>${escHtml(e.questionAnswer)}</div>` : '';
+    const tagsHtml = e.tags.length ? `<div class="t-tags">${e.tags.map(t => `<span class="t-tag">#${escHtml(t)}</span>`).join('')}</div>` : '';
+    const dates = [];
+    if (e.createdAt) dates.push(`建立 ${fmtTs(e.createdAt)}`);
+    if (e.updatedAt && e.updatedAt !== e.createdAt) dates.push(`更新 ${fmtTs(e.updatedAt)}`);
+    const datesHtml = dates.length ? `<div class="t-dates">${dates.join('　・　')}</div>` : '';
+    return `<article class="entry">
+      <h3 class="t-ref">${escHtml(ref)} ${typeLbl} ${pinChip}${bmChip}</h3>
+      ${noteHtml}${statusHtml}${ansHtml}${qansHtml}${tagsHtml}${datesHtml}
+    </article>`;
+  }
+
+  const parts = [];
+  if (pinned.length) {
+    parts.push(`<section><h2>📌 釘選筆記 (${pinned.length})</h2>${pinned.map(entryToHtml).join('')}</section>`);
+  }
+  let lastGroup = null;
+  let groupBuf = [];
+  const monthSections = [];
+  other.forEach(e => {
+    const g = e.updatedAt ? fmtYearMonth(e.updatedAt) : '（無日期）';
+    if (g !== lastGroup) {
+      if (groupBuf.length) monthSections.push(`<section><h2>🗓 ${escHtml(lastGroup)}</h2>${groupBuf.join('')}</section>`);
+      groupBuf = [];
+      lastGroup = g;
+    }
+    groupBuf.push(entryToHtml(e));
+  });
+  if (groupBuf.length) monthSections.push(`<section><h2>🗓 ${escHtml(lastGroup)}</h2>${groupBuf.join('')}</section>`);
+  parts.push(...monthSections);
+
+  const css = `
+    *{box-sizing:border-box;}
+    body{font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;
+         color:#222;background:#fff;line-height:1.7;
+         max-width:800px;margin:0 auto;padding:24px;}
+    header{border-bottom:2px solid #8b6914;padding-bottom:12px;margin-bottom:20px;}
+    header h1{margin:0 0 6px;color:#6d4c1a;font-size:1.6rem;}
+    header .meta{color:#6b5d4d;font-size:0.85rem;}
+    h2{margin:28px 0 14px;color:#6d4c1a;font-size:1.15rem;
+       border-left:4px solid #c49b2a;padding:6px 12px;background:#f5eed8;}
+    article.entry{padding:10px 14px;margin-bottom:14px;border:1px solid #d9cfc0;
+                  border-radius:6px;break-inside:avoid;page-break-inside:avoid;}
+    .t-ref{margin:0 0 8px;font-size:1rem;color:#8b6914;}
+    .t-type,.t-mark{display:inline-block;font-size:0.78rem;font-weight:600;
+                    padding:1px 8px;border-radius:10px;background:#f0e8d8;
+                    color:#6d4c1a;margin-left:4px;border:1px solid #d9cfc0;}
+    blockquote{margin:8px 0;padding:6px 12px;border-left:3px solid #c49b2a;
+               background:#fafaf5;font-size:0.95rem;color:#3a2a12;}
+    .t-status{font-size:0.82rem;font-weight:600;padding:3px 10px;
+              border-radius:10px;display:inline-block;margin:4px 0;}
+    .t-status.open{background:#f0e8d8;color:#6b5d4d;}
+    .t-status.answered{background:#d4edda;color:#1e5a35;}
+    .t-status.paused{background:#fff3cd;color:#7a5a10;}
+    .t-extra{margin:6px 0;font-size:0.9rem;}
+    .t-tags{margin:6px 0;}
+    .t-tag{display:inline-block;font-size:0.78rem;color:#6d4c1a;
+           background:#f0e8d8;padding:2px 8px;border-radius:8px;
+           border:1px solid #d9cfc0;margin-right:4px;}
+    .t-dates{margin-top:6px;font-size:0.72rem;color:#8a7a60;font-style:italic;}
+    .toolbar{position:sticky;top:0;background:#fff;border-bottom:1px solid #ddd;
+             padding:10px 0;margin:-24px -24px 18px;text-align:center;}
+    .toolbar button{padding:8px 18px;margin:0 4px;font-size:0.95rem;
+                    border:1px solid #c49b2a;background:#fff;color:#6d4c1a;
+                    border-radius:6px;cursor:pointer;font-weight:600;}
+    .toolbar button.primary{background:#8b6914;color:#fff;border-color:#8b6914;}
+    @media print {
+      .toolbar{display:none;}
+      body{padding:0;max-width:none;}
+      h2{break-after:avoid;page-break-after:avoid;}
+      article.entry{break-inside:avoid;page-break-inside:avoid;}
+    }
+  `;
+
+  return `<!doctype html><html lang="zh-Hant"><head><meta charset="UTF-8">
+<title>我的聖經筆記 — ${fmtDateShort(Date.now())}</title>
+<style>${css}</style></head><body>
+<div class="toolbar">
+  <button class="primary" onclick="window.print()">🖨 列印 / 另存 PDF</button>
+  <button onclick="window.close()">關閉</button>
+</div>
+<header>
+  <h1>📝 我的聖經筆記</h1>
+  <div class="meta">匯出於 ${fmtTs(Date.now())}　｜　共 ${list.length} 則　｜　📌 ${stats.pinned}　🔖 ${stats.bookmarked}　🙏 持續 ${stats.prayerOpen}　✅ 應允 ${stats.prayerAnswered}　❓ 未解 ${stats.questionOpen}</div>
+</header>
+${parts.join('')}
+${list.length === 0 ? '<p style="text-align:center;color:#888;padding:40px;">目前沒有任何筆記</p>' : ''}
+</body></html>`;
+}
+
+function exportNotesPrint() {
+  const html = buildNotesPrintHtml();
+  const w = window.open('', '_blank');
+  if (!w) {
+    // Pop-up blocked — fallback：blob URL
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    toast('已在新分頁開啟（若被擋請允許彈窗）');
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  // 自動觸發列印對話框（讓使用者直接「另存為 PDF」）— 等 DOM ready
+  setTimeout(() => { try { w.focus(); w.print(); } catch(e) {} }, 400);
 }
 
 function exportUserDataAndDismiss() {

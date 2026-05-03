@@ -51,6 +51,13 @@ Everything user-facing lives in `index.html` — CSS, HTML, and ~2600 lines of i
 - 連讀只影響閱讀分頁；搜尋／快速查詢／我的筆記不受影響。
 - `bible-last-read` 只在使用者「主動查詢」（非 append）時更新；自動接章不會把「上次位置」推進到很遠。
 
+### 筆記匯出（人類可讀格式）
+設定/資料頁有兩個按鈕：「📋 匯出 Markdown」（modal 顯示文字 + 複製/下載）與「🖨 列印 / 另存 PDF」（新視窗 + 自動 `window.print()`）。兩者共用 `gatherNotesForExport()` 抽取資料，依「釘選優先 → 月份分組（updatedAt desc）」排版。
+
+- Markdown：每則用 `### ref` 起頭，內容轉成 `> ` 引用塊；包含類型徽章、釘選/書籤標記、禱告/問題狀態、等候天數、標籤、建立/更新時間。
+- HTML 列印：行內 CSS（無 var()，獨立於 App theme），用 `Noto Sans TC / PingFang TC / Microsoft JhengHei` 字體 stack，每則 `break-inside:avoid` 避免跨頁切斷。彈窗失敗時 fallback 到 `Blob` URL。
+- 中文 PDF 用「瀏覽器列印 → 另存 PDF」獲得最佳效果，不引入 jsPDF（會帶 5MB+ 中文字體）。
+
 ### 快速查詢支援多段
 `doQuickLookup()` 把輸入用 `[,，\n\r]+` 切成多段 ref，每段呼叫 `quickLookupSegment(seg, vers)`（已抽出的單段查詢函式）。多段模式下每段前面加 `.quick-segment-header` 標題，失敗的段以 `.quick-segment-error` 顯示警告但不中斷其他段。輸入框是 textarea 而非 input — Enter 送出，Shift+Enter 換行。
 
