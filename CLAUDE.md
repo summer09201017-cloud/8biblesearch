@@ -69,6 +69,7 @@ A `flex-wrap:wrap` row: book+chapter ref on the left, then the right-side action
 | `bible-last-backup-time`, `bible-backup-snooze-until` | reminder banner timing |
 | `bible-local-snapshots` | up to 3 pre-sync snapshots (safety fuse #1) |
 | `bible-theme` | `paper` (default) / `sepia` / `dark` / `black` |
+| `bible-last-read` | `{bid, chap, secStart, secEnd, ts}` — last successful `fetchVerses()` query, restored on next launch |
 
 The export/import JSON in 設定/資料 includes `userData`, `historySearch`, `historyQuick`, `exportedAt`. The cloud sync payload (schema 3) additionally carries `versionOrder`, `noteCount`, `timestamp`. Schema bumped 2 → 3 when notes gained type/tags/dates/status fields, but no read-side branching exists — `schema` is just a label, all readers do best-effort field access with fallbacks.
 

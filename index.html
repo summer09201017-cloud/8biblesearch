@@ -2217,6 +2217,28 @@ function renderVerseGroup(bid, chap, sec, ref, versionsToShow, textsMap, opts) {
   return `<div class="verse-group" data-bid="${bid}" data-chap="${chap}" data-sec="${sec}"><div class="verse-header"><span class="verse-ref-title">${ref}</span><div class="verse-read-pick" onclick="event.stopPropagation()">${links}<a class="fhl-com-link" href="#" onclick="event.preventDefault();openNoteModal(${bid},${chap},${sec},'${ref}')" title="筆記與標記">📝 筆記</a>${copyBtn}<label class="verse-read-check"><span class="verse-read-check-label">勾選複製經文</span><input type="checkbox" class="read-pick-cb" aria-label="勾選複製經文"></label></div></div><div class="verse-translations ${parallelClass}">${trs}</div>${noteHtml}</div>`;
 }
 
+const LAST_READ_KEY = 'bible-last-read';
+function saveLastRead(bid, chap, secStart, secEnd) {
+  try {
+    localStorage.setItem(LAST_READ_KEY, JSON.stringify({
+      bid, chap,
+      secStart: secStart || '',
+      secEnd: secEnd || '',
+      ts: Date.now()
+    }));
+  } catch(e) {}
+}
+function loadLastRead() {
+  try {
+    const raw = localStorage.getItem(LAST_READ_KEY);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (!o || typeof o.bid !== 'number' || typeof o.chap !== 'number') return null;
+    if (!BOOKS.find(b => b.bid === o.bid)) return null;
+    return o;
+  } catch(e) { return null; }
+}
+
 function fetchVerses() {
   const t0 = performance.now();
   const bid = parseInt(document.getElementById('sel-book').value);
@@ -2224,6 +2246,7 @@ function fetchVerses() {
   const secStart = document.getElementById('sel-sec-start').value;
   const secEnd = document.getElementById('sel-sec-end').value;
   const book = BOOKS.find(b => b.bid === bid); if (!book) return;
+  saveLastRead(bid, chap, secStart, secEnd);
 
   let secRange = '';
   if (secStart && secEnd) secRange = `${secStart}-${secEnd}`;
@@ -3979,12 +4002,29 @@ loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
 loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
 
 loadLocalData().then(() => {
-  document.getElementById('sel-book').value = 43;
-  onBookChange(true);
-  document.getElementById('sel-chap').value = 3;
-  onChapChange(true);
-  document.getElementById('sel-sec-start').value = 16;
-  document.getElementById('sel-sec-end').value = 17;
+  // 「繼續閱讀」：若有上次紀錄則還原，否則用預設（約翰福音 3:16-17）
+  const last = loadLastRead();
+  if (last) {
+    const bid = last.bid;
+    const book = BOOKS.find(b => b.bid === bid);
+    const maxChap = book ? book.chapters : 1;
+    const chap = Math.min(Math.max(1, last.chap || 1), maxChap);
+    document.getElementById('sel-book').value = bid;
+    onBookChange(true);
+    document.getElementById('sel-chap').value = chap;
+    onChapChange(true);
+    // 節範圍如果記錄超出該章節數會自動被選單忽略（瀏覽器原生 select 行為）
+    document.getElementById('sel-sec-start').value = last.secStart || '';
+    document.getElementById('sel-sec-end').value = last.secEnd || '';
+    toast('已回到上次閱讀位置');
+  } else {
+    document.getElementById('sel-book').value = 43;
+    onBookChange(true);
+    document.getElementById('sel-chap').value = 3;
+    onChapChange(true);
+    document.getElementById('sel-sec-start').value = 16;
+    document.getElementById('sel-sec-end').value = 17;
+  }
   fetchVerses();
   _autoQueryEnabled = true;
   checkBackupReminder();
