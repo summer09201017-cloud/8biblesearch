@@ -85,6 +85,7 @@ Each entry keyed by `bid-chap-sec`. Schema is **forward-only and tolerant** — 
   createdAt: 0,                // ms timestamp
   updatedAt: 0,                // ms timestamp
   pinnedAt: 0,                 // ms timestamp; 0 / absent = 未釘選；釘選永遠置頂於每個視圖
+  bookmarkedAt: 0,             // ms timestamp; 0 / absent = 未加書籤；書籤視圖以此倒序
   // optional, only present when type matches:
   prayerStatus: 'open',        // 'open' | 'answered' | 'paused'  (only when type==='prayer')
   prayerAnsweredAt: 0,         // ms timestamp                     (only when type==='prayer' && prayerStatus==='answered')
@@ -102,14 +103,14 @@ Each entry keyed by `bid-chap-sec`. Schema is **forward-only and tolerant** — 
 Called at every entry point that sets `userData`: page load, JSON import, snapshot restore, Drive restore. Idempotent — only writes back to `localStorage` when at least one entry is missing a required field. New schema versions should extend this function rather than do eager migration in a separate codepath. The function intentionally tolerates partial entries — it never deletes user data, only fills defaults.
 
 ### "我的筆記" tab views
-Single state var `_notesView` ∈ `{'list', 'timeline', 'prayer', 'question'}` drives `renderNotesList()`'s dispatch at the bottom. The function:
+Single state var `_notesView` ∈ `{'list', 'timeline', 'prayer', 'question', 'bookmark'}` drives `renderNotesList()`'s dispatch at the bottom. Bookmark view is "filter-only" (shows only entries with `bookmarkedAt`); prayer/question views also imply a `type` filter. The function:
 1. Builds `allEntries` from `userData` once (used for both stats and filtering).
 2. Updates view-chip selected state and `renderNotesStats(...)` using the unfiltered set.
 3. Computes `effectiveType = viewType || _notesTypeFilter` (prayer/question views imply a type without the user picking).
 4. Hides the type-filter row when `viewType` is set; status-filter row keys off `effectiveType`.
 5. Splits entries into `pinnedEntries` / `otherEntries`; **pinned always sort to top** of every view. In list/prayer/question this is a flat prepend; in timeline pinned forms its own `📌 釘選 (N)` group above the month groups.
-6. Sorts/groups per view: list = bid/chap/sec; timeline = `updatedAt` desc grouped by `YYYY 年 M 月`; prayer = `open(by createdAt asc) → paused → answered(by prayerAnsweredAt desc)`; question = `open → resolved` each `updatedAt` desc.
-7. Cards rendered through shared `renderNoteCardHtml(e, opts)`. `opts.showWait` adds the "等候 N 天" chip used by the prayer wall; `opts.hideTypeChip` suppresses the type chip in views where it'd be redundant. Pinning shows a 📌 marker before the ref and a `.pinned` class on the card. `togglePinFromList(bid,chap,sec)` writes immediately to `userData` (no modal needed); modal-side toggle (`toggleNotePinInModal`) only updates `currentNotePinnedAt` and is persisted by `saveNote()`.
+6. Sorts/groups per view: list = bid/chap/sec; timeline = `updatedAt` desc grouped by `YYYY 年 M 月`; prayer = `open(by createdAt asc) → paused → answered(by prayerAnsweredAt desc)`; question = `open → resolved` each `updatedAt` desc; bookmark = `bookmarkedAt` desc (most recently bookmarked first).
+7. Cards rendered through shared `renderNoteCardHtml(e, opts)`. `opts.showWait` adds the "等候 N 天" chip used by the prayer wall; `opts.hideTypeChip` suppresses the type chip in views where it'd be redundant. Pinning shows a 📌 marker before the ref and a `.pinned` class on the card. `togglePinFromList(bid,chap,sec)` writes immediately to `userData` (no modal needed); modal-side toggle (`toggleNotePinInModal`) only updates `currentNotePinnedAt` and is persisted by `saveNote()`. Bookmarks (🔖) follow the same pattern: `toggleBookmarkFromList()` is immediate, `toggleNoteBookmarkInModal()` is staged. Pin and bookmark are independent — a note can be both, neither, or either.
 
 When adding a new view, add a chip in the HTML, a branch in `setNotesView()` if it implies a type, and a branch in the dispatch — don't introduce a parallel render function.
 

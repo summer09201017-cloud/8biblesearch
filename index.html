@@ -654,24 +654,34 @@ body {
   display:inline-block; margin-right:4px; font-size:0.95em;
   filter:drop-shadow(0 1px 1px rgba(0,0,0,0.15));
 }
-.btn-pin {
+.btn-pin, .btn-bookmark {
   background:transparent; color:var(--text2);
   border:1px solid var(--border);
 }
-.btn-pin:hover { color:var(--accent); border-color:var(--accent); background:var(--tag-bg); }
+.btn-pin:hover, .btn-bookmark:hover { color:var(--accent); border-color:var(--accent); background:var(--tag-bg); }
 .btn-pin.active {
   background:var(--accent2); color:#fff; border-color:var(--accent2);
 }
-.btn-pin.active:hover { filter:brightness(0.95); }
-/* modal header 釘選 toggle */
-#btn-note-pin {
+.btn-pin.active:hover, .btn-bookmark.active:hover { filter:brightness(0.95); }
+.btn-bookmark.active {
+  background:#1a5276; color:#fff; border-color:#1a5276;
+}
+/* modal header 釘選 / 書籤 toggle */
+#btn-note-pin, #btn-note-bookmark {
   background:transparent; color:var(--text2);
   border:1px solid var(--border);
   padding:6px 10px; font-size:0.8rem;
 }
-#btn-note-pin:hover { color:var(--accent); border-color:var(--accent); background:var(--tag-bg); }
+#btn-note-pin:hover, #btn-note-bookmark:hover { color:var(--accent); border-color:var(--accent); background:var(--tag-bg); }
 #btn-note-pin.active {
   background:var(--accent2); color:#fff; border-color:var(--accent2);
+}
+#btn-note-bookmark.active {
+  background:#1a5276; color:#fff; border-color:#1a5276;
+}
+.note-list-item .bookmark-marker {
+  display:inline-block; margin-right:4px; font-size:0.95em;
+  color:#1a5276;
 }
 .note-list-meta {
   display:flex; gap:8px; flex-wrap:wrap; align-items:center;
@@ -1236,6 +1246,7 @@ body {
         <span class="notes-view-chip" data-view="timeline">🕐 時間軸</span>
         <span class="notes-view-chip" data-view="prayer">🙏 禱告牆</span>
         <span class="notes-view-chip" data-view="question">❓ 問題清單</span>
+        <span class="notes-view-chip" data-view="bookmark">🔖 書籤</span>
       </div>
       <div class="notes-stats" id="notes-stats"></div>
     </div>
@@ -1339,6 +1350,7 @@ body {
     <div class="note-modal-header">
       <h3>筆記與標記 <span id="note-modal-ref" style="font-size:0.9rem;color:var(--accent);"></span></h3>
       <div class="note-modal-header-actions">
+        <button type="button" class="btn btn-secondary" id="btn-note-bookmark" onclick="toggleNoteBookmarkInModal()" title="加入書籤，方便日後再回來看">🔖 書籤</button>
         <button type="button" class="btn btn-secondary" id="btn-note-pin" onclick="toggleNotePinInModal()" title="釘選此筆記，置頂顯示">📌 釘選</button>
         <button type="button" class="btn btn-secondary" id="btn-note-fullscreen" onclick="toggleNoteFullscreen()" title="切換全螢幕編輯">⛶ 全螢幕</button>
         <button type="button" class="btn btn-secondary" onclick="closeNoteModal()" title="關閉">✕</button>
@@ -2670,6 +2682,7 @@ function computeNotesStats(allEntries) {
   const stats = {
     total: allEntries.length,
     pinned: 0,
+    bookmarked: 0,
     devotion: 0, action: 0, sermon: 0,
     prayer: 0, prayerOpen: 0, prayerAnswered: 0, prayerPaused: 0,
     question: 0, questionOpen: 0, questionResolved: 0,
@@ -2678,6 +2691,7 @@ function computeNotesStats(allEntries) {
   const tagSet = new Set();
   for (const e of allEntries) {
     if (e.pinnedAt) stats.pinned++;
+    if (e.bookmarkedAt) stats.bookmarked++;
     if (e.type === 'devotion') stats.devotion++;
     else if (e.type === 'action') stats.action++;
     else if (e.type === 'sermon') stats.sermon++;
@@ -2705,6 +2719,7 @@ function renderNotesStats(stats) {
   if (!stats || stats.total === 0) { box.innerHTML = ''; return; }
   const items = [`<span class="notes-stats-item">總計 <b>${stats.total}</b></span>`];
   if (stats.pinned)         items.push(`<span class="notes-stats-item" title="釘選筆記">📌 <b>${stats.pinned}</b></span>`);
+  if (stats.bookmarked)     items.push(`<span class="notes-stats-item" title="書籤">🔖 <b>${stats.bookmarked}</b></span>`);
   if (stats.prayerOpen)     items.push(`<span class="notes-stats-item s-prayer" title="持續禱告中">🙏 持續 <b>${stats.prayerOpen}</b></span>`);
   if (stats.prayerAnswered) items.push(`<span class="notes-stats-item s-answered" title="已蒙應允">✅ 應允 <b>${stats.prayerAnswered}</b></span>`);
   if (stats.questionOpen)   items.push(`<span class="notes-stats-item s-question" title="未解問題">❓ 未解 <b>${stats.questionOpen}</b></span>`);
@@ -2771,23 +2786,31 @@ function renderNoteCardHtml(e, opts) {
     : '';
 
   const isPinned = !!e.pinnedAt;
+  const isBookmarked = !!e.bookmarkedAt;
   const pinnedClass = isPinned ? ' pinned' : '';
   const pinnedMarker = isPinned
     ? '<span class="pinned-marker" title="已釘選">📌</span>'
     : '';
+  const bookmarkMarker = isBookmarked
+    ? '<span class="bookmark-marker" title="已加書籤">🔖</span>'
+    : '';
   const pinBtn = isPinned
     ? `<button class="btn btn-sm btn-pin active" onclick="togglePinFromList(${e.bid},${e.chap},${e.sec})" title="取消釘選">📌 取消</button>`
     : `<button class="btn btn-sm btn-pin" onclick="togglePinFromList(${e.bid},${e.chap},${e.sec})" title="釘選此筆記">📌 釘選</button>`;
+  const bookmarkBtn = isBookmarked
+    ? `<button class="btn btn-sm btn-bookmark active" onclick="toggleBookmarkFromList(${e.bid},${e.chap},${e.sec})" title="移除書籤">🔖 取消</button>`
+    : `<button class="btn btn-sm btn-bookmark" onclick="toggleBookmarkFromList(${e.bid},${e.chap},${e.sec})" title="加入書籤">🔖 書籤</button>`;
 
   return `<div class="note-list-item${pinnedClass}">
     ${colorDot}
     <div class="note-list-main">
-      <div class="note-list-ref">${pinnedMarker}<span class="note-list-ref-link" onclick="goToVerse(${e.bid},${e.chap},${e.sec})" title="開啟此節閱讀">${ref}</span></div>
+      <div class="note-list-ref">${pinnedMarker}${bookmarkMarker}<span class="note-list-ref-link" onclick="goToVerse(${e.bid},${e.chap},${e.sec})" title="開啟此節閱讀">${ref}</span></div>
       <div class="note-list-text">${noteHtml}</div>
       ${metaHtml}
     </div>
     <div class="note-list-actions">
       ${pinBtn}
+      ${bookmarkBtn}
       <button class="btn btn-sm" onclick="openNoteModal(${e.bid},${e.chap},${e.sec},'${refEsc}')">編輯</button>
       <button class="btn btn-sm btn-secondary" onclick="deleteNoteEntry(${e.bid},${e.chap},${e.sec})">刪除</button>
     </div>
@@ -2813,6 +2836,7 @@ function renderNotesList() {
         createdAt: d.createdAt || 0,
         updatedAt: d.updatedAt || 0,
         pinnedAt: d.pinnedAt || 0,
+        bookmarkedAt: d.bookmarkedAt || 0,
         prayerStatus: d.prayerStatus || '',
         prayerAnsweredAt: d.prayerAnsweredAt || 0,
         prayerAnswerNote: d.prayerAnswerNote || '',
@@ -2844,7 +2868,11 @@ function renderNotesList() {
   const tagCount = {};
   allEntries.forEach(e => e.tags.forEach(t => { tagCount[t] = (tagCount[t]||0) + 1; }));
 
+  // 視圖隱含的書籤過濾
+  const viewBookmarkOnly = (_notesView === 'bookmark');
+
   const entries = allEntries
+    .filter(e => !viewBookmarkOnly || e.bookmarkedAt)
     .filter(e => !_notesColorFilter || e.color === _notesColorFilter)
     .filter(e => {
       if (!effectiveType) return true;
@@ -2941,6 +2969,8 @@ function renderNotesList() {
       msg = '還沒有禱告類型的筆記';
     } else if (_notesView === 'question') {
       msg = '還沒有問題類型的筆記';
+    } else if (_notesView === 'bookmark') {
+      msg = '還沒有任何書籤';
     } else {
       msg = '沒有符合條件的筆記';
     }
@@ -2948,6 +2978,8 @@ function renderNotesList() {
       ? '在筆記內把類型選為「🙏 禱告」即可加入禱告牆'
       : (_notesView === 'question')
       ? '在筆記內把類型選為「❓ 問題」即可加入問題清單'
+      : (_notesView === 'bookmark')
+      ? '在筆記卡片或 modal 點「🔖 書籤」即可加入'
       : '在閱讀／搜尋／快速查詢中點「📝 筆記」即可新增';
     div.innerHTML = `<div class="empty-state"><div class="icon">📝</div><p>${msg}</p><p style="font-size:0.8rem;">${hint}</p></div>`;
     return;
@@ -3003,6 +3035,13 @@ function renderNotesList() {
       parts.push(renderNoteCardHtml(e));
     });
     div.innerHTML = '<div class="note-list">' + parts.join('') + '</div>';
+  } else if (_notesView === 'bookmark') {
+    // 書籤視圖：以 bookmarkedAt 倒序（最近加的在最上）；釘選仍置頂
+    pinnedEntries.sort((a,b) => b.pinnedAt - a.pinnedAt);
+    otherEntries.sort((a, b) => (b.bookmarkedAt||0) - (a.bookmarkedAt||0));
+    div.innerHTML = '<div class="note-list">' +
+      [...pinnedEntries, ...otherEntries].map(e => renderNoteCardHtml(e)).join('') +
+      '</div>';
   } else {
     // list（預設）：釘選置頂；其餘按書卷順序
     otherEntries.sort((a, b) => a.bid - b.bid || a.chap - b.chap || a.sec - b.sec);
@@ -3085,6 +3124,7 @@ function migrateUserDataLazy() {
     if (!Array.isArray(d.tags))             { d.tags = []; dirty = true; }
     if (typeof d.createdAt !== 'number')    { d.createdAt = now; dirty = true; }
     if (typeof d.updatedAt !== 'number')    { d.updatedAt = d.createdAt || now; dirty = true; }
+    // pinnedAt / bookmarkedAt 為 optional：不存在 = 未釘選/未加書籤；不在此補 0 以節省空間
   }
   if (dirty) {
     try { localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData)); } catch(e) {}
@@ -3115,6 +3155,7 @@ let currentNoteTags = [];
 let currentPrayerStatus = '';     // '' | 'open' | 'answered' | 'paused'
 let currentQuestionStatus = '';   // '' | 'open' | 'resolved'
 let currentNotePinnedAt = 0;      // 0 = 未釘選；其他 = 釘選時間戳
+let currentNoteBookmarkedAt = 0;  // 0 = 未加書籤；其他 = 加入時間戳
 
 function renderNoteTypePicker() {
   const box = document.getElementById('note-type-picker');
@@ -3251,6 +3292,9 @@ function openNoteModal(bid, chap, sec, refName) {
   // 還原釘選狀態
   currentNotePinnedAt = (typeof d.pinnedAt === 'number') ? d.pinnedAt : 0;
   renderNotePinButton();
+  // 還原書籤狀態
+  currentNoteBookmarkedAt = (typeof d.bookmarkedAt === 'number') ? d.bookmarkedAt : 0;
+  renderNoteBookmarkButton();
 
   // 顯示建立／更新時間（已存在時才顯示）
   const datesBox = document.getElementById('note-meta-dates');
@@ -3284,6 +3328,37 @@ function closeNoteModal() {
   currentPrayerStatus = '';
   currentQuestionStatus = '';
   currentNotePinnedAt = 0;
+  currentNoteBookmarkedAt = 0;
+}
+
+function renderNoteBookmarkButton() {
+  const btn = document.getElementById('btn-note-bookmark');
+  if (!btn) return;
+  if (currentNoteBookmarkedAt) {
+    btn.classList.add('active');
+    btn.textContent = '🔖 已加書籤';
+    btn.title = '取消書籤';
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = '🔖 書籤';
+    btn.title = '加入書籤，方便日後再回來看';
+  }
+}
+
+function toggleNoteBookmarkInModal() {
+  currentNoteBookmarkedAt = currentNoteBookmarkedAt ? 0 : Date.now();
+  renderNoteBookmarkButton();
+}
+
+function toggleBookmarkFromList(bid, chap, sec) {
+  const k = `${bid}-${chap}-${sec}`;
+  const d = userData[k];
+  if (!d) return;
+  d.bookmarkedAt = d.bookmarkedAt ? 0 : Date.now();
+  if (!d.bookmarkedAt) delete d.bookmarkedAt;
+  saveUserData();
+  renderNotesList();
+  toast(d.bookmarkedAt ? '已加入書籤' : '已移除書籤');
 }
 
 function renderNotePinButton() {
@@ -3367,6 +3442,7 @@ function saveNote() {
     if (questionStatus !== undefined) entry.questionStatus = questionStatus;
     if (questionAnswer !== undefined) entry.questionAnswer = questionAnswer;
     if (currentNotePinnedAt) entry.pinnedAt = currentNotePinnedAt;
+    if (currentNoteBookmarkedAt) entry.bookmarkedAt = currentNoteBookmarkedAt;
     userData[k] = entry;
   }
   saveUserData();
