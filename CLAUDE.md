@@ -51,6 +51,9 @@ Everything user-facing lives in `index.html` — CSS, HTML, and ~2600 lines of i
 - 連讀只影響閱讀分頁；搜尋／快速查詢／我的筆記不受影響。
 - `bible-last-read` 只在使用者「主動查詢」（非 append）時更新；自動接章不會把「上次位置」推進到很遠。
 
+### 快速查詢支援多段
+`doQuickLookup()` 把輸入用 `[,，\n\r]+` 切成多段 ref，每段呼叫 `quickLookupSegment(seg, vers)`（已抽出的單段查詢函式）。多段模式下每段前面加 `.quick-segment-header` 標題，失敗的段以 `.quick-segment-error` 顯示警告但不中斷其他段。輸入框是 textarea 而非 input — Enter 送出，Shift+Enter 換行。
+
 ### Three render paths converge on `sortedVers()`
 Read / Search / Quick-lookup all build a `verseMap` keyed by `chap:sec`, then render via `renderVerseGroup(...)` or inline equivalents. **All three paths sort their translation columns through `sortedVers()`**, which reads `userVersionOrder` from `localStorage`. If you add a new place that lists translations or builds copy/share text, run it through `sortedVers()` so the user's drag-to-reorder preference is respected.
 

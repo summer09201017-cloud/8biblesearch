@@ -474,13 +474,35 @@ body {
   padding:8px 12px; background:var(--tag-bg); border-radius:8px;
 }
 
-.quick-input { display:flex; gap:8px; margin-bottom:16px; }
-.quick-input input {
+.quick-input { display:flex; gap:8px; margin-bottom:16px; align-items:flex-start; }
+.quick-input input,
+.quick-input textarea {
   flex:1; padding:10px 16px; border:2px solid var(--border); border-radius:10px;
   font-size:0.95rem; font-family:inherit; background:var(--bg2); color:var(--text);
+  resize:vertical; min-height:42px; line-height:1.5;
 }
-.quick-input input::placeholder { color:#bbb; }
-.quick-input input:focus { outline:none; border-color:var(--accent); }
+.quick-input input::placeholder,
+.quick-input textarea::placeholder { color:#bbb; }
+.quick-input input:focus,
+.quick-input textarea:focus { outline:none; border-color:var(--accent); }
+.quick-hint code {
+  background:var(--tag-bg); color:var(--accent); padding:1px 5px;
+  border-radius:3px; font-family:inherit; font-size:0.95em;
+}
+.quick-segment-header {
+  font-size:0.85rem; font-weight:700; color:var(--accent);
+  padding:8px 12px; margin:18px 0 8px;
+  background:linear-gradient(135deg, var(--tag-bg), var(--card));
+  border-left:3px solid var(--accent);
+  border-radius:6px; letter-spacing:0.05em;
+}
+.quick-segment-header:first-child { margin-top:0; }
+.quick-segment-error {
+  font-size:0.85rem; color:#c0392b;
+  padding:8px 12px; margin:8px 0;
+  background:rgba(192,57,43,0.08); border:1px dashed #c0392b;
+  border-radius:6px;
+}
 
 .history-chip {
   display:inline-block; padding:4px 10px; font-size:0.8rem;
@@ -1315,13 +1337,16 @@ body {
 
   <div id="panel-quick" class="panel">
     <div class="quick-input">
-      <input type="text" id="quick-ref" placeholder="例：創 1:1-3、約 3:16、太 5:1-12" onkeydown="if(event.key==='Enter')doQuickLookup()">
+      <textarea id="quick-ref" rows="2" placeholder="例：約 3:16　／　多段請用逗號或換行分隔，例如：創 1:1, 約 1:1, 來 1:1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();doQuickLookup()}"></textarea>
       <button class="btn" onclick="doQuickLookup()">查詢</button>
+    </div>
+    <div class="quick-hint" style="font-size:0.78rem;color:var(--text2);margin:-6px 0 10px 2px;">
+      💡 支援<b>多段查詢</b>：用「<code>,</code>」逗號或換行分隔多個經文參照，可一次比對平行經文（如：<code>創 1:1, 約 1:1, 來 1:1</code>）。Enter 送出，Shift+Enter 換行。
     </div>
     <div id="quick-history" class="history-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
     <div class="version-toggles" id="version-toggles-quick"></div>
     <div id="results-quick">
-      <div class="empty-state"><div class="icon">⚡</div><p>輸入經文參照快速查詢</p><p style="font-size:0.8rem;">支援格式：創 1:1-3、約 3:16</p></div>
+      <div class="empty-state"><div class="icon">⚡</div><p>輸入經文參照快速查詢</p><p style="font-size:0.8rem;">支援單段（約 3:16）或<b>多段比對</b>（創 1:1, 約 1:1, 來 1:1）</p></div>
     </div>
   </div>
 
@@ -2753,63 +2778,100 @@ function goToVerse(bid, chap, sec) {
   }
 }
 
+function quickLookupSegment(segRaw, vers) {
+  // 回傳 { html, count, error } — 單段查詢結果
+  const parsed = parseQuickRef(segRaw);
+  if (!parsed) return { html:'', count:0, error:`無法解析「${escapeHtmlForNotes(segRaw)}」（格式如：創 1:1-3、約 3:16）` };
+  const book = BOOKS.find(b => b.chineses === parsed.chineses);
+  if (!book) return { html:'', count:0, error:`找不到書卷：${escapeHtmlForNotes(segRaw)}` };
+
+  const verseMap = {};
+  vers.filter(v => LOCAL_VERSIONS.includes(v)).forEach(ver => {
+    if (parsed.secRange) {
+      const parts = parsed.secRange.split('-');
+      const start = parseInt(parts[0]);
+      const end = parts[1] ? parseInt(parts[1]) : start;
+      for (let s = start; s <= end; s++) {
+        const t = getLocalVerse(ver, book.bid, parsed.chap, s);
+        if (t !== null) {
+          const k = `${parsed.chap}:${s}`;
+          if (!verseMap[k]) verseMap[k] = { chap:parsed.chap, sec:s, texts:{} };
+          verseMap[k].texts[ver] = t;
+        }
+      }
+    } else {
+      const chapData = getLocalChapter(ver, book.bid, parsed.chap);
+      Object.entries(chapData).forEach(([sec, text]) => {
+        const k = `${parsed.chap}:${sec}`;
+        if (!verseMap[k]) verseMap[k] = { chap:parsed.chap, sec:parseInt(sec), texts:{} };
+        verseMap[k].texts[ver] = text;
+      });
+    }
+  });
+
+  const sorted = Object.keys(verseMap).sort((a,b) => {
+    const [ac,as_] = a.split(':').map(Number);
+    const [bc,bs] = b.split(':').map(Number);
+    return ac-bc || as_-bs;
+  });
+
+  if (sorted.length === 0) return { html:'', count:0, error:`查無經文資料：${escapeHtmlForNotes(segRaw)}` };
+
+  const html = sorted.map(k => {
+    const v = verseMap[k];
+    return renderVerseGroup(book.bid, v.chap, v.sec, `${book.chinesef} ${v.chap}:${v.sec}`, vers, v.texts);
+  }).join('');
+  return { html, count:sorted.length, error:null };
+}
+
 function doQuickLookup() {
   const t0 = performance.now();
   const raw = document.getElementById('quick-ref').value.trim();
   if (!raw) return;
   const div = document.getElementById('results-quick');
   div.innerHTML = '<div class="loading">查詢中...</div>';
-  
+
   saveHistory('bible-quick-history', raw, 'quick-history', 'triggerQuickHistory');
 
   try {
-    const parsed = parseQuickRef(raw);
-    if (!parsed) { div.innerHTML = '<div class="error-msg">無法解析經文參照，請使用格式如：創 1:1-3、約 3:16</div>'; return; }
-
+    // 多段：用逗號（半形/全形）或換行分隔
+    const segments = raw.split(/[,，\n\r]+/).map(s => s.trim()).filter(Boolean);
     const vers = activeVersions.length > 0 ? [...activeVersions] : ['unv'];
-    const book = BOOKS.find(b => b.chineses === parsed.chineses);
-    if (!book) { div.innerHTML = '<div class="error-msg">找不到書卷</div>'; return; }
 
-    const verseMap = {};
+    if (segments.length === 0) {
+      div.innerHTML = '<div class="error-msg">請輸入至少一個經文參照</div>';
+      return;
+    }
 
-    vers.filter(v => LOCAL_VERSIONS.includes(v)).forEach(ver => {
-      if (parsed.secRange) {
-        const parts = parsed.secRange.split('-');
-        const start = parseInt(parts[0]);
-        const end = parts[1] ? parseInt(parts[1]) : start;
-        for (let s = start; s <= end; s++) {
-          const t = getLocalVerse(ver, book.bid, parsed.chap, s);
-          if (t !== null) {
-            const k = `${parsed.chap}:${s}`;
-            if (!verseMap[k]) verseMap[k] = { chap:parsed.chap, sec:s, texts:{} };
-            verseMap[k].texts[ver] = t;
-          }
-        }
-      } else {
-        const chapData = getLocalChapter(ver, book.bid, parsed.chap);
-        Object.entries(chapData).forEach(([sec, text]) => {
-          const k = `${parsed.chap}:${sec}`;
-          if (!verseMap[k]) verseMap[k] = { chap:parsed.chap, sec:parseInt(sec), texts:{} };
-          verseMap[k].texts[ver] = text;
-        });
+    let totalCount = 0;
+    const okSegs = [];
+    const errSegs = [];
+    const isMulti = segments.length > 1;
+
+    segments.forEach((seg, i) => {
+      const r = quickLookupSegment(seg, vers);
+      if (r.error) {
+        errSegs.push(r.error);
+        return;
       }
-    });
-
-    const sorted = Object.keys(verseMap).sort((a,b) => {
-      const [ac,as_] = a.split(':').map(Number);
-      const [bc,bs] = b.split(':').map(Number);
-      return ac-bc || as_-bs;
+      totalCount += r.count;
+      // 多段時加分段標題
+      const header = isMulti ? `<div class="quick-segment-header">📍 ${escapeHtmlForNotes(seg)}（${r.count} 節）</div>` : '';
+      okSegs.push(header + r.html);
     });
 
     const elapsed = (performance.now() - t0).toFixed(0);
 
-    if (sorted.length === 0) { div.innerHTML = '<div class="error-msg">查無經文資料</div>'; return; }
+    if (okSegs.length === 0) {
+      div.innerHTML = errSegs.map(e => `<div class="quick-segment-error">⚠️ ${e}</div>`).join('');
+      return;
+    }
 
-    const timeHtml = `<div class="search-stats">共 ${sorted.length} 節，耗時 ${elapsed} ms</div>`;
-    div.innerHTML = timeHtml + sorted.map(k => {
-      const v = verseMap[k];
-      return renderVerseGroup(book.bid, v.chap, v.sec, `${book.chinesef} ${v.chap}:${v.sec}`, vers, v.texts);
-    }).join('');
+    const statsHtml = isMulti
+      ? `<div class="search-stats">共 ${segments.length} 段、${totalCount} 節，耗時 ${elapsed} ms${errSegs.length?`（${errSegs.length} 段失敗）`:''}</div>`
+      : `<div class="search-stats">共 ${totalCount} 節，耗時 ${elapsed} ms</div>`;
+    const errHtml = errSegs.map(e => `<div class="quick-segment-error">⚠️ ${e}</div>`).join('');
+    div.innerHTML = statsHtml + errHtml + okSegs.join('');
   } catch (err) {
     div.innerHTML = `<div class="error-msg">查詢失敗：${err.message}</div>`;
   }
