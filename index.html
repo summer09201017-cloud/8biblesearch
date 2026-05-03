@@ -325,11 +325,20 @@ body {
 }
 .note-modal {
   background:var(--card); padding:20px; border-radius:12px;
-  width:90%; max-width:400px;
+  width:94%; max-width:560px;
+  max-height:92vh; display:flex; flex-direction:column;
 }
+.note-modal h3 { flex-shrink:0; margin-bottom:12px; }
 .note-modal textarea {
-  width:100%; height:100px; padding:10px; border:1px solid var(--border);
-  border-radius:8px; font-family:inherit; margin-bottom:12px;
+  width:100%; height:240px; min-height:180px; padding:12px;
+  border:1px solid var(--border); border-radius:8px;
+  font-family:inherit; font-size:1rem; line-height:1.65;
+  margin-bottom:12px; resize:vertical; flex:1;
+}
+.color-picker { flex-shrink:0; }
+@media (max-width:600px) {
+  .note-modal { width:96%; padding:16px; max-height:94vh; }
+  .note-modal textarea { height:260px; min-height:200px; }
 }
 .color-picker { display:flex; gap:10px; margin-bottom:16px; }
 .color-btn {
@@ -347,6 +356,56 @@ body {
   margin:8px 16px; padding:8px 12px; background:rgba(255,255,255,0.5);
   border-left:4px solid var(--accent); border-radius:4px; font-size:0.9rem;
   color:var(--text2);
+}
+
+/* ===== 筆記列表頁 ===== */
+.notes-filters {
+  display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+  margin-bottom:12px; padding:10px 12px;
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+}
+.notes-filters input {
+  flex:1; min-width:180px; padding:8px 12px;
+  border:1px solid var(--border); border-radius:8px;
+  background:var(--bg2); color:var(--text); font-family:inherit; font-size:0.9rem;
+}
+.notes-filters input:focus { outline:none; border-color:var(--accent); }
+.notes-color-filter { display:flex; gap:6px; align-items:center; }
+.notes-color-filter-label { font-size:0.8rem; color:var(--text2); font-weight:600; }
+.notes-color-chip {
+  width:26px; height:26px; border-radius:50%; cursor:pointer;
+  border:2px solid var(--border); transition:all 0.15s;
+}
+.notes-color-chip:hover { transform:scale(1.08); }
+.notes-color-chip.selected { border-color:var(--accent); transform:scale(1.12); box-shadow:0 0 0 2px rgba(139,105,20,0.2); }
+.notes-color-chip.all {
+  background:linear-gradient(135deg,#fff3cd 0%,#d4edda 33%,#f8d7da 66%,#d1ecf1 100%);
+}
+.notes-count { font-size:0.85rem; color:var(--text2); font-weight:600; }
+.note-list { display:flex; flex-direction:column; gap:10px; }
+.note-list-item {
+  display:flex; gap:12px; padding:14px 16px;
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  align-items:flex-start; transition:all 0.2s;
+}
+.note-list-item:hover { border-color:var(--accent); box-shadow:0 2px 8px var(--shadow); }
+.note-list-color {
+  width:14px; min-width:14px; height:14px; border-radius:50%;
+  margin-top:5px; border:1px solid var(--border);
+}
+.note-list-main { flex:1; min-width:0; }
+.note-list-ref { font-weight:700; color:var(--accent); font-size:0.95rem; margin-bottom:6px; }
+.note-list-ref-link {
+  cursor:pointer; text-decoration:underline;
+  text-decoration-thickness:1px; text-underline-offset:2px;
+}
+.note-list-ref-link:hover { color:var(--accent2); text-decoration-thickness:2px; }
+.note-list-text { font-size:0.92rem; color:var(--text); white-space:pre-wrap; word-break:break-word; line-height:1.6; }
+.note-list-actions { display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+@media (max-width:600px) {
+  .note-list-item { flex-wrap:wrap; }
+  .note-list-actions { flex-direction:row; width:100%; justify-content:flex-end; margin-top:4px; }
+  .notes-filters { padding:8px 10px; }
 }
 
 .error-msg {
@@ -546,6 +605,7 @@ body {
   <button class="tab active" data-tab="read" onclick="switchTab('read')">經文閱讀</button>
   <button class="tab" data-tab="search" onclick="switchTab('search')">關鍵字搜尋</button>
   <button class="tab" data-tab="quick" onclick="switchTab('quick')">快速查詢</button>
+  <button class="tab" data-tab="notes" onclick="switchTab('notes')">我的筆記</button>
   <button class="tab" data-tab="settings" onclick="switchTab('settings')">設定/資料</button>
 </nav>
 
@@ -579,8 +639,8 @@ body {
         <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
       </div>
       <div class="nav-row">
-        <button class="btn btn-sm" id="btn-next-sec-top" onclick="nextVerse()">下一節</button>
         <button class="btn btn-sm" id="btn-next-chap-top" onclick="nextChapter()">下一章</button>
+        <button class="btn btn-sm" id="btn-next-sec-top" onclick="nextVerse()">下一節</button>
       </div>
     </div>
     <div class="results-area" id="results-read">
@@ -596,8 +656,8 @@ body {
         <button class="btn btn-sm btn-secondary" onclick="toggleAllReadPicks(true)">全選</button>
       </div>
       <div class="nav-row">
-        <button class="btn btn-sm" id="btn-next-sec-bot" onclick="nextVerse()">下一節</button>
         <button class="btn btn-sm" id="btn-next-chap-bot" onclick="nextChapter()">下一章</button>
+        <button class="btn btn-sm" id="btn-next-sec-bot" onclick="nextVerse()">下一節</button>
       </div>
     </div>
   </div>
@@ -637,6 +697,24 @@ body {
     <div class="version-toggles" id="version-toggles-quick"></div>
     <div id="results-quick">
       <div class="empty-state"><div class="icon">⚡</div><p>輸入經文參照快速查詢</p><p style="font-size:0.8rem;">支援格式：創 1:1-3、約 3:16</p></div>
+    </div>
+  </div>
+
+  <div id="panel-notes" class="panel">
+    <div class="notes-filters">
+      <input type="text" id="notes-search-input" placeholder="搜尋筆記內容或經文參照..." oninput="renderNotesList()">
+      <div class="notes-color-filter">
+        <span class="notes-color-filter-label">顏色：</span>
+        <div class="notes-color-chip all selected" data-color="" onclick="setNotesColorFilter('')" title="全部"></div>
+        <div class="notes-color-chip hl-yellow" data-color="#fff3cd" onclick="setNotesColorFilter('#fff3cd')" title="黃"></div>
+        <div class="notes-color-chip hl-green" data-color="#d4edda" onclick="setNotesColorFilter('#d4edda')" title="綠"></div>
+        <div class="notes-color-chip hl-pink" data-color="#f8d7da" onclick="setNotesColorFilter('#f8d7da')" title="粉"></div>
+        <div class="notes-color-chip hl-blue" data-color="#d1ecf1" onclick="setNotesColorFilter('#d1ecf1')" title="藍"></div>
+      </div>
+      <span id="notes-count" class="notes-count"></span>
+    </div>
+    <div id="results-notes">
+      <div class="empty-state"><div class="icon">📝</div><p>尚未建立任何筆記</p><p style="font-size:0.8rem;">在閱讀／搜尋／快速查詢中點「📝 筆記」即可新增</p></div>
     </div>
   </div>
 
@@ -1706,6 +1784,93 @@ function switchTab(name) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
   document.getElementById(`panel-${name}`).classList.add('active');
+  if (name === 'notes') renderNotesList();
+}
+
+// ====== 筆記列表頁 ======
+let _notesColorFilter = '';
+function setNotesColorFilter(c) {
+  _notesColorFilter = c;
+  document.querySelectorAll('#panel-notes .notes-color-chip').forEach(el => {
+    el.classList.toggle('selected', (el.dataset.color || '') === c);
+  });
+  renderNotesList();
+}
+
+function escapeHtmlForNotes(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function renderNotesList() {
+  const div = document.getElementById('results-notes');
+  if (!div) return;
+  const qInp = document.getElementById('notes-search-input');
+  const q = qInp ? qInp.value.trim().toLowerCase() : '';
+
+  const entries = Object.entries(userData)
+    .filter(([k, d]) => d && ((d.note && String(d.note).trim()) || d.color))
+    .map(([k, d]) => {
+      const [bid, chap, sec] = k.split('-').map(Number);
+      const book = BOOKS.find(b => b.bid === bid);
+      return { k, bid, chap, sec, book, note: d.note || '', color: d.color || '' };
+    })
+    .filter(e => e.book)
+    .filter(e => !_notesColorFilter || e.color === _notesColorFilter)
+    .filter(e => {
+      if (!q) return true;
+      const ref = `${e.book.chinesef} ${e.book.chineses} ${e.chap}:${e.sec}`.toLowerCase();
+      return ref.includes(q) || e.note.toLowerCase().includes(q);
+    })
+    .sort((a, b) => a.bid - b.bid || a.chap - b.chap || a.sec - b.sec);
+
+  const countEl = document.getElementById('notes-count');
+  if (countEl) countEl.textContent = `共 ${entries.length} 筆`;
+
+  if (entries.length === 0) {
+    const total = Object.keys(userData).length;
+    const msg = total === 0
+      ? '尚未建立任何筆記'
+      : '沒有符合條件的筆記';
+    div.innerHTML = `<div class="empty-state"><div class="icon">📝</div><p>${msg}</p><p style="font-size:0.8rem;">在閱讀／搜尋／快速查詢中點「📝 筆記」即可新增</p></div>`;
+    return;
+  }
+
+  div.innerHTML = '<div class="note-list">' + entries.map(e => {
+    const ref = `${e.book.chinesef} ${e.chap}:${e.sec}`;
+    const refEsc = ref.replace(/'/g, "\\'");
+    const colorDot = e.color
+      ? `<div class="note-list-color" style="background-color:${e.color};"></div>`
+      : '<div class="note-list-color" style="background:transparent;border-style:dashed;"></div>';
+    const noteHtml = e.note
+      ? escapeHtmlForNotes(e.note).replace(/\n/g, '<br>')
+      : '<span style="color:var(--text2);font-style:italic;">（僅標記顏色，無文字筆記）</span>';
+    return `<div class="note-list-item">
+      ${colorDot}
+      <div class="note-list-main">
+        <div class="note-list-ref"><span class="note-list-ref-link" onclick="goToVerse(${e.bid},${e.chap},${e.sec})" title="開啟此節閱讀">${ref}</span></div>
+        <div class="note-list-text">${noteHtml}</div>
+      </div>
+      <div class="note-list-actions">
+        <button class="btn btn-sm" onclick="openNoteModal(${e.bid},${e.chap},${e.sec},'${refEsc}')">編輯</button>
+        <button class="btn btn-sm btn-secondary" onclick="deleteNoteEntry(${e.bid},${e.chap},${e.sec})">刪除</button>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function deleteNoteEntry(bid, chap, sec) {
+  if (!confirm('確定刪除此筆記嗎？')) return;
+  delete userData[`${bid}-${chap}-${sec}`];
+  saveUserData();
+  renderNotesList();
+  const activeTab = document.querySelector('.tab.active');
+  if (activeTab) {
+    const tabName = activeTab.getAttribute('data-tab');
+    if (tabName === 'read') fetchVerses();
+    else if (tabName === 'search' && document.getElementById('search-input').value.trim()) doSearch();
+    else if (tabName === 'quick' && document.getElementById('quick-ref').value.trim()) doQuickLookup();
+  }
+  toast('已刪除');
 }
 
 function loadHistory(key, containerId, callbackName) {
@@ -1788,6 +1953,7 @@ function saveNote() {
     if (tabName === 'read') fetchVerses();
     else if (tabName === 'search' && document.getElementById('search-input').value.trim()) doSearch();
     else if (tabName === 'quick' && document.getElementById('quick-ref').value.trim()) doQuickLookup();
+    else if (tabName === 'notes') renderNotesList();
   }
 }
 
@@ -1830,7 +1996,9 @@ function importUserData(e) {
       loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
       loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
       const activeTab = document.querySelector('.tab.active');
-      if(activeTab && activeTab.getAttribute('data-tab') === 'read') fetchVerses();
+      const tabName = activeTab && activeTab.getAttribute('data-tab');
+      if (tabName === 'read') fetchVerses();
+      else if (tabName === 'notes') renderNotesList();
     } catch(err) {
       alert('匯入失敗：檔案格式不正確');
     }
