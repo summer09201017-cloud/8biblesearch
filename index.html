@@ -1612,6 +1612,9 @@ body {
                 <span class="sync-auto-check-desc">每次開啟 App 自動檢查雲端是否有較新版本；若有，會跳出確認視窗（仍由您決定是否還原，<b>不會自動覆蓋本機</b>）。</span>
               </span>
             </label>
+            <div style="margin-top:8px;">
+              <button class="btn btn-sm btn-secondary" onclick="autoCheckCloudOnLaunch({manual:true})" title="不必等下次重新整理，立刻比對雲端 vs 本地">🔍 立刻檢查雲端</button>
+            </div>
           </div>
           <div class="sync-buttons-row">
             <div class="sync-button-group">
@@ -4509,11 +4512,49 @@ const DRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.appdata profile emai
 const CLOUD_FILES = ['bible_backup_a.json','bible_backup_b.json','bible_backup_c.json'];
 const LOCAL_SNAPSHOTS_KEY = 'bible-local-snapshots';
 const SNAPSHOT_MAX = 3;
+// 持久化連結狀態（避免每次 reload 都要重新簽入）
+const CLOUD_LINKED_KEY = 'bible-cloud-linked';
+const CLOUD_TOKEN_CACHE_KEY = 'bible-cloud-token-cache';
 
 let gisTokenClient = null;
 let gisAccessToken = null;
 let gisAccessTokenExpiry = 0;
 let gisUserEmail = '';
+
+function persistCloudLinkedState() {
+  try {
+    if (gisAccessToken && gisAccessTokenExpiry) {
+      localStorage.setItem(CLOUD_LINKED_KEY, '1');
+      localStorage.setItem(CLOUD_TOKEN_CACHE_KEY, JSON.stringify({
+        access_token: gisAccessToken,
+        expiry: gisAccessTokenExpiry,
+        email: gisUserEmail || ''
+      }));
+    }
+  } catch(e) {}
+}
+
+function clearCloudLinkedState() {
+  try {
+    localStorage.removeItem(CLOUD_LINKED_KEY);
+    localStorage.removeItem(CLOUD_TOKEN_CACHE_KEY);
+  } catch(e) {}
+}
+
+function restoreCachedToken() {
+  try {
+    const raw = localStorage.getItem(CLOUD_TOKEN_CACHE_KEY);
+    if (!raw) return false;
+    const c = JSON.parse(raw);
+    if (!c || !c.access_token || !c.expiry) return false;
+    // 留 5 分鐘緩衝避免邊界
+    if (Date.now() > c.expiry - 5*60*1000) return false;
+    gisAccessToken = c.access_token;
+    gisAccessTokenExpiry = c.expiry;
+    gisUserEmail = c.email || '';
+    return true;
+  } catch(e) { return false; }
+}
 
 // 保險絲 1：寫入前先把當下本地資料留存快照（最多 3 份）
 function snapshotLocal(reason) {
@@ -4677,6 +4718,7 @@ async function gisSignIn() {
         gisUserEmail = j.email || '(已連結)';
       }
     } catch(e) { gisUserEmail = '(已連結)'; }
+    persistCloudLinkedState();
     updateSyncUi();
     loadAutoCloudCheckPref();
     setSyncStatus('已連結 Google 帳號', 'success');
@@ -4691,6 +4733,7 @@ function gisSignOut() {
   gisAccessToken = null;
   gisAccessTokenExpiry = 0;
   gisUserEmail = '';
+  clearCloudLinkedState();
   updateSyncUi();
   setSyncStatus('已登出');
   toast('已登出 Google 帳號');
@@ -4704,6 +4747,7 @@ async function ensureValidToken() {
       if (resp.error) { reject(new Error(resp.error)); return; }
       gisAccessToken = resp.access_token;
       gisAccessTokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
+      persistCloudLinkedState();
       resolve(gisAccessToken);
     };
     gisTokenClient.requestAccessToken({ prompt: '' });
@@ -5000,6 +5044,7 @@ async function silentTokenRefresh() {
       if (resp.error) { reject(new Error(resp.error)); return; }
       gisAccessToken = resp.access_token;
       gisAccessTokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
+      persistCloudLinkedState();
       resolve(gisAccessToken);
     };
     try { gisTokenClient.requestAccessToken({ prompt: '' }); }
@@ -5007,15 +5052,63 @@ async function silentTokenRefresh() {
   });
 }
 
-async function autoCheckCloudOnLaunch() {
-  if (_autoCloudCheckedThisSession) return;
-  _autoCloudCheckedThisSession = true;
-  if (!GOOGLE_CLIENT_ID) return;
-  let pref = '0';
-  try { pref = localStorage.getItem(AUTO_CLOUD_CHECK_KEY) || '0'; } catch(e) {}
-  if (pref !== '1') return;
+// 啟動時自動恢復連結（不論 auto-check 開關）— 這樣 reload / F5 不會掉線
+async function autoRelinkOnLaunch() {
+  if (!GOOGLE_CLIENT_ID) return false;
+  let linked = '';
+  try { linked = localStorage.getItem(CLOUD_LINKED_KEY) || ''; } catch(e) {}
+  if (linked !== '1') return false;
+
+  // 1) 快取 token 還沒過期 → 直接用，0 網路請求
+  if (restoreCachedToken()) {
+    updateSyncUi();
+    return true;
+  }
+
+  // 2) 過期 → silent refresh（依靠 Google session cookie，使用者無感）
+  try {
+    await silentTokenRefresh();
+    if (!gisUserEmail) {
+      try {
+        const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: 'Bearer ' + gisAccessToken }
+        });
+        if (r.ok) { const j = await r.json(); gisUserEmail = j.email || ''; }
+      } catch(e) {}
+    }
+    persistCloudLinkedState();
+    updateSyncUi();
+    return true;
+  } catch(e) {
+    const msg = String((e && e.message) || e || '');
+    console.warn('autoRelinkOnLaunch failed:', msg);
+    // 確認性錯誤（撤銷、登出、拒絕）→ 清掉狀態避免下次再試
+    if (/user_logged_out|invalid_grant|access_denied|interaction_required/i.test(msg)) {
+      clearCloudLinkedState();
+      updateSyncUi();
+    }
+    return false;
+  }
+}
+
+async function autoCheckCloudOnLaunch(opts) {
+  const isManual = !!(opts && opts.manual);
+  if (!isManual) {
+    if (_autoCloudCheckedThisSession) return;
+    _autoCloudCheckedThisSession = true;
+  }
+  if (!GOOGLE_CLIENT_ID) {
+    if (isManual) toast('尚未設定 Google Client ID');
+    return;
+  }
+  if (!isManual) {
+    let pref = '0';
+    try { pref = localStorage.getItem(AUTO_CLOUD_CHECK_KEY) || '0'; } catch(e) {}
+    if (pref !== '1') return;
+  }
 
   try {
+    if (isManual) setSyncStatus('正在檢查雲端…');
     await silentTokenRefresh();
     if (!gisUserEmail) {
       try {
@@ -5028,11 +5121,18 @@ async function autoCheckCloudOnLaunch() {
     updateSyncUi();
 
     const latest = await getLatestCloudBackup();
-    if (!latest) return; // 雲端尚無備份 → 不打擾
+    if (!latest) {
+      if (isManual) { setSyncStatus('雲端尚無任何備份'); toast('雲端還沒有備份'); }
+      return;
+    }
 
     const content = await driveDownloadFileContent(latest.id);
     let payload;
-    try { payload = JSON.parse(content); } catch(e) { return; }
+    try { payload = JSON.parse(content); }
+    catch(e) {
+      if (isManual) { setSyncStatus('雲端備份格式錯誤', 'error'); }
+      return;
+    }
 
     const cloudTime = payload.timestamp || 0;
     const cloudCount = payload.noteCount || 0;
@@ -5040,7 +5140,12 @@ async function autoCheckCloudOnLaunch() {
     const localCount = getNoteCount();
 
     // 雲端比本地新 60 秒以上才提示（避免時鐘飄移誤觸發）
-    if (cloudTime <= localTime + 60000) return;
+    if (cloudTime <= localTime + 60000) {
+      const ts = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+      setSyncStatus('雲端已是最新（' + ts + ' 檢查）', 'success');
+      if (isManual) toast('雲端與本地同步，沒有更新');
+      return;
+    }
 
     setSyncStatus('偵測到雲端有較新版本');
     const ok = await openSyncConfirm({
@@ -5073,8 +5178,13 @@ async function autoCheckCloudOnLaunch() {
     setSyncStatus('已自動還原（雲端 ' + cloudCount + ' 筆筆記）', 'success');
     toast('已從雲端自動還原');
   } catch(e) {
-    // 任何錯誤（silent refresh 失敗、網路、API 錯誤）→ 靜默，不打擾用戶
-    console.warn('autoCheckCloudOnLaunch:', e && e.message ? e.message : e);
+    const msg = (e && e.message) ? e.message : String(e);
+    if (isManual) {
+      setSyncStatus('檢查失敗：' + msg, 'error');
+      toast('檢查雲端失敗：' + msg);
+    }
+    // 自動模式下任何錯誤（silent refresh 失敗、網路、API 錯誤）→ 靜默，不打擾用戶
+    console.warn('autoCheckCloudOnLaunch:', msg);
   }
 }
 
@@ -5084,6 +5194,12 @@ normalizeActiveVersionOrder();
 initBookSelector();
 initVersionToggles();
 renderVersionOrderList();
+// 同步從 localStorage 恢復雲端連結，這樣 UI 不會先閃「尚未連結」
+try {
+  if (GOOGLE_CLIENT_ID && localStorage.getItem(CLOUD_LINKED_KEY) === '1') {
+    restoreCachedToken();
+  }
+} catch(e) {}
 updateSyncUi();
 loadAutoCloudCheckPref();
 renderSnapshotList();
@@ -5125,8 +5241,11 @@ loadLocalData().then(() => {
   checkBackupReminder();
   // 首次使用提示（看過後不再自動出現）；稍延後讓主畫面先穩定
   setTimeout(showWelcomeIfNew, 600);
-  // 半自動雲端偵測：再延後讓首次體驗不被網路請求阻塞
-  setTimeout(autoCheckCloudOnLaunch, 1500);
+  // 雲端：先恢復連結 → 再（若有開）偵測雲端更新
+  setTimeout(async () => {
+    await autoRelinkOnLaunch();
+    await autoCheckCloudOnLaunch();
+  }, 1500);
 });
 
 // ====== 首次使用歡迎卡片 ======

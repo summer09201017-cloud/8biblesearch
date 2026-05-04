@@ -94,6 +94,8 @@ A `flex-wrap:wrap` row: book+chapter ref on the left, then the right-side action
 | `bible-layout-mode` | `"auto"` / `"stacked"` / `"parallel"` — 多譯本排版偏好。auto = 桌機並排手機堆疊；其他 = 強制 |
 | `bible-seen-welcome` | `"1"` — 首次使用歡迎卡片已關閉的記號（設定頁有「重新顯示」按鈕） |
 | `bible-auto-cloud-check` | `"1"` / `"0"` — 啟動時是否自動偵測雲端有無更新（半自動同步開關，預設 `"0"`） |
+| `bible-cloud-linked` | `"1"` — 表示使用者曾成功連結 Google 帳號；啟動時用來決定是否要 silent refresh |
+| `bible-cloud-token-cache` | `{access_token, expiry, email}` — 快取 Google access token（~1 小時）避免每次 reload 都打網路；登出或撤銷時清除 |
 
 The export/import JSON in 設定/資料 includes `userData`, `historySearch`, `historyQuick`, `exportedAt`. The cloud sync payload (schema 3) additionally carries `versionOrder`, `noteCount`, `timestamp`. Schema bumped 2 → 3 when notes gained type/tags/dates/status fields, but no read-side branching exists — `schema` is just a label, all readers do best-effort field access with fallbacks.
 
@@ -156,14 +158,26 @@ Five safety fuses are non-negotiable; do not remove any when refactoring:
 4. **No silent overwrite** — uploads/restores always require a manual button click OR an explicit user confirmation in `openSyncConfirm`. The half-auto detection in `autoCheckCloudOnLaunch()` only *fetches* and *shows the modal*; it never writes without the user clicking 確定 in the modal.
 5. **No-op when `GOOGLE_CLIENT_ID === ''`** — the UI shows a "not configured" notice and no sync code paths run.
 
+#### Connection persistence (`autoRelinkOnLaunch`)
+Critical UX fix — Google access tokens used to live only in memory, so every page reload / F5 / PWA restart forced the user to click 「🔗 連結 Google 帳號」 again. Now:
+- On every successful sign-in/refresh, `persistCloudLinkedState()` writes `{access_token, expiry, email}` to `bible-cloud-token-cache` and sets `bible-cloud-linked = "1"`.
+- Init script does a synchronous `restoreCachedToken()` before the first `updateSyncUi()` so the UI shows 「已連結」immediately (no flash of 「尚未連結」) when cache is fresh (<55 min old).
+- 1.5s after page load, `autoRelinkOnLaunch()` runs — if cache is expired, it calls `silentTokenRefresh()` (i.e. `requestAccessToken({prompt:''})`), which uses the user's existing Google session cookie to mint a new token without any popup. Result is persisted again.
+- On revoke/logout/access_denied error, both keys are cleared so we don't keep retrying a dead session.
+- `gisSignOut()` calls `clearCloudLinkedState()` to forget the link explicitly.
+
+Storing access tokens in localStorage is acceptable here because (a) the scope is `drive.appdata` only — no access to user's other Drive files, (b) the app is a static HTML with no user-generated HTML rendering paths (low XSS surface), (c) tokens self-expire in ~1 hour, (d) the alternative (popup every reload) is a worse UX for non-technical users.
+
 #### Half-auto cloud detection (`autoCheckCloudOnLaunch`)
 Opt-in checkbox 「🔄 啟動時自動偵測雲端」 inside `#sync-signed-in` (persisted in `bible-auto-cloud-check`, default off). When on:
-1. ~1.5s after page load (delayed so initial render isn't blocked), attempts a silent token refresh via `silentTokenRefresh()` (calls `requestAccessToken({prompt:''})`). If the user previously linked + Google session is alive, no popup; otherwise it fails silently.
+1. ~1.5s after page load (delayed so initial render isn't blocked), runs *after* `autoRelinkOnLaunch()` so token is already valid.
 2. Fetches the latest cloud backup, parses payload, compares `cloudTime` vs local `BACKUP_TIME_KEY`.
 3. Only when `cloudTime > localTime + 60s` (clock-drift tolerance) does it call `openSyncConfirm(...)` — same modal as manual restore, with both counts and the >5 divergence warning.
 4. User confirms → goes through the full restore path (snapshot before write, all storage keys, UI re-render). User cancels → silent.
-5. Any exception (refresh failed, no network, no cloud backup, parse error) → swallowed with `console.warn`. Never toasts errors to non-technical users.
-6. Guarded by `_autoCloudCheckedThisSession` so reloads in the same tab don't re-trigger.
+5. When cloud is **not** newer, sets a status line 「雲端已是最新（HH:MM 檢查）」 so the user sees the check actually ran (otherwise the feature looked broken).
+6. Any exception in auto mode → swallowed with `console.warn`. Never toasts errors to non-technical users.
+7. Guarded by `_autoCloudCheckedThisSession` so reloads in the same tab don't re-trigger.
+8. Manual mode: `autoCheckCloudOnLaunch({manual:true})` is wired to a 「🔍 立刻檢查雲端」 button — bypasses both the once-per-session guard and the toggle pref, and shows toasts/status on every outcome (good for debugging and on-demand checks).
 
 Setup procedure for the OAuth Client ID is documented in `GOOGLE_DRIVE_SETUP.md`. Don't commit a real Client ID without the user's go-ahead — it's not secret but it ties the deployment to a specific Cloud project.
 
