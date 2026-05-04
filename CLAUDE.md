@@ -90,6 +90,7 @@ A `flex-wrap:wrap` row: book+chapter ref on the left, then the right-side action
 | `bible-last-read` | `{bid, chap, secStart, secEnd, ts}` — last successful `fetchVerses()` query, restored on next launch |
 | `bible-continuous-read` | `"1"` / `"0"` — 連讀模式開關（讀到章末自動接下一章） |
 | `bible-layout-mode` | `"auto"` / `"stacked"` / `"parallel"` — 多譯本排版偏好。auto = 桌機並排手機堆疊；其他 = 強制 |
+| `bible-seen-welcome` | `"1"` — 首次使用歡迎卡片已關閉的記號（設定頁有「重新顯示」按鈕） |
 
 The export/import JSON in 設定/資料 includes `userData`, `historySearch`, `historyQuick`, `exportedAt`. The cloud sync payload (schema 3) additionally carries `versionOrder`, `noteCount`, `timestamp`. Schema bumped 2 → 3 when notes gained type/tags/dates/status fields, but no read-side branching exists — `schema` is just a label, all readers do best-effort field access with fallbacks.
 
