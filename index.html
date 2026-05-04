@@ -1691,7 +1691,7 @@ body {
 
 <footer class="app-footer">
   <p>經文僅由本地 <code>data/*.json</code> 讀取，可完全離線使用（下載腳本資料來源可參考<a href="https://bible.fhl.net" target="_blank" rel="noopener">信望愛</a>，網頁執行時不連線查詢）</p>
-  <p style="margin-top:4px;">和合本 · ESV · NIV · WEB · BBE · 新譯本 · 呂振中 · ASV · KJV ｜ <span title="WEB／BBE：node download_bible.js">譯本說明見 DEPLOY.md</span></p>
+  <p style="margin-top:4px;">和合本 · ESV · NIV · 新譯本 · 呂振中 · BBE · ASV · KJV · WEB ｜ <span title="WEB／BBE：node download_bible.js">譯本說明見 DEPLOY.md</span></p>
 </footer>
 
 <script>
@@ -1700,12 +1700,12 @@ const VERSIONS = [
   { code:'unv', name:'和合本', badge:'badge-unv', local:true },
   { code:'esv', name:'ESV',   badge:'badge-esv', local:true },
   { code:'niv', name:'NIV', badge:'badge-niv', local:true },
-  { code:'web', name:'WEB', badge:'badge-web', local:true },
   { code:'ncv', name:'新譯本', badge:'badge-ncv', local:true },
   { code:'lcc', name:'呂振中', badge:'badge-lcc', local:true },
   { code:'bbe', name:'BBE', badge:'badge-bbe', local:true },
   { code:'asv', name:'ASV',   badge:'badge-asv', local:true },
   { code:'kjv', name:'KJV',   badge:'badge-kjv', local:true },
+  { code:'web', name:'WEB', badge:'badge-web', local:true },
 ];
 let activeVersions = ['unv','esv','niv','ncv','lcc'];
 
