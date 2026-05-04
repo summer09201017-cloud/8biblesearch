@@ -974,6 +974,59 @@ body {
 .sync-status { font-size:0.82rem; color:var(--text2); min-height:1.2em; margin-top:8px; }
 .sync-status.error { color:#c0392b; }
 .sync-status.success { color:#27ae60; }
+.sync-section-details > summary {
+  cursor:pointer; font-weight:700; font-size:1.05rem; color:var(--accent);
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap; list-style:none;
+}
+.sync-section-details > summary::-webkit-details-marker { display:none; }
+.sync-section-details > summary::before { content:'▶'; font-size:0.7rem; transition:transform 0.15s; }
+.sync-section-details[open] > summary::before { transform:rotate(90deg); }
+.sync-section-tag {
+  font-size:0.75rem; font-weight:400; color:var(--text2);
+}
+.sync-section-tag b { color:var(--accent); font-weight:700; }
+.sync-tutorial {
+  background:#fffbe6; border:1px solid #ffe58f; border-radius:8px;
+  padding:10px 14px; margin-bottom:14px; font-size:0.9rem;
+}
+.sync-tutorial > summary {
+  cursor:pointer; font-weight:700; color:#8b6914;
+  list-style:none;
+}
+.sync-tutorial > summary::-webkit-details-marker { display:none; }
+.sync-tutorial > summary::before { content:'▶'; font-size:0.7rem; margin-right:6px; transition:transform 0.15s; display:inline-block; }
+.sync-tutorial[open] > summary::before { transform:rotate(90deg); }
+.sync-tutorial-steps {
+  margin:10px 0 6px; padding-left:22px;
+  color:#5c3d1a; line-height:1.7; font-size:0.88rem;
+}
+.sync-tutorial-steps li { margin-bottom:6px; }
+.sync-tutorial-steps li:last-child { margin-bottom:0; }
+.sync-tutorial-warning {
+  background:#fff3cd; padding:6px 10px; border-radius:5px;
+  border-left:3px solid #c0392b;
+  margin-top:6px; font-size:0.85rem; color:#5c3d1a;
+}
+.sync-tutorial-tip {
+  margin-top:10px; padding:8px 10px; background:#fff;
+  border-radius:6px; font-size:0.85rem; color:#5c3d1a;
+  border:1px dashed #ffd54f;
+}
+.sync-account-warning {
+  background:#fff8e1; border:1px solid #ffd54f; border-radius:6px;
+  padding:8px 12px; margin-bottom:10px; font-size:0.82rem; color:#5c3d1a;
+  line-height:1.5;
+}
+.sync-button-group {
+  display:flex; flex-direction:column; gap:4px; min-width:0;
+}
+.sync-button-hint {
+  font-size:0.75rem; color:var(--text2); padding-left:2px;
+}
+.sync-confirm-tip {
+  margin-top:6px; font-size:0.82rem; color:var(--text2);
+  padding:6px 10px; background:var(--bg2); border-radius:6px;
+}
 .snapshot-list { margin-top:8px; display:flex; flex-direction:column; gap:6px; }
 .snapshot-item {
   display:flex; gap:10px; align-items:center; padding:8px 10px;
@@ -1480,43 +1533,72 @@ body {
       </p>
     </div>
 
-    <!-- 4. 雲端自動同步（選用、放最後） -->
-    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
-      <h3>☁️ 跨裝置自動同步 <span style="font-size:0.75rem;font-weight:400;color:var(--text2);">（選用）</span></h3>
-      <p style="font-size:0.9rem;color:var(--text2);margin-bottom:14px;">
-        登入 Google 帳號後，可手動將筆記、標記、歷史備份到您 Drive 的 App 隱藏資料夾，並在其他裝置還原。<br>
-        <span style="font-size:0.8rem;">這個資料夾<b>只有本 App 看得到</b>，不會干擾您 Drive 中的其他檔案。</span>
-      </p>
-
-      <div id="sync-not-configured" class="sync-not-configured" hidden>
-        <b>☁️ 雲端同步功能尚未啟用</b><br>
-        <span style="font-size:0.85rem;">這是 App 維運者的設定（一次性）。在啟用之前，您可以使用上方<b style="color:var(--accent);">「📤 匯出資料 (JSON)」</b>備份；換手機時把檔案傳過去再「📥 匯入資料」即可，免登入、免設定，幾秒完成。</span>
-      </div>
-
-      <div id="sync-signed-out" hidden>
-        <button class="btn" onclick="gisSignIn()">🔗 連結 Google 帳號</button>
-      </div>
-
-      <div id="sync-signed-in" hidden>
-        <div class="sync-account-row">
-          已連結：<span class="sync-account-email" id="sync-user-email">-</span>
-          <button class="btn btn-sm btn-secondary" onclick="gisSignOut()">登出</button>
-        </div>
-        <div class="sync-buttons-row">
-          <button class="btn" onclick="cloudUpload()">☁️ 備份到 Google Drive</button>
-          <button class="btn btn-secondary" onclick="cloudRestore()">📥 從 Google Drive 還原</button>
-        </div>
-        <div id="sync-status" class="sync-status"></div>
-      </div>
-
-      <details style="margin-top:14px; font-size:0.88rem;">
-        <summary style="cursor:pointer; color:var(--accent); font-weight:600;">🛟 進階：本地備份快照（萬一同步出問題可從這裡還原）</summary>
-        <p style="margin-top:8px; color:var(--text2); font-size:0.82rem;">
-          每次雲端備份／還原前，系統會自動將當下本地資料留存一份快照（最多保留 3 份）。
+    <!-- 4. 雲端自動同步（選用、預設摺疊、放最後） -->
+    <details class="sync-section-details" style="background:var(--card); padding:14px 20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
+      <summary>
+        ☁️ 跨裝置自動同步（Google Drive）
+        <span class="sync-section-tag">— 進階功能；建議先用上方 <b>JSON 備份</b>就夠了</span>
+      </summary>
+      <div style="margin-top:14px;">
+        <p style="font-size:0.9rem;color:var(--text2);margin-bottom:14px;">
+          登入 Google 帳號後，可手動將筆記、標記、歷史備份到您 Drive 的 App 隱藏資料夾，並在其他裝置還原。<br>
+          <span style="font-size:0.8rem;">這個資料夾<b>只有本 App 看得到</b>，不會干擾您 Drive 中的其他檔案。</span>
         </p>
-        <div id="snapshot-list" class="snapshot-list"></div>
-      </details>
-    </div>
+
+        <div id="sync-not-configured" class="sync-not-configured" hidden>
+          <b>☁️ 雲端同步功能尚未啟用</b><br>
+          <span style="font-size:0.85rem;">這是 App 維運者的設定（一次性）。在啟用之前，您可以使用上方<b style="color:var(--accent);">「📤 匯出資料 (JSON)」</b>備份；換手機時把檔案傳過去再「📥 匯入資料」即可，免登入、免設定，幾秒完成。</span>
+        </div>
+
+        <details class="sync-tutorial" id="sync-tutorial" open>
+          <summary>📖 第一次使用？點此展開 4 步驟教學</summary>
+          <ol class="sync-tutorial-steps">
+            <li>點下方「<b>🔗 連結 Google 帳號</b>」按鈕，會跳出 Google 登入視窗。</li>
+            <li>選擇您的 Google 帳號 →
+              <div class="sync-tutorial-warning">
+                ⚠️ 可能出現「<b>Google 尚未驗證這個應用程式</b>」紅色警告畫面，這是<b>測試階段必經畫面，不是病毒</b>。請點「<b>進階</b>」→「<b>前往 多譯本聖經查詢（不安全）</b>」繼續。
+              </div>
+            </li>
+            <li>同意「<b>查看與管理此 App 建立的檔案</b>」權限。本 App <b>只能讀寫一個它自己的隱藏資料夾</b>，看不到您 Drive 裡的其他檔案。</li>
+            <li>連結成功 → 看到您的信箱顯示在頁面上 → 完成。</li>
+          </ol>
+          <p class="sync-tutorial-tip">💡 <b>請記下您用哪個 Google 帳號連結</b>。換手機 / 清快取後要還原筆記，必須登入「同一個」帳號才能找到您的備份。</p>
+        </details>
+
+        <div id="sync-signed-out" hidden>
+          <button class="btn" onclick="gisSignInWithWarning()">🔗 連結 Google 帳號</button>
+        </div>
+
+        <div id="sync-signed-in" hidden>
+          <div class="sync-account-row">
+            已連結：<span class="sync-account-email" id="sync-user-email">-</span>
+            <button class="btn btn-sm btn-secondary" onclick="gisSignOut()">登出</button>
+          </div>
+          <div class="sync-account-warning">
+            ⚠️ <b>請記住這個帳號</b>。換手機 / 清瀏覽器資料時，必須登入「同一個」Google 帳號才能還原筆記。
+          </div>
+          <div class="sync-buttons-row">
+            <div class="sync-button-group">
+              <button class="btn" onclick="cloudUpload()" title="把這台裝置的筆記上傳到雲端，會佔用雲端最舊的備份槽（保留近 3 份）">☁️ 備份到 Google Drive</button>
+              <small class="sync-button-hint">覆蓋雲端為目前裝置版本</small>
+            </div>
+            <div class="sync-button-group">
+              <button class="btn btn-secondary" onclick="cloudRestore()" title="從雲端最新備份覆蓋本地資料；會自動先建立本地快照可還原">📥 從 Google Drive 還原</button>
+              <small class="sync-button-hint">覆蓋本機為雲端版本（會先自動建立本地快照）</small>
+            </div>
+          </div>
+          <div id="sync-status" class="sync-status"></div>
+        </div>
+
+        <details style="margin-top:14px; font-size:0.88rem;">
+          <summary style="cursor:pointer; color:var(--accent); font-weight:600;">🛟 進階：本地備份快照（萬一同步出問題可從這裡還原）</summary>
+          <p style="margin-top:8px; color:var(--text2); font-size:0.82rem;">
+            每次雲端備份／還原前，系統會自動將當下本地資料留存一份快照（最多保留 3 份）。
+          </p>
+          <div id="snapshot-list" class="snapshot-list"></div>
+        </details>
+      </div>
+    </details>
 
     <div style="text-align:center; padding:8px 0 4px;">
       <button class="welcome-restart-link" onclick="showWelcomeManually()">💡 重新顯示首次使用提示</button>
@@ -4515,6 +4597,19 @@ function updateSyncUi() {
   }
 }
 
+/** 預警提示 → 使用者確認後才呼叫 gisSignIn() */
+function gisSignInWithWarning() {
+  if (!GOOGLE_CLIENT_ID) { toast('尚未設定 Google Client ID'); return; }
+  const ok = confirm(
+    '即將連結 Google 帳號\n\n' +
+    '接下來會跳出 Google 登入視窗。\n\n' +
+    '⚠️ 測試階段可能會出現「Google 尚未驗證這個應用程式」紅色警告畫面 — 這是正常現象（不是病毒）。請點「進階」→「前往 多譯本聖經查詢（不安全）」繼續。\n\n' +
+    '完成後請記下您用了哪個 Google 帳號 — 換手機要用「同一個」帳號才能還原筆記。\n\n' +
+    '按「確定」繼續，按「取消」中止。'
+  );
+  if (ok) gisSignIn();
+}
+
 async function gisSignIn() {
   if (!GOOGLE_CLIENT_ID) { toast('尚未設定 Google Client ID'); return; }
   try {
@@ -4688,7 +4783,10 @@ function openSyncConfirm(opts) {
       + '    <div class="sync-confirm-side-time">筆筆記<br>' + fmtTime(opts.cloudTime) + '</div>'
       + '  </div>'
       + '</div>'
-      + (opts.warning ? '<div class="sync-confirm-warning">⚠️ 兩邊資料差異較大，請仔細確認方向！</div>' : '');
+      + (opts.warning
+          ? '<div class="sync-confirm-warning">⚠️ 兩邊資料差異較大，請仔細確認方向！</div>'
+            + '<div class="sync-confirm-tip">💡 數字差很多代表您可能按錯方向，按錯會把較完整的那邊覆蓋掉。請再確認一次再繼續。</div>'
+          : '');
 
     modal.style.display = 'flex';
 
