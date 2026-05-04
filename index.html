@@ -357,7 +357,8 @@ body {
   width:18px; height:18px;
 }
 .btn.btn-query-large {
-  padding:10px 22px; font-size:1rem; font-weight:700;
+  padding:10px 56px; font-size:1.05rem; font-weight:700;
+  min-width:9rem; letter-spacing:0.15em;
 }
 /* 首次使用歡迎卡片 */
 .welcome-card {
@@ -433,12 +434,16 @@ body {
 }
 .chapter-info { font-size:0.9rem; font-weight:600; color:var(--text2); }
 
-.search-box { display:flex; gap:8px; margin-bottom:16px; }
+.search-box { display:flex; gap:8px; margin-bottom:16px; align-items:stretch; }
 .search-box input {
   flex:1; padding:10px 16px; border:2px solid var(--border); border-radius:10px;
   font-size:1rem; font-family:inherit; background:var(--bg2); color:var(--text);
 }
 .search-box input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(139,105,20,0.15); }
+#btn-search {
+  padding:14px 36px; font-size:1.35rem; font-weight:800;
+  min-height:54px; letter-spacing:0.2em; min-width:8rem;
+}
 .btn-search-flash {
   background:#2ecc71 !important;
   color:#fff !important;
@@ -458,6 +463,7 @@ body {
   padding:10px 12px; background:var(--card); border-radius:10px; border:1px solid var(--border);
 }
 .search-actions-label { font-size:0.8rem; color:var(--text2); font-weight:600; margin-right:4px; }
+.share-btn-group { display:inline-flex; gap:8px; flex-wrap:nowrap; }
 .search-result-item {
   display:flex; gap:0; align-items:flex-start;
   padding:10px 10px; background:var(--card); border-radius:10px;
@@ -1370,8 +1376,10 @@ body {
       <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllSearchPicks(true)">全選</button>
       <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllSearchPicks(false)">取消全選</button>
       <button type="button" class="btn btn-sm btn-search-pick-copy" onclick="copyPickedSearchVerses()">複製勾選經文</button>
-      <button type="button" class="btn btn-sm" onclick="sharePickedToLine()">LINE 分享</button>
-      <button type="button" class="btn btn-sm" onclick="sharePickedToEmail()">Email 分享</button>
+      <span class="share-btn-group">
+        <button type="button" class="btn btn-sm" onclick="sharePickedToLine()">LINE 分享</button>
+        <button type="button" class="btn btn-sm" onclick="sharePickedToEmail()">Email 分享</button>
+      </span>
     </div>
     <div id="results-search">
       <div class="empty-state"><div class="icon">🔍</div><p>輸入關鍵字搜尋聖經經文</p></div>
@@ -1692,7 +1700,7 @@ const VERSIONS = [
   { code:'unv', name:'和合本', badge:'badge-unv', local:true },
   { code:'esv', name:'ESV',   badge:'badge-esv', local:true },
   { code:'niv', name:'NIV', badge:'badge-niv', local:true },
-  { code:'web', name:'WEB', badge:'badge-web', local:true, hideInUi:true },
+  { code:'web', name:'WEB', badge:'badge-web', local:true },
   { code:'ncv', name:'新譯本', badge:'badge-ncv', local:true },
   { code:'lcc', name:'呂振中', badge:'badge-lcc', local:true },
   { code:'bbe', name:'BBE', badge:'badge-bbe', local:true },
@@ -2047,8 +2055,10 @@ function searchActionsFooterHtml() {
     '<button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllSearchPicks(true)">全選</button>' +
     '<button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllSearchPicks(false)">取消全選</button>' +
     '<button type="button" class="btn btn-sm btn-search-pick-copy" onclick="copyPickedSearchVerses()">複製勾選經文</button>' +
-    '<button type="button" class="btn btn-sm" onclick="sharePickedToLine()">LINE 分享</button>' +
-    '<button type="button" class="btn btn-sm" onclick="sharePickedToEmail()">Email 分享</button>' +
+    '<span class="share-btn-group">' +
+      '<button type="button" class="btn btn-sm" onclick="sharePickedToLine()">LINE 分享</button>' +
+      '<button type="button" class="btn btn-sm" onclick="sharePickedToEmail()">Email 分享</button>' +
+    '</span>' +
     '</div>';
 }
 
