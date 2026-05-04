@@ -1036,6 +1036,14 @@ body {
   padding:8px 12px; margin-bottom:10px; font-size:0.82rem; color:#5c3d1a;
   line-height:1.5;
 }
+.sync-auto-check {
+  margin:6px 0 12px; padding:8px 12px;
+  background:var(--bg2); border:1px dashed var(--border); border-radius:6px;
+  font-size:0.86rem; line-height:1.55;
+}
+.sync-auto-check label { display:flex; gap:8px; align-items:flex-start; cursor:pointer; }
+.sync-auto-check input[type="checkbox"] { margin-top:3px; flex-shrink:0; }
+.sync-auto-check-desc { color:var(--text2); font-size:0.78rem; display:block; margin-top:2px; }
 .sync-button-group {
   display:flex; flex-direction:column; gap:4px; min-width:0;
 }
@@ -1595,6 +1603,15 @@ body {
           </div>
           <div class="sync-account-warning">
             ⚠️ <b>請記住這個帳號</b>。換手機 / 清瀏覽器資料時，必須登入「同一個」Google 帳號才能還原筆記。
+          </div>
+          <div class="sync-auto-check">
+            <label>
+              <input type="checkbox" id="auto-cloud-check-toggle" onchange="setAutoCloudCheck(this.checked)">
+              <span>
+                <b>🔄 啟動時自動偵測雲端</b>
+                <span class="sync-auto-check-desc">每次開啟 App 自動檢查雲端是否有較新版本；若有，會跳出確認視窗（仍由您決定是否還原，<b>不會自動覆蓋本機</b>）。</span>
+              </span>
+            </label>
           </div>
           <div class="sync-buttons-row">
             <div class="sync-button-group">
@@ -4661,6 +4678,7 @@ async function gisSignIn() {
       }
     } catch(e) { gisUserEmail = '(已連結)'; }
     updateSyncUi();
+    loadAutoCloudCheckPref();
     setSyncStatus('已連結 Google 帳號', 'success');
   };
   gisTokenClient.requestAccessToken({ prompt: 'consent' });
@@ -4950,6 +4968,116 @@ async function cloudRestore() {
   }
 }
 
+// ====== 半自動雲端偵測（啟動時偵測雲端 → 跳確認 modal）======
+const AUTO_CLOUD_CHECK_KEY = 'bible-auto-cloud-check';
+let _autoCloudCheckedThisSession = false;
+
+function loadAutoCloudCheckPref() {
+  const cb = document.getElementById('auto-cloud-check-toggle');
+  if (!cb) return;
+  let v = '0';
+  try { v = localStorage.getItem(AUTO_CLOUD_CHECK_KEY) || '0'; } catch(e) {}
+  cb.checked = (v === '1');
+}
+
+function setAutoCloudCheck(on) {
+  try { localStorage.setItem(AUTO_CLOUD_CHECK_KEY, on ? '1' : '0'); } catch(e) {}
+  toast(on ? '已啟用：下次開啟 App 時會自動偵測雲端' : '已停用自動偵測');
+}
+
+async function silentTokenRefresh() {
+  if (gisAccessToken && Date.now() < gisAccessTokenExpiry) return gisAccessToken;
+  await ensureGisLoaded();
+  if (!gisTokenClient) {
+    gisTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: DRIVE_SCOPES,
+      callback: () => {}
+    });
+  }
+  return new Promise((resolve, reject) => {
+    gisTokenClient.callback = (resp) => {
+      if (resp.error) { reject(new Error(resp.error)); return; }
+      gisAccessToken = resp.access_token;
+      gisAccessTokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
+      resolve(gisAccessToken);
+    };
+    try { gisTokenClient.requestAccessToken({ prompt: '' }); }
+    catch(e) { reject(e); }
+  });
+}
+
+async function autoCheckCloudOnLaunch() {
+  if (_autoCloudCheckedThisSession) return;
+  _autoCloudCheckedThisSession = true;
+  if (!GOOGLE_CLIENT_ID) return;
+  let pref = '0';
+  try { pref = localStorage.getItem(AUTO_CLOUD_CHECK_KEY) || '0'; } catch(e) {}
+  if (pref !== '1') return;
+
+  try {
+    await silentTokenRefresh();
+    if (!gisUserEmail) {
+      try {
+        const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: 'Bearer ' + gisAccessToken }
+        });
+        if (r.ok) { const j = await r.json(); gisUserEmail = j.email || ''; }
+      } catch(e) {}
+    }
+    updateSyncUi();
+
+    const latest = await getLatestCloudBackup();
+    if (!latest) return; // 雲端尚無備份 → 不打擾
+
+    const content = await driveDownloadFileContent(latest.id);
+    let payload;
+    try { payload = JSON.parse(content); } catch(e) { return; }
+
+    const cloudTime = payload.timestamp || 0;
+    const cloudCount = payload.noteCount || 0;
+    const localTime = parseInt(localStorage.getItem(BACKUP_TIME_KEY)) || 0;
+    const localCount = getNoteCount();
+
+    // 雲端比本地新 60 秒以上才提示（避免時鐘飄移誤觸發）
+    if (cloudTime <= localTime + 60000) return;
+
+    setSyncStatus('偵測到雲端有較新版本');
+    const ok = await openSyncConfirm({
+      title: '🔄 偵測到雲端有更新',
+      actionLabel: '還原（雲端 → 本地）',
+      localCount, localTime,
+      cloudCount, cloudTime,
+      warning: localCount > cloudCount + 5,
+      message: '另一台裝置似乎更新了筆記。要把這台裝置覆蓋為雲端版本嗎？<br><span style="color:var(--text2); font-size:0.85rem;">取消的話可以稍後手動還原。</span>'
+    });
+    if (!ok) { setSyncStatus('已略過自動還原'); return; }
+
+    // 走完整還原流程（含本地快照保險絲）
+    snapshotLocal('自動偵測還原前自動快照');
+    if (payload.userData) localStorage.setItem(USER_DATA_KEY, payload.userData);
+    if (payload.historySearch) localStorage.setItem('bible-search-history', payload.historySearch);
+    if (payload.historyQuick) localStorage.setItem('bible-quick-history', payload.historyQuick);
+    if (payload.versionOrder && payload.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, payload.versionOrder);
+    userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
+    migrateUserDataLazy();
+    loadVersionOrder();
+    initVersionToggles();
+    renderVersionOrderList();
+    loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
+    loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
+    refreshActivePanelByOrder();
+    renderSnapshotList();
+    try { localStorage.setItem(BACKUP_TIME_KEY, Date.now().toString()); } catch(e) {}
+    checkBackupReminder();
+    setSyncStatus('已自動還原（雲端 ' + cloudCount + ' 筆筆記）', 'success');
+    toast('已從雲端自動還原');
+  } catch(e) {
+    // 任何錯誤（silent refresh 失敗、網路、API 錯誤）→ 靜默，不打擾用戶
+    console.warn('autoCheckCloudOnLaunch:', e && e.message ? e.message : e);
+  }
+}
+
 // ========== Init ==========
 loadVersionOrder();
 normalizeActiveVersionOrder();
@@ -4957,6 +5085,7 @@ initBookSelector();
 initVersionToggles();
 renderVersionOrderList();
 updateSyncUi();
+loadAutoCloudCheckPref();
 renderSnapshotList();
 loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
 loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
@@ -4996,6 +5125,8 @@ loadLocalData().then(() => {
   checkBackupReminder();
   // 首次使用提示（看過後不再自動出現）；稍延後讓主畫面先穩定
   setTimeout(showWelcomeIfNew, 600);
+  // 半自動雲端偵測：再延後讓首次體驗不被網路請求阻塞
+  setTimeout(autoCheckCloudOnLaunch, 1500);
 });
 
 // ====== 首次使用歡迎卡片 ======

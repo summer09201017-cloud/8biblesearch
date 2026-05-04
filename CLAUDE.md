@@ -93,6 +93,7 @@ A `flex-wrap:wrap` row: book+chapter ref on the left, then the right-side action
 | `bible-continuous-read` | `"1"` / `"0"` — 連讀模式開關（讀到章末自動接下一章） |
 | `bible-layout-mode` | `"auto"` / `"stacked"` / `"parallel"` — 多譯本排版偏好。auto = 桌機並排手機堆疊；其他 = 強制 |
 | `bible-seen-welcome` | `"1"` — 首次使用歡迎卡片已關閉的記號（設定頁有「重新顯示」按鈕） |
+| `bible-auto-cloud-check` | `"1"` / `"0"` — 啟動時是否自動偵測雲端有無更新（半自動同步開關，預設 `"0"`） |
 
 The export/import JSON in 設定/資料 includes `userData`, `historySearch`, `historyQuick`, `exportedAt`. The cloud sync payload (schema 3) additionally carries `versionOrder`, `noteCount`, `timestamp`. Schema bumped 2 → 3 when notes gained type/tags/dates/status fields, but no read-side branching exists — `schema` is just a label, all readers do best-effort field access with fallbacks.
 
@@ -152,8 +153,17 @@ Five safety fuses are non-negotiable; do not remove any when refactoring:
 1. **Local snapshot before every overwrite** — `snapshotLocal(reason)` keeps last 3.
 2. **Cloud rotation** — `bible_backup_a/b/c.json` written round-robin (oldest replaced).
 3. **Direction confirmation modal** — `openSyncConfirm(...)` always shown; warns red when local/cloud counts diverge by >5; warning block now includes a "數字差很多代表可能按錯方向" tip below the red banner.
-4. **No auto-sync** — only manual buttons.
+4. **No silent overwrite** — uploads/restores always require a manual button click OR an explicit user confirmation in `openSyncConfirm`. The half-auto detection in `autoCheckCloudOnLaunch()` only *fetches* and *shows the modal*; it never writes without the user clicking 確定 in the modal.
 5. **No-op when `GOOGLE_CLIENT_ID === ''`** — the UI shows a "not configured" notice and no sync code paths run.
+
+#### Half-auto cloud detection (`autoCheckCloudOnLaunch`)
+Opt-in checkbox 「🔄 啟動時自動偵測雲端」 inside `#sync-signed-in` (persisted in `bible-auto-cloud-check`, default off). When on:
+1. ~1.5s after page load (delayed so initial render isn't blocked), attempts a silent token refresh via `silentTokenRefresh()` (calls `requestAccessToken({prompt:''})`). If the user previously linked + Google session is alive, no popup; otherwise it fails silently.
+2. Fetches the latest cloud backup, parses payload, compares `cloudTime` vs local `BACKUP_TIME_KEY`.
+3. Only when `cloudTime > localTime + 60s` (clock-drift tolerance) does it call `openSyncConfirm(...)` — same modal as manual restore, with both counts and the >5 divergence warning.
+4. User confirms → goes through the full restore path (snapshot before write, all storage keys, UI re-render). User cancels → silent.
+5. Any exception (refresh failed, no network, no cloud backup, parse error) → swallowed with `console.warn`. Never toasts errors to non-technical users.
+6. Guarded by `_autoCloudCheckedThisSession` so reloads in the same tab don't re-trigger.
 
 Setup procedure for the OAuth Client ID is documented in `GOOGLE_DRIVE_SETUP.md`. Don't commit a real Client ID without the user's go-ahead — it's not secret but it ties the deployment to a specific Cloud project.
 
