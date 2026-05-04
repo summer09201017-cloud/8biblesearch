@@ -35,7 +35,7 @@ For local OAuth/Drive testing, the `http://localhost:8081` origin **must** be ad
 ## Architecture
 
 ### Single-file design
-Everything user-facing lives in `index.html` — CSS, HTML, and ~2600 lines of inline JS (≈4000 lines total). There is no module system. Globals (`bibleData`, `userData`, `activeVersions`, `userVersionOrder`, `_notesView`, `_notesTypeFilter`, etc.) are intentional. Don't introduce a build step or framework unless explicitly requested.
+Everything user-facing lives in `index.html` — CSS, HTML, and ~2700 lines of inline JS (≈5000 lines total). There is no module system. Globals (`bibleData`, `userData`, `activeVersions`, `userVersionOrder`, `_notesView`, `_notesTypeFilter`, etc.) are intentional. Don't introduce a build step or framework unless explicitly requested.
 
 ### Data shape (`data/<ver>.json`)
 ```
@@ -70,7 +70,9 @@ Read / Search / Quick-lookup all build a `verseMap` keyed by `chap:sec`, then re
 A `flex-wrap:wrap` row: book+chapter ref on the left, then the right-side action cluster `📖註釋 / 📝筆記 / 📋複製 / ☑勾選` (in that order) inside `.verse-read-pick`. On wide screens or short refs both stay on one line; on narrow screens or with long book names (e.g. 撒迦利亞) the cluster wraps to a second line — this is intentional and replaces an earlier `nowrap` design where 📝 筆記 visually overlapped 📖 註釋. Keep all four actions in the right cluster (don't put 📖 註釋 inside `.verse-ref-title` again — `text-overflow:ellipsis` can't truncate `<a>` children, and the layout breaks). On mobile the verse-read-check label is also hidden via CSS to keep the cluster compact.
 
 ### Translation visibility
-- `VERSIONS[].hideInUi: true` (currently WEB) — never appears as a toggle pill or in the order list, but data is still loadable if some other path activates it.
+- `VERSIONS[].hideInUi: true` — never appears as a toggle pill or in the order list, but data is still loadable if some other path activates it. (No version currently uses this; WEB used to be hidden but is now visible at the end of the order.)
+- `VERSIONS` array order = the **default display order** for new users. WEB intentionally sits last (after KJV) because it duplicates the public-domain English niche already covered by ASV/KJV — keep it last unless you have a reason.
+- `loadVersionOrder()` appends new versions to the end of an existing user's saved order via the `missing` patch — adding a new version to `VERSIONS` will not disturb the user's drag-reorder preference.
 - `LOCAL_VERSIONS` — codes that have a `data/<code>.json`. The current code assumes everything is local; there is no remote fetch fallback.
 
 ### 和合本 search quirk
@@ -149,11 +151,24 @@ Lives entirely client-side using Google Identity Services (GIS) + Drive REST. Co
 Five safety fuses are non-negotiable; do not remove any when refactoring:
 1. **Local snapshot before every overwrite** — `snapshotLocal(reason)` keeps last 3.
 2. **Cloud rotation** — `bible_backup_a/b/c.json` written round-robin (oldest replaced).
-3. **Direction confirmation modal** — `openSyncConfirm(...)` always shown; warns red when local/cloud counts diverge by >5.
+3. **Direction confirmation modal** — `openSyncConfirm(...)` always shown; warns red when local/cloud counts diverge by >5; warning block now includes a "數字差很多代表可能按錯方向" tip below the red banner.
 4. **No auto-sync** — only manual buttons.
 5. **No-op when `GOOGLE_CLIENT_ID === ''`** — the UI shows a "not configured" notice and no sync code paths run.
 
 Setup procedure for the OAuth Client ID is documented in `GOOGLE_DRIVE_SETUP.md`. Don't commit a real Client ID without the user's go-ahead — it's not secret but it ties the deployment to a specific Cloud project.
+
+#### Sign-in UX wrapper for non-technical users
+The "🔗 連結 Google 帳號" button calls `gisSignInWithWarning()`, **not** `gisSignIn()` directly. The wrapper pops a native `confirm()` first that explains:
+- Google's "未驗證的 App" red warning is normal during the test phase (not a virus)
+- The user must remember which Google account they linked, because cross-device restore requires the same account
+
+Reasons for this layer:
+- App users are non-technical (church members) — without this 80% bounce at the warning screen
+- The "test phase" warning cannot be removed without going through Google's verification process (1–4 weeks)
+
+The 雲端同步 section in 設定/資料 is wrapped in a `<details>` that **defaults to collapsed** with a「進階功能；建議先用 JSON 備份就夠了」tag, so non-technical users never trip on it. Inside, an **opened-by-default** `<details class="sync-tutorial">` walks through the 4-step linking flow with the "未驗證 App" warning highlighted in red. After link, a persistent orange `.sync-account-warning` reminds the user to remember the linked account; the upload/restore buttons each get a `.sync-button-hint` line explaining the direction (覆蓋雲端為本地版本 / 覆蓋本機為雲端版本).
+
+Where backups actually live: in the linked Google account's `drive.appdata` (a hidden per-app folder). Not visible at drive.google.com; verifiable via Drive API Explorer with `q='appDataFolder' in parents` and `spaces=appDataFolder`. This invisibility is intentional Google design but **confuses non-technical users** — that's why the in-app status text (last sync time + cloud note count) is the primary affordance for "did it work?".
 
 ### Service Worker (`sw.js`)
 - `CACHE_NAME = 'bible-multi-vN'` — **bump N when shipping any change to `index.html`, `manifest.webmanifest`, or icons**, otherwise installed PWA users keep the stale shell.
@@ -173,7 +188,6 @@ Setup procedure for the OAuth Client ID is documented in `GOOGLE_DRIVE_SETUP.md`
 
 ## Things that look like bugs but aren't
 
-- **`web` version is hidden from the UI** (`hideInUi: true`) — kept for data completeness.
 - **`download_bible.js` won't redownload existing files** — by design (skips when file exists and is "big enough"). Delete the file to force.
 - **Empty `data/_tmp_bbe.json`** — gitignored scratch file from the download script.
 - **`download_err.log` / `download.log`** — runtime logs, gitignored.
@@ -181,3 +195,6 @@ Setup procedure for the OAuth Client ID is documented in `GOOGLE_DRIVE_SETUP.md`
 - **`createdAt` looks identical across many old notes after first launch of a new build** — `migrateUserDataLazy()` stamps `Date.now()` on entries that pre-date the v3 schema. Real creation dates for pre-v3 notes are unrecoverable; this is the best fallback.
 - **`schema: 3` field in cloud payload is never read** — it's a label for humans/future-debugging, not a runtime gate. All payload fields are read with `?? defaults`.
 - **`verse-header` wraps to 2 lines on narrow screens** — intentional fix for the long-book-name overlap bug; do not revert to `flex-wrap:nowrap`.
+- **LINE 分享 / Email 分享 wrapped in `<span class="share-btn-group">`** — `flex-wrap:nowrap` keeps these two buttons glued together on every viewport; the outer search-actions row may still wrap them as a unit. Don't unwrap.
+- **歡迎卡片 (`#welcome-modal`) middle area scrolls on mobile** — `.welcome-feature-list` is `flex:1 1 auto; overflow-y:auto; min-height:0`. The footer (「先看看」/「知道了，不再顯示」) is `flex-shrink:0` so it stays pinned to the bottom of the viewport. Without these, the two buttons get pushed below the fold and users can't dismiss the modal.
+- **「☁️ 跨裝置自動同步」section is collapsed by default** (`<details class="sync-section-details">` without `open`) — intentional, see "Sign-in UX wrapper for non-technical users" above. The inner 4-step tutorial card (`<details class="sync-tutorial" open>`) **is** open by default so first-time users see it the moment they expand the section.
