@@ -1323,7 +1323,17 @@ body {
 .diff-verse-text {
   flex:1; min-width:0;
   font-size:1.0rem;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: Georgia, "Times New Roman", "Noto Serif TC", "PingFang TC", "Microsoft JhengHei", serif;
+}
+.diff-verse-text.zh {
+  font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+  letter-spacing:0.5px; word-spacing:normal;
+  line-height:2.0;
+}
+.diff-verse-text.zh .diff-base-unique,
+.diff-verse-text.zh .diff-comp-unique {
+  /* 中文字級高亮：每個字獨立成一個小色塊，間距小一點才不會像方塊矩陣 */
+  padding:1px 2px; margin:0 1px;
 }
 .diff-error-card {
   padding:10px 14px; margin-bottom:10px;
@@ -1568,8 +1578,8 @@ body {
 
   <div id="panel-diff" class="panel">
     <div class="diff-intro" style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:0.88rem; line-height:1.6;">
-      <b>📊 英文譯本逐字對讀</b><br>
-      自選基準與對比版本做 word-level 對比。預設基準為 <b>ESV</b>（直譯，貼近原文），對比為 <b>NIV</b>（意動，看詮釋差異）。<span style="color:var(--text2);">「結束節」留空＝只比一節；起／訖都留空＝整章；範圍模式會顯示總相似度。</span>
+      <b>📊 譯本逐字對讀</b><br>
+      自選基準與對比版本（中文選中文、英文選英文）做差異對比。中文逐字、英文逐詞。<span style="color:var(--text2);">推薦組合：ESV ↔ NIV（看英文意動詮釋）｜和合本 ↔ 新譯本（看現代化措辭）｜和合本 ↔ 呂振中（看原文字序）。「結束節」留空＝只比一節；起／訖都留空＝整章；範圍模式會顯示總相似度。</span>
     </div>
     <div class="selector-row">
       <div class="selector-group"><label>書卷</label><select id="diff-sel-book" onchange="onDiffBookChange()"></select></div>
@@ -3324,15 +3334,30 @@ function switchTab(name) {
   else if (name === 'diff') initDiffSelectors();
 }
 
-// ====== 對讀比較（任選基準 ↔ 任選對比，word-level diff） ======
-const DIFF_ENG_VERSIONS = [
-  { code:'esv', label:'ESV（直譯）' },
-  { code:'niv', label:'NIV（意動）' },
-  { code:'kjv', label:'KJV（古典）' },
-  { code:'web', label:'WEB' },
-  { code:'asv', label:'ASV' },
-  { code:'bbe', label:'BBE（簡易）' }
+// ====== 對讀比較（任選基準 ↔ 任選對比，中英自動切詞 + LCS diff） ======
+const DIFF_VERSIONS = [
+  // 中文（char-level diff）
+  { code:'unv', label:'和合本',                       lang:'zh' },
+  { code:'ncv', label:'新譯本',                       lang:'zh' },
+  { code:'lcc', label:'呂振中（極直譯，看原文字序）', lang:'zh' },
+  // 英文（word-level diff）
+  { code:'esv', label:'ESV（直譯）',                  lang:'en' },
+  { code:'niv', label:'NIV（意動）',                  lang:'en' },
+  { code:'kjv', label:'KJV（古典）',                  lang:'en' },
+  { code:'web', label:'WEB',                          lang:'en' },
+  { code:'asv', label:'ASV',                          lang:'en' },
+  { code:'bbe', label:'BBE（簡易）',                  lang:'en' }
 ];
+const DIFF_DEFAULT_COMP_BY_LANG = { zh:'ncv', en:'niv' };
+function diffLangOf(code) {
+  const v = DIFF_VERSIONS.find(x => x.code === code);
+  return v ? v.lang : 'en';
+}
+function diffVersionLabel(code) {
+  const v = DIFF_VERSIONS.find(x => x.code === code);
+  return v ? v.label : code.toUpperCase();
+}
+
 let _diffInited = false;
 function initDiffSelectors() {
   if (_diffInited) return;
@@ -3349,11 +3374,13 @@ function initDiffSelectors() {
   });
   sb.appendChild(otG); sb.appendChild(ntG);
 
-  // 基準下拉：6 個英文版本全列；預設 ESV
+  // 基準下拉：依語言分組，9 個版本全列；預設 ESV
   const base = document.getElementById('diff-sel-base');
-  base.innerHTML = DIFF_ENG_VERSIONS.map(v => `<option value="${v.code}">${v.label}</option>`).join('');
+  const zhGroup = '<optgroup label="中文（字級對比）">' + DIFF_VERSIONS.filter(v=>v.lang==='zh').map(v=>`<option value="${v.code}">${v.label}</option>`).join('') + '</optgroup>';
+  const enGroup = '<optgroup label="English（word-level）">' + DIFF_VERSIONS.filter(v=>v.lang==='en').map(v=>`<option value="${v.code}">${v.label}</option>`).join('') + '</optgroup>';
+  base.innerHTML = zhGroup + enGroup;
   base.value = 'esv';
-  // 對比下拉：排除基準後生成；預設 NIV
+  // 對比下拉：同語言、排除基準；預設 NIV
   rebuildDiffCompOptions('niv');
 
   // 預設「約翰福音 3:16」單節
@@ -3367,14 +3394,21 @@ function initDiffSelectors() {
 }
 
 function rebuildDiffCompOptions(preferredCode) {
-  const base = document.getElementById('diff-sel-base').value;
+  const baseEl = document.getElementById('diff-sel-base');
   const comp = document.getElementById('diff-sel-comp');
+  const baseCode = baseEl.value;
+  const baseLang = diffLangOf(baseCode);
   const prev = preferredCode || comp.value;
-  const opts = DIFF_ENG_VERSIONS.filter(v => v.code !== base);
+  // 只保留同語言、排除基準本身
+  const opts = DIFF_VERSIONS.filter(v => v.lang === baseLang && v.code !== baseCode);
   comp.innerHTML = opts.map(v => `<option value="${v.code}">${v.label}</option>`).join('');
+  // 選定順序：使用者偏好 → 該語言預設 → 第一個
   if (opts.find(v => v.code === prev)) comp.value = prev;
-  else if (opts.find(v => v.code === 'niv')) comp.value = 'niv';
-  else comp.value = opts[0].code;
+  else {
+    const dflt = DIFF_DEFAULT_COMP_BY_LANG[baseLang];
+    if (opts.find(v => v.code === dflt)) comp.value = dflt;
+    else comp.value = opts[0].code;
+  }
 }
 
 function onDiffBaseChange() {
@@ -3432,12 +3466,21 @@ function diffLcsMatch(a, b) {
   return { matchA, matchB, lcsLen: dp[m][n] };
 }
 
-function diffTokenize(s) {
-  return String(s || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+// 中文 char-level / 英文 word-level 自動切詞
+// ver 用來特別處理 和合本 神-前空白（避免假差異）
+function diffTokenize(s, ver) {
+  let text = String(s || '');
+  if (ver === 'unv') text = normalizeUnvSpacesBeforeShen(text);
+  if (/[一-鿿]/.test(text)) {
+    // 中文：每個非空白字元一個 token（保留標點）
+    return [...text].filter(c => !/\s/.test(c));
+  }
+  return text.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
 }
 
 function diffKey(t) {
-  // 比對用：去除非字母數字，統一小寫
+  // 中文：原字 token 即比對鍵；英文：去除非字母數字並小寫
+  if (/[一-鿿]/.test(t)) return t;
   return String(t).toLowerCase().replace(/[^a-z0-9']/g, '');
 }
 
@@ -3445,11 +3488,11 @@ function escHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 }
 
-function renderDiffSide(tokens, matchArr, diffClass) {
+function renderDiffSide(tokens, matchArr, diffClass, joinSep) {
   return tokens.map((t, i) => {
     const safe = escHtml(t);
     return matchArr[i] ? safe : `<span class="${diffClass}">${safe}</span>`;
-  }).join(' ');
+  }).join(joinSep != null ? joinSep : ' ');
 }
 
 async function runDiff() {
@@ -3489,14 +3532,25 @@ async function runDiff() {
     return;
   }
 
+  // 防呆：基準與對比必須同語言
+  const baseLang = diffLangOf(baseVer);
+  const compLang = diffLangOf(compVer);
+  if (baseLang !== compLang) {
+    div.innerHTML = '<div class="error-msg">基準與對比版本必須是同一語言（中文 ↔ 英文無法字面對比）</div>';
+    return;
+  }
+  const isZh = baseLang === 'zh';
+  const joinSep = isZh ? '' : ' ';
+  const charLabel = isZh ? '字' : '詞';
+
   div.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text2);">⏳ 載入並比對中...</div>';
   const okBase = await loadVersionData(baseVer);
   const okComp = await loadVersionData(compVer);
   if (!okBase) { div.innerHTML = `<div class="error-msg">${baseVer.toUpperCase()} 資料載入失敗</div>`; return; }
   if (!okComp) { div.innerHTML = `<div class="error-msg">${compVer.toUpperCase()} 資料載入失敗</div>`; return; }
 
-  const baseName = (VERSIONS.find(v => v.code === baseVer) || {}).name || baseVer.toUpperCase();
-  const compName = (VERSIONS.find(v => v.code === compVer) || {}).name || compVer.toUpperCase();
+  const baseName = diffVersionLabel(baseVer).replace(/（.*$/, ''); // 卡片標籤用簡名（去掉括號註）
+  const compName = diffVersionLabel(compVer).replace(/（.*$/, '');
 
   let sumA = 0, sumB = 0, sumLcs = 0, validVerses = 0;
   const cards = [];
@@ -3519,8 +3573,8 @@ async function runDiff() {
       continue;
     }
 
-    const tokA = diffTokenize(baseText);
-    const tokB = diffTokenize(compText);
+    const tokA = diffTokenize(baseText, baseVer);
+    const tokB = diffTokenize(compText, compVer);
     const keyA = tokA.map(diffKey);
     const keyB = tokB.map(diffKey);
     const { matchA, matchB, lcsLen } = diffLcsMatch(keyA, keyB);
@@ -3533,16 +3587,16 @@ async function runDiff() {
       `<div class="diff-card">
         <div class="diff-card-header">
           <span class="diff-card-label">${escHtml(verseRefShort)}</span>
-          <span class="diff-similarity" title="此節 LCS 字級相似度">相似度 ${sim}%</span>
-          <span class="diff-card-meta">${escHtml(baseName)} ${totalA} 字 ／ ${escHtml(compName)} ${totalB} 字</span>
+          <span class="diff-similarity" title="此節 LCS ${charLabel}級相似度">相似度 ${sim}%</span>
+          <span class="diff-card-meta">${escHtml(baseName)} ${totalA} ${charLabel} ／ ${escHtml(compName)} ${totalB} ${charLabel}</span>
         </div>
-        <div class="diff-verse-row">
+        <div class="diff-verse-row${isZh ? ' zh' : ''}">
           <span class="diff-verse-tag base">${escHtml(baseName)}</span>
-          <span class="diff-verse-text">${renderDiffSide(tokA, matchA, 'diff-base-unique')}</span>
+          <span class="diff-verse-text${isZh ? ' zh' : ''}">${renderDiffSide(tokA, matchA, 'diff-base-unique', joinSep)}</span>
         </div>
-        <div class="diff-verse-row">
+        <div class="diff-verse-row${isZh ? ' zh' : ''}">
           <span class="diff-verse-tag comp">${escHtml(compName)}</span>
-          <span class="diff-verse-text">${renderDiffSide(tokB, matchB, 'diff-comp-unique')}</span>
+          <span class="diff-verse-text${isZh ? ' zh' : ''}">${renderDiffSide(tokB, matchB, 'diff-comp-unique', joinSep)}</span>
         </div>
       </div>`
     );
@@ -3559,8 +3613,8 @@ async function runDiff() {
     `<div class="diff-summary">
       <span class="diff-summary-label">${escHtml(rangeLabel)}</span>
       <span class="diff-summary-meta">${escHtml(baseName)} 基準 ↔ ${escHtml(compName)} 對比</span>
-      ${isRange ? `<span class="diff-similarity diff-summary-sim" title="加權平均：2 × ΣLCS / (Σ基準字數 + Σ對比字數)">總相似度 ${overall}%</span>` : ''}
-      <span class="diff-summary-meta">${validVerses} 節｜${sumA} 字 vs ${sumB} 字</span>
+      ${isRange ? `<span class="diff-similarity diff-summary-sim" title="加權平均：2 × ΣLCS / (Σ基準${charLabel}數 + Σ對比${charLabel}數)">總相似度 ${overall}%</span>` : ''}
+      <span class="diff-summary-meta">${validVerses} 節｜${sumA} ${charLabel} vs ${sumB} ${charLabel}</span>
     </div>`;
 
   div.innerHTML = summaryHtml + cards.join('');

@@ -62,16 +62,17 @@ Everything user-facing lives in `index.html` — CSS, HTML, and ~2700 lines of i
 `doQuickLookup()` 把輸入用 `[,，\n\r]+` 切成多段 ref，每段呼叫 `quickLookupSegment(seg, vers)`（已抽出的單段查詢函式）。多段模式下每段前面加 `.quick-segment-header` 標題，失敗的段以 `.quick-segment-error` 顯示警告但不中斷其他段。輸入框是 textarea 而非 input — Enter 送出，Shift+Enter 換行。
 
 ### 對讀比較分頁（Diff）
-新分頁 `#panel-diff`，自選基準與對比版本的 word-level diff，支援單節或範圍。下版加第二個對比版本。
-- 基準與對比都是下拉，6 個英文版本可選（ESV/NIV/KJV/WEB/ASV/BBE）。預設基準=ESV、對比=NIV。
-- 對比下拉透過 `rebuildDiffCompOptions()` 動態排除目前選中的基準（避免兩邊同版本）；`runDiff()` 仍多一道防呆檢查。
-- 範圍輸入：「起始節 / 結束節」沿用閱讀分頁的邏輯——start+end → 範圍；只有 start → 單節；都空 → 整章；只有 end → 1..end。`runDiff()` 把 secs 算出後迴圈每節做 LCS。
-- `initDiffSelectors()` 懶初始化，預設 John 3:16 單節（end 留空）。
-- Tokenize：以空白切詞，`diffKey()` 把 token 小寫化並去除非 `[a-z0-9']` 字元作為比對鍵（忽略大小寫與標點）。
-- LCS：`diffLcsMatch()` 用 DP 算最長共同子序列（O(m×n)，verse 通常 30-100 字，可忽略）。
+新分頁 `#panel-diff`，自選基準與對比版本的 diff，**中文 char-level、英文 word-level**，支援單節或範圍。
+- 9 個版本（中文 unv/ncv/lcc + 英文 esv/niv/kjv/web/asv/bbe），`DIFF_VERSIONS` 表帶 `lang:'zh'|'en'`。基準下拉用 `<optgroup>` 分中／英；對比下拉透過 `rebuildDiffCompOptions()` **只列出與基準同語言的選項**（中英不能跨）。`runDiff()` 仍多一道防呆檢查跨語言會擋。
+- 預設：基準=ESV、對比=NIV（換成 unv 為基準時對比預設自動切到 ncv）。`DIFF_DEFAULT_COMP_BY_LANG = { zh:'ncv', en:'niv' }`。
+- 範圍輸入：「起始節 / 結束節」沿用閱讀分頁的邏輯——start+end → 範圍；只有 start → 單節；都空 → 整章；只有 end → 1..end。
+- Tokenize 自動偵測：`diffTokenize(s, ver)` 看 `/[一-鿿]/.test()`，CJK 走 char-level（每字一 token，過濾空白）、英文走 word-level；和合本 (`ver==='unv'`) 額外套 `normalizeUnvSpacesBeforeShen()` 去除「神」前空白避免假差異。`diffKey()` 中文原字當鍵、英文小寫去標點。
+- LCS：`diffLcsMatch()` 用 DP 算最長共同子序列。verse 級 30-80 字，char-level 對中文也毫無壓力。
 - 卡片設計：每節一張 `.diff-card`，內含基準/對比兩個 `.diff-verse-row`（基準＝紅標 tag + 紅色高亮獨有字；對比＝綠標 tag + 綠色高亮獨有字）。範圍模式上方多一張 `.diff-summary` 卡片，顯示 `總相似度 X%` = 加權平均 `2 × ΣLCS / (Σ基準字數 + Σ對比字數)`。
-- 紅色高亮 **沒有刪除線**——避免「這些字應該刪掉」的誤導語意，純紅底色就好。
+- `.diff-verse-text.zh` 用 sans-serif 中文字體 stack，letter-spacing 加大，每個字級高亮 padding 縮小（避免方塊矩陣感）。`renderDiffSide()` 接 `joinSep` 參數：中文用 `''`、英文用 `' '`。
+- 紅色高亮 **沒有刪除線**——避免「這些字應該刪掉」的誤導語意。
 - 兩個版本都靠 `loadVersionData(ver)` 懶載入。主題色：`.diff-base-unique` / `.diff-comp-unique` 在 sepia/dark/black 各有覆寫。
+- 已驗證：和合本 vs 新譯本 J3:16 = 97%（只有「將/把」差異）；和合本 vs 呂振中 J3:16 = 64%（神/上帝 + 結構性差異）。
 
 ### Three render paths converge on `sortedVers()`
 Read / Search / Quick-lookup all build a `verseMap` keyed by `chap:sec`, then render via `renderVerseGroup(...)` or inline equivalents. **All three paths sort their translation columns through `sortedVers()`**, which reads `userVersionOrder` from `localStorage`. If you add a new place that lists translations or builds copy/share text, run it through `sortedVers()` so the user's drag-to-reorder preference is respected.
