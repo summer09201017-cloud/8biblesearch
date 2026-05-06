@@ -1279,14 +1279,17 @@ body {
   padding:1px 4px; border-radius:3px;
   font-weight:700;
 }
-[data-theme="sepia"] .diff-base-unique { background:rgba(192,57,43,0.22); color:#8b1e1e; }
-[data-theme="sepia"] .diff-comp-unique { background:rgba(46,125,50,0.22); color:#2c5d1e; }
-[data-theme="dark"] .diff-base-unique, [data-theme="black"] .diff-base-unique {
-  background:rgba(220,53,69,0.30); color:#ff9999;
+.diff-comp2-unique {
+  background:rgba(60,108,200,0.20); color:#274d9b;
+  padding:1px 4px; border-radius:3px;
+  font-weight:700;
 }
-[data-theme="dark"] .diff-comp-unique, [data-theme="black"] .diff-comp-unique {
-  background:rgba(40,167,69,0.30); color:#7be07b;
-}
+[data-theme="sepia"] .diff-base-unique  { background:rgba(192,57,43,0.22); color:#8b1e1e; }
+[data-theme="sepia"] .diff-comp-unique  { background:rgba(46,125,50,0.22); color:#2c5d1e; }
+[data-theme="sepia"] .diff-comp2-unique { background:rgba(40,80,160,0.22); color:#1c3a78; }
+[data-theme="dark"] .diff-base-unique,  [data-theme="black"] .diff-base-unique  { background:rgba(220,53,69,0.30); color:#ff9999; }
+[data-theme="dark"] .diff-comp-unique,  [data-theme="black"] .diff-comp-unique  { background:rgba(40,167,69,0.30); color:#7be07b; }
+[data-theme="dark"] .diff-comp2-unique, [data-theme="black"] .diff-comp2-unique { background:rgba(80,140,255,0.30); color:#9ec1ff; }
 .diff-similarity {
   display:inline-block; padding:2px 10px; border-radius:12px;
   background:var(--bg2); border:1px solid var(--border);
@@ -1316,10 +1319,12 @@ body {
   color:white; align-self:flex-start; margin-top:6px;
   min-width:42px; text-align:center;
 }
-.diff-verse-tag.base { background:#a02030; }
-.diff-verse-tag.comp { background:#1e7d3a; }
-[data-theme="dark"] .diff-verse-tag.base, [data-theme="black"] .diff-verse-tag.base { background:#c0392b; }
-[data-theme="dark"] .diff-verse-tag.comp, [data-theme="black"] .diff-verse-tag.comp { background:#27ae60; }
+.diff-verse-tag.base  { background:#a02030; }
+.diff-verse-tag.comp  { background:#1e7d3a; }
+.diff-verse-tag.comp2 { background:#274d9b; }
+[data-theme="dark"] .diff-verse-tag.base,  [data-theme="black"] .diff-verse-tag.base  { background:#c0392b; }
+[data-theme="dark"] .diff-verse-tag.comp,  [data-theme="black"] .diff-verse-tag.comp  { background:#27ae60; }
+[data-theme="dark"] .diff-verse-tag.comp2, [data-theme="black"] .diff-verse-tag.comp2 { background:#3a6ec4; }
 .diff-verse-text {
   flex:1; min-width:0;
   font-size:1.0rem;
@@ -1331,7 +1336,8 @@ body {
   line-height:2.0;
 }
 .diff-verse-text.zh .diff-base-unique,
-.diff-verse-text.zh .diff-comp-unique {
+.diff-verse-text.zh .diff-comp-unique,
+.diff-verse-text.zh .diff-comp2-unique {
   /* 中文字級高亮：每個字獨立成一個小色塊，間距小一點才不會像方塊矩陣 */
   padding:1px 2px; margin:0 1px;
 }
@@ -1587,13 +1593,15 @@ body {
       <div class="selector-group"><label>起始節</label><select id="diff-sel-sec-start" onchange="runDiff()"></select></div>
       <div class="selector-group"><label>結束節</label><select id="diff-sel-sec-end" onchange="runDiff()"></select></div>
       <div class="selector-group"><label>基準版本</label><select id="diff-sel-base" onchange="onDiffBaseChange()"></select></div>
-      <div class="selector-group"><label>對比版本</label><select id="diff-sel-comp" onchange="runDiff()"></select></div>
+      <div class="selector-group"><label>對比版本</label><select id="diff-sel-comp" onchange="onDiffComp1Change()"></select></div>
+      <div class="selector-group"><label>第三版本</label><select id="diff-sel-comp2" onchange="runDiff()" title="選擇後變成 3-way 比較：只有獨自出現的字才標色（在 2 個以上版本出現的字不標）"></select></div>
       <button class="btn btn-query-large" onclick="runDiff()">比較</button>
     </div>
     <div class="diff-legend">
-      <span><span class="diff-base-unique">紅色標示</span> = 只在「基準」版本出現的字</span>
-      <span><span class="diff-comp-unique">綠色標示</span> = 只在「對比」版本出現的字</span>
-      <span style="color:var(--text2);">字面相同的字維持原色（標點、大小寫忽略）</span>
+      <span><span class="diff-base-unique">紅色標示</span> = 基準獨有</span>
+      <span><span class="diff-comp-unique">綠色標示</span> = 對比獨有</span>
+      <span><span class="diff-comp2-unique">藍色標示</span> = 第三版本獨有</span>
+      <span style="color:var(--text2);">3-way 模式下「2 版本以上都有」的字不標（多數一致）；中文逐字、英文逐詞、忽略大小寫與標點</span>
     </div>
     <div class="results-area" id="results-diff">
       <div class="empty-state"><div class="icon">📊</div><p>選擇單節後按「比較」查看英文譯本逐字差異</p></div>
@@ -3381,7 +3389,9 @@ function initDiffSelectors() {
   base.innerHTML = zhGroup + enGroup;
   base.value = 'esv';
   // 對比下拉：同語言、排除基準；預設 NIV
-  rebuildDiffCompOptions('niv');
+  rebuildDiffComp1Options('niv');
+  // 第三版本下拉：預設「（不用）」=2-way 模式
+  rebuildDiffComp2Options('');
 
   // 預設「約翰福音 3:16」單節
   sb.value = '43';
@@ -3393,16 +3403,14 @@ function initDiffSelectors() {
   if (dataReady) runDiff();
 }
 
-function rebuildDiffCompOptions(preferredCode) {
+function rebuildDiffComp1Options(preferredCode) {
   const baseEl = document.getElementById('diff-sel-base');
   const comp = document.getElementById('diff-sel-comp');
   const baseCode = baseEl.value;
   const baseLang = diffLangOf(baseCode);
   const prev = preferredCode || comp.value;
-  // 只保留同語言、排除基準本身
   const opts = DIFF_VERSIONS.filter(v => v.lang === baseLang && v.code !== baseCode);
   comp.innerHTML = opts.map(v => `<option value="${v.code}">${v.label}</option>`).join('');
-  // 選定順序：使用者偏好 → 該語言預設 → 第一個
   if (opts.find(v => v.code === prev)) comp.value = prev;
   else {
     const dflt = DIFF_DEFAULT_COMP_BY_LANG[baseLang];
@@ -3411,8 +3419,30 @@ function rebuildDiffCompOptions(preferredCode) {
   }
 }
 
+// 第三版本下拉：第一個選項是「（不用）」，其餘是同語言 ∧ 不在 base/comp1 之內
+function rebuildDiffComp2Options(preferredCode) {
+  const baseCode = document.getElementById('diff-sel-base').value;
+  const comp1Code = document.getElementById('diff-sel-comp').value;
+  const baseLang = diffLangOf(baseCode);
+  const comp2 = document.getElementById('diff-sel-comp2');
+  if (!comp2) return;
+  const prev = preferredCode != null ? preferredCode : comp2.value;
+  const opts = DIFF_VERSIONS.filter(v => v.lang === baseLang && v.code !== baseCode && v.code !== comp1Code);
+  let html = '<option value="">（不用第三版本，2-way 模式）</option>';
+  html += opts.map(v => `<option value="${v.code}">${v.label}</option>`).join('');
+  comp2.innerHTML = html;
+  if (prev === '' || opts.find(v => v.code === prev)) comp2.value = prev;
+  else comp2.value = ''; // 切換語言或衝突時退回 2-way
+}
+
 function onDiffBaseChange() {
-  rebuildDiffCompOptions();
+  rebuildDiffComp1Options();
+  rebuildDiffComp2Options();
+  runDiff();
+}
+
+function onDiffComp1Change() {
+  rebuildDiffComp2Options();
   runDiff();
 }
 
@@ -3567,6 +3597,126 @@ function computeDiffChinese(baseText, compText, baseVer, compVer) {
   return { baseHtml, compHtml, totalA, totalB, lcsLen: r.lcsLen, sim };
 }
 
+// ====== 3-way diff helpers ======
+// dmp 段落 → 該邊（A or B）每個字元的 matched 布林陣列
+function dmpCharMatch(diffs, sideA) {
+  const arr = [];
+  for (let k = 0; k < diffs.length; k++) {
+    const op = diffs[k][0], text = diffs[k][1];
+    const len = [...text].length; // Unicode-safe
+    if (op === 0) {
+      for (let j = 0; j < len; j++) arr.push(true);
+    } else if (sideA && op === -1) {
+      for (let j = 0; j < len; j++) arr.push(false);
+    } else if (!sideA && op === 1) {
+      for (let j = 0; j < len; j++) arr.push(false);
+    }
+    // 否則 (sideA && op===1) 或 (!sideA && op===-1) → 該段不屬於這一邊，skip
+  }
+  return arr;
+}
+
+// 把 items 依 lonelyArr 分組成連續 lonely / 非-lonely 區塊，連續的 lonely 合併成同一個 span（避免破碎效果）
+function renderLonelyGroups(items, lonelyArr, diffClass, joinSep) {
+  if (!items.length) return '';
+  const groups = [];
+  for (let i = 0; i < items.length; i++) {
+    const isLonely = !!lonelyArr[i];
+    if (groups.length === 0 || groups[groups.length-1].lonely !== isLonely) {
+      groups.push({ lonely: isLonely, items: [items[i]] });
+    } else {
+      groups[groups.length-1].items.push(items[i]);
+    }
+  }
+  return groups.map(g => {
+    const text = escHtml(g.items.join(joinSep));
+    return g.lonely ? `<span class="${diffClass}">${text}</span>` : text;
+  }).join(joinSep);
+}
+
+// 中文 3-way：對 (A,B)、(A,C)、(B,C) 各做一次 dmp（或 LCS fallback），合成 lonely 陣列
+function computeDiffChinese3Way(textA, textB, textC, vA, vB, vC) {
+  // 先各自 normalize 並過濾空白，產生純字元序列
+  const cleanZh = (s, ver) => {
+    const norm = ver === 'unv' ? normalizeUnvSpacesBeforeShen(s) : s;
+    return [...norm].filter(ch => !/\s/.test(ch)).join('');
+  };
+  const a = cleanZh(textA, vA), b = cleanZh(textB, vB), c = cleanZh(textC, vC);
+  const charsA = [...a], charsB = [...b], charsC = [...c];
+
+  let mAB_A, mAB_B, mAC_A, mAC_C, mBC_B, mBC_C, lcsAB, lcsAC, lcsBC;
+
+  if (typeof window.diff_match_patch !== 'undefined') {
+    const dmp = new window.diff_match_patch();
+    dmp.Diff_Timeout = 1.0;
+    const dAB = dmp.diff_main(a, b); dmp.diff_cleanupSemantic(dAB);
+    const dAC = dmp.diff_main(a, c); dmp.diff_cleanupSemantic(dAC);
+    const dBC = dmp.diff_main(b, c); dmp.diff_cleanupSemantic(dBC);
+    mAB_A = dmpCharMatch(dAB, true);  mAB_B = dmpCharMatch(dAB, false);
+    mAC_A = dmpCharMatch(dAC, true);  mAC_C = dmpCharMatch(dAC, false);
+    mBC_B = dmpCharMatch(dBC, true);  mBC_C = dmpCharMatch(dBC, false);
+    lcsAB = mAB_A.filter(Boolean).length;
+    lcsAC = mAC_A.filter(Boolean).length;
+    lcsBC = mBC_B.filter(Boolean).length;
+  } else {
+    const rAB = diffLcsMatch(charsA, charsB);
+    const rAC = diffLcsMatch(charsA, charsC);
+    const rBC = diffLcsMatch(charsB, charsC);
+    mAB_A = rAB.matchA; mAB_B = rAB.matchB;
+    mAC_A = rAC.matchA; mAC_C = rAC.matchB;
+    mBC_B = rBC.matchA; mBC_C = rBC.matchB;
+    lcsAB = rAB.lcsLen; lcsAC = rAC.lcsLen; lcsBC = rBC.lcsLen;
+  }
+
+  // 規則：某字 lonely ⇔ 在另外兩個版本都沒匹配（在 ≥2 版本出現的字不標）
+  const lonelyA = charsA.map((_, i) => !mAB_A[i] && !mAC_A[i]);
+  const lonelyB = charsB.map((_, i) => !mAB_B[i] && !mBC_B[i]);
+  const lonelyC = charsC.map((_, i) => !mAC_C[i] && !mBC_C[i]);
+
+  const totalA = charsA.length, totalB = charsB.length, totalC = charsC.length;
+  const simAB = (totalA + totalB) > 0 ? Math.round(2 * lcsAB / (totalA + totalB) * 100) : 0;
+  const simAC = (totalA + totalC) > 0 ? Math.round(2 * lcsAC / (totalA + totalC) * 100) : 0;
+  const simBC = (totalB + totalC) > 0 ? Math.round(2 * lcsBC / (totalB + totalC) * 100) : 0;
+
+  return {
+    baseHtml:  renderLonelyGroups(charsA, lonelyA, 'diff-base-unique',  ''),
+    comp1Html: renderLonelyGroups(charsB, lonelyB, 'diff-comp-unique',  ''),
+    comp2Html: renderLonelyGroups(charsC, lonelyC, 'diff-comp2-unique', ''),
+    totalA, totalB, totalC,
+    lcsAB, lcsAC, lcsBC,
+    simAB, simAC, simBC
+  };
+}
+
+// 英文 3-way：純 LCS（word-level）就夠
+function computeDiffEnglish3Way(textA, textB, textC) {
+  const tokA = diffTokenize(textA);
+  const tokB = diffTokenize(textB);
+  const tokC = diffTokenize(textC);
+  const kA = tokA.map(diffKey), kB = tokB.map(diffKey), kC = tokC.map(diffKey);
+  const rAB = diffLcsMatch(kA, kB);
+  const rAC = diffLcsMatch(kA, kC);
+  const rBC = diffLcsMatch(kB, kC);
+
+  const lonelyA = tokA.map((_, i) => !rAB.matchA[i] && !rAC.matchA[i]);
+  const lonelyB = tokB.map((_, i) => !rAB.matchB[i] && !rBC.matchA[i]);
+  const lonelyC = tokC.map((_, i) => !rAC.matchB[i] && !rBC.matchB[i]);
+
+  const totalA = tokA.length, totalB = tokB.length, totalC = tokC.length;
+  const simAB = (totalA + totalB) > 0 ? Math.round(2 * rAB.lcsLen / (totalA + totalB) * 100) : 0;
+  const simAC = (totalA + totalC) > 0 ? Math.round(2 * rAC.lcsLen / (totalA + totalC) * 100) : 0;
+  const simBC = (totalB + totalC) > 0 ? Math.round(2 * rBC.lcsLen / (totalB + totalC) * 100) : 0;
+
+  return {
+    baseHtml:  renderLonelyGroups(tokA, lonelyA, 'diff-base-unique',  ' '),
+    comp1Html: renderLonelyGroups(tokB, lonelyB, 'diff-comp-unique',  ' '),
+    comp2Html: renderLonelyGroups(tokC, lonelyC, 'diff-comp2-unique', ' '),
+    totalA, totalB, totalC,
+    lcsAB: rAB.lcsLen, lcsAC: rAC.lcsLen, lcsBC: rBC.lcsLen,
+    simAB, simAC, simBC
+  };
+}
+
 async function runDiff() {
   const div = document.getElementById('results-diff');
   if (!div) return;
@@ -3576,6 +3726,9 @@ async function runDiff() {
   const secEndRaw = document.getElementById('diff-sel-sec-end').value;
   const baseVer = document.getElementById('diff-sel-base').value;
   const compVer = document.getElementById('diff-sel-comp').value;
+  const comp2Sel = document.getElementById('diff-sel-comp2');
+  const comp2Ver = comp2Sel ? comp2Sel.value : '';
+  const isThreeWay = !!comp2Ver;
   const book = BOOKS.find(b => b.bid === bid);
   if (!book || !chap) {
     div.innerHTML = '<div class="error-msg">請選擇書卷與章</div>';
@@ -3583,6 +3736,10 @@ async function runDiff() {
   }
   if (baseVer === compVer) {
     div.innerHTML = '<div class="error-msg">基準與對比不能是同一個版本</div>';
+    return;
+  }
+  if (isThreeWay && (comp2Ver === baseVer || comp2Ver === compVer)) {
+    div.innerHTML = '<div class="error-msg">三個版本必須互不相同</div>';
     return;
   }
 
@@ -3604,15 +3761,18 @@ async function runDiff() {
     return;
   }
 
-  // 防呆：基準與對比必須同語言
+  // 防呆：所有選中版本必須同語言
   const baseLang = diffLangOf(baseVer);
   const compLang = diffLangOf(compVer);
   if (baseLang !== compLang) {
     div.innerHTML = '<div class="error-msg">基準與對比版本必須是同一語言（中文 ↔ 英文無法字面對比）</div>';
     return;
   }
+  if (isThreeWay && diffLangOf(comp2Ver) !== baseLang) {
+    div.innerHTML = '<div class="error-msg">三個版本必須是同一語言</div>';
+    return;
+  }
   const isZh = baseLang === 'zh';
-  const joinSep = isZh ? '' : ' ';
   const charLabel = isZh ? '字' : '詞';
 
   div.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text2);">⏳ 載入並比對中...</div>';
@@ -3620,73 +3780,123 @@ async function runDiff() {
   const okComp = await loadVersionData(compVer);
   if (!okBase) { div.innerHTML = `<div class="error-msg">${baseVer.toUpperCase()} 資料載入失敗</div>`; return; }
   if (!okComp) { div.innerHTML = `<div class="error-msg">${compVer.toUpperCase()} 資料載入失敗</div>`; return; }
+  if (isThreeWay) {
+    const okComp2 = await loadVersionData(comp2Ver);
+    if (!okComp2) { div.innerHTML = `<div class="error-msg">${comp2Ver.toUpperCase()} 資料載入失敗</div>`; return; }
+  }
 
   // 中文模式：先確保 dmp 載入（首次 ~80KB；之後 SW 快取秒回）
   if (isZh) await loadDiffMatchPatch();
 
-  const baseName = diffVersionLabel(baseVer).replace(/（.*$/, ''); // 卡片標籤用簡名（去掉括號註）
-  const compName = diffVersionLabel(compVer).replace(/（.*$/, '');
+  const baseName  = diffVersionLabel(baseVer).replace(/（.*$/, '');
+  const compName  = diffVersionLabel(compVer).replace(/（.*$/, '');
+  const comp2Name = isThreeWay ? diffVersionLabel(comp2Ver).replace(/（.*$/, '') : '';
 
-  let sumA = 0, sumB = 0, sumLcs = 0, validVerses = 0;
+  // 累計相似度：2-way 用 sumA/sumB/sumLcs；3-way 用 3 對加權
+  let sumA = 0, sumB = 0, sumC = 0;
+  let sumLcs = 0; // 2-way 用
+  let sumLcsAB = 0, sumLcsAC = 0, sumLcsBC = 0; // 3-way 用
+  let validVerses = 0;
   const cards = [];
 
   for (const sec of secs) {
     const verseRefShort = `${book.engs} ${chap}:${sec}`;
     const baseText = stripHtml(getLocalVerse(baseVer, bid, chap, sec) || '');
     const compText = stripHtml(getLocalVerse(compVer, bid, chap, sec) || '');
+    const comp2Text = isThreeWay ? stripHtml(getLocalVerse(comp2Ver, bid, chap, sec) || '') : '';
 
-    if (!baseText && !compText) {
-      cards.push(`<div class="diff-error-card">${escHtml(verseRefShort)}：兩個版本都沒有此節</div>`);
-      continue;
+    if (!baseText) { cards.push(`<div class="diff-error-card">${escHtml(verseRefShort)}：${escHtml(baseName)} 沒有此節</div>`); continue; }
+    if (!compText) { cards.push(`<div class="diff-error-card">${escHtml(verseRefShort)}：${escHtml(compName)} 沒有此節</div>`); continue; }
+    if (isThreeWay && !comp2Text) { cards.push(`<div class="diff-error-card">${escHtml(verseRefShort)}：${escHtml(comp2Name)} 沒有此節</div>`); continue; }
+
+    if (isThreeWay) {
+      const r = isZh
+        ? computeDiffChinese3Way(baseText, compText, comp2Text, baseVer, compVer, comp2Ver)
+        : computeDiffEnglish3Way(baseText, compText, comp2Text);
+
+      sumA += r.totalA; sumB += r.totalB; sumC += r.totalC;
+      sumLcsAB += r.lcsAB; sumLcsAC += r.lcsAC; sumLcsBC += r.lcsBC;
+      validVerses++;
+
+      cards.push(
+        `<div class="diff-card">
+          <div class="diff-card-header">
+            <span class="diff-card-label">${escHtml(verseRefShort)}</span>
+            <span class="diff-similarity" title="${escHtml(baseName)} vs ${escHtml(compName)}">${escHtml(baseName)}↔${escHtml(compName)} ${r.simAB}%</span>
+            <span class="diff-similarity" title="${escHtml(baseName)} vs ${escHtml(comp2Name)}">${escHtml(baseName)}↔${escHtml(comp2Name)} ${r.simAC}%</span>
+            <span class="diff-similarity" title="${escHtml(compName)} vs ${escHtml(comp2Name)}">${escHtml(compName)}↔${escHtml(comp2Name)} ${r.simBC}%</span>
+          </div>
+          <div class="diff-verse-row${isZh ? ' zh' : ''}">
+            <span class="diff-verse-tag base">${escHtml(baseName)}</span>
+            <span class="diff-verse-text${isZh ? ' zh' : ''}">${r.baseHtml}</span>
+          </div>
+          <div class="diff-verse-row${isZh ? ' zh' : ''}">
+            <span class="diff-verse-tag comp">${escHtml(compName)}</span>
+            <span class="diff-verse-text${isZh ? ' zh' : ''}">${r.comp1Html}</span>
+          </div>
+          <div class="diff-verse-row${isZh ? ' zh' : ''}">
+            <span class="diff-verse-tag comp2">${escHtml(comp2Name)}</span>
+            <span class="diff-verse-text${isZh ? ' zh' : ''}">${r.comp2Html}</span>
+          </div>
+        </div>`
+      );
+    } else {
+      const r = isZh
+        ? computeDiffChinese(baseText, compText, baseVer, compVer)
+        : computeDiffEnglish(baseText, compText);
+
+      sumA += r.totalA; sumB += r.totalB; sumLcs += r.lcsLen; validVerses++;
+
+      cards.push(
+        `<div class="diff-card">
+          <div class="diff-card-header">
+            <span class="diff-card-label">${escHtml(verseRefShort)}</span>
+            <span class="diff-similarity" title="此節相似度（${isZh ? 'dmp 字級' : 'LCS 詞級'}）">相似度 ${r.sim}%</span>
+            <span class="diff-card-meta">${escHtml(baseName)} ${r.totalA} ${charLabel} ／ ${escHtml(compName)} ${r.totalB} ${charLabel}</span>
+          </div>
+          <div class="diff-verse-row${isZh ? ' zh' : ''}">
+            <span class="diff-verse-tag base">${escHtml(baseName)}</span>
+            <span class="diff-verse-text${isZh ? ' zh' : ''}">${r.baseHtml}</span>
+          </div>
+          <div class="diff-verse-row${isZh ? ' zh' : ''}">
+            <span class="diff-verse-tag comp">${escHtml(compName)}</span>
+            <span class="diff-verse-text${isZh ? ' zh' : ''}">${r.compHtml}</span>
+          </div>
+        </div>`
+      );
     }
-    if (!baseText) {
-      cards.push(`<div class="diff-error-card">${escHtml(verseRefShort)}：${escHtml(baseName)} 沒有此節</div>`);
-      continue;
-    }
-    if (!compText) {
-      cards.push(`<div class="diff-error-card">${escHtml(verseRefShort)}：${escHtml(compName)} 沒有此節</div>`);
-      continue;
-    }
-
-    const r = isZh
-      ? computeDiffChinese(baseText, compText, baseVer, compVer)
-      : computeDiffEnglish(baseText, compText);
-
-    sumA += r.totalA; sumB += r.totalB; sumLcs += r.lcsLen; validVerses++;
-
-    cards.push(
-      `<div class="diff-card">
-        <div class="diff-card-header">
-          <span class="diff-card-label">${escHtml(verseRefShort)}</span>
-          <span class="diff-similarity" title="此節相似度（${isZh ? 'dmp 字級' : 'LCS 詞級'}）">相似度 ${r.sim}%</span>
-          <span class="diff-card-meta">${escHtml(baseName)} ${r.totalA} ${charLabel} ／ ${escHtml(compName)} ${r.totalB} ${charLabel}</span>
-        </div>
-        <div class="diff-verse-row${isZh ? ' zh' : ''}">
-          <span class="diff-verse-tag base">${escHtml(baseName)}</span>
-          <span class="diff-verse-text${isZh ? ' zh' : ''}">${r.baseHtml}</span>
-        </div>
-        <div class="diff-verse-row${isZh ? ' zh' : ''}">
-          <span class="diff-verse-tag comp">${escHtml(compName)}</span>
-          <span class="diff-verse-text${isZh ? ' zh' : ''}">${r.compHtml}</span>
-        </div>
-      </div>`
-    );
   }
 
-  // 範圍標籤與整體相似度
+  // 範圍標籤
   const isRange = secs.length > 1;
   const rangeLabel = isRange
     ? `${book.chinesef} ${chap}:${secs[0]}-${secs[secs.length-1]} (${book.engs} ${chap}:${secs[0]}-${secs[secs.length-1]})`
     : `${book.chinesef} ${chap}:${secs[0]} (${book.engs} ${chap}:${secs[0]})`;
-  const overall = (sumA + sumB) > 0 ? Math.round(2 * sumLcs / (sumA + sumB) * 100) : 0;
 
-  const summaryHtml =
-    `<div class="diff-summary">
-      <span class="diff-summary-label">${escHtml(rangeLabel)}</span>
-      <span class="diff-summary-meta">${escHtml(baseName)} 基準 ↔ ${escHtml(compName)} 對比</span>
-      ${isRange ? `<span class="diff-similarity diff-summary-sim" title="加權平均：2 × ΣLCS / (Σ基準${charLabel}數 + Σ對比${charLabel}數)">總相似度 ${overall}%</span>` : ''}
-      <span class="diff-summary-meta">${validVerses} 節｜${sumA} ${charLabel} vs ${sumB} ${charLabel}</span>
-    </div>`;
+  let summaryHtml;
+  if (isThreeWay) {
+    const oAB = (sumA + sumB) > 0 ? Math.round(2 * sumLcsAB / (sumA + sumB) * 100) : 0;
+    const oAC = (sumA + sumC) > 0 ? Math.round(2 * sumLcsAC / (sumA + sumC) * 100) : 0;
+    const oBC = (sumB + sumC) > 0 ? Math.round(2 * sumLcsBC / (sumB + sumC) * 100) : 0;
+    summaryHtml =
+      `<div class="diff-summary">
+        <span class="diff-summary-label">${escHtml(rangeLabel)}</span>
+        <span class="diff-summary-meta">${escHtml(baseName)} ↔ ${escHtml(compName)} ↔ ${escHtml(comp2Name)} (3-way)</span>
+        ${isRange ? `<span class="diff-similarity diff-summary-sim">${escHtml(baseName)}↔${escHtml(compName)} ${oAB}%</span>` : ''}
+        ${isRange ? `<span class="diff-similarity diff-summary-sim">${escHtml(baseName)}↔${escHtml(comp2Name)} ${oAC}%</span>` : ''}
+        ${isRange ? `<span class="diff-similarity diff-summary-sim">${escHtml(compName)}↔${escHtml(comp2Name)} ${oBC}%</span>` : ''}
+        <span class="diff-summary-meta">${validVerses} 節｜${sumA}/${sumB}/${sumC} ${charLabel}</span>
+      </div>`;
+  } else {
+    const overall = (sumA + sumB) > 0 ? Math.round(2 * sumLcs / (sumA + sumB) * 100) : 0;
+    summaryHtml =
+      `<div class="diff-summary">
+        <span class="diff-summary-label">${escHtml(rangeLabel)}</span>
+        <span class="diff-summary-meta">${escHtml(baseName)} 基準 ↔ ${escHtml(compName)} 對比</span>
+        ${isRange ? `<span class="diff-similarity diff-summary-sim" title="加權平均：2 × ΣLCS / (Σ基準${charLabel}數 + Σ對比${charLabel}數)">總相似度 ${overall}%</span>` : ''}
+        <span class="diff-summary-meta">${validVerses} 節｜${sumA} ${charLabel} vs ${sumB} ${charLabel}</span>
+      </div>`;
+  }
 
   div.innerHTML = summaryHtml + cards.join('');
 }

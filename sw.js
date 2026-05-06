@@ -1,5 +1,5 @@
 /* 多譯本聖經查詢 — Service Worker：離線殼層 + 本地譯本 JSON 快取 */
-const CACHE_NAME = 'bible-multi-v44';
+const CACHE_NAME = 'bible-multi-v45';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/vendor/diff_match_patch.js'];
 
 self.addEventListener('install', (event) => {

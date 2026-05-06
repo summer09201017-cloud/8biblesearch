@@ -62,7 +62,7 @@ Everything user-facing lives in `index.html` — CSS, HTML, and ~2700 lines of i
 `doQuickLookup()` 把輸入用 `[,，\n\r]+` 切成多段 ref，每段呼叫 `quickLookupSegment(seg, vers)`（已抽出的單段查詢函式）。多段模式下每段前面加 `.quick-segment-header` 標題，失敗的段以 `.quick-segment-error` 顯示警告但不中斷其他段。輸入框是 textarea 而非 input — Enter 送出，Shift+Enter 換行。
 
 ### 對讀比較分頁（Diff）
-新分頁 `#panel-diff`，自選基準與對比版本的 diff，**中文用 dmp（diff-match-patch）+ cleanupSemantic、英文用自寫 word-level LCS**，支援單節或範圍。
+新分頁 `#panel-diff`，自選基準與對比版本的 diff，**中文用 dmp（diff-match-patch）+ cleanupSemantic、英文用自寫 word-level LCS**，支援單節或範圍，並支援 **3-way unified diff**。
 - 9 個版本（中文 unv/ncv/lcc + 英文 esv/niv/kjv/web/asv/bbe），`DIFF_VERSIONS` 表帶 `lang:'zh'|'en'`。基準下拉用 `<optgroup>` 分中／英；對比下拉透過 `rebuildDiffCompOptions()` **只列出與基準同語言的選項**（中英不能跨）。
 - 預設：基準=ESV、對比=NIV；切到 unv 為基準時對比預設自動切到 ncv。`DIFF_DEFAULT_COMP_BY_LANG = { zh:'ncv', en:'niv' }`。
 - 範圍輸入：「起始節 / 結束節」沿用閱讀分頁的邏輯（start+end → 範圍；只有 start → 單節；都空 → 整章）。
@@ -74,6 +74,16 @@ Everything user-facing lives in `index.html` — CSS, HTML, and ~2700 lines of i
 - `.diff-verse-text.zh` 用 sans-serif 中文字體 stack，letter-spacing 加大；紅綠高亮 padding 縮小避免方塊矩陣感。
 - 紅色高亮 **沒有刪除線**——避免「這些字應該刪掉」的誤導語意。
 - 已驗證 dmp 在 J3:16：和合本 vs 新譯本 = 97%（只有「將/把」差異，標點完全乾淨）；和合本 vs 呂振中 = 29%（dmp 給整段 chunk，視覺結構符合人類「這兩段差很多」直覺，比舊 LCS 64% 散布的紅綠標點容易讀）。
+
+#### 3-way unified diff
+第三版本下拉 `#diff-sel-comp2` 預設「（不用）」=2-way 模式；選一個第三版本後切換成 3-way unified mode。
+- **Lonely 規則**：某 token 高亮 ⇔ 在另外兩個版本中**都沒有匹配**（在 2 個以上版本出現的字 = 多數一致，不標）。這個規則的好處是只突顯「真正獨有的差異」，避免 3 色聖誕樹效果。
+- 演算法：對 (A,B)、(A,C)、(B,C) 各做一次 pairwise diff（中文用 dmp + cleanupSemantic、英文用 LCS），把 6 個 match 陣列合成各版本的 lonely 陣列。verse 級長度三組 dmp/LCS 加起來毫無壓力。
+- 助手 `dmpCharMatch(diffs, sideA)` 把 dmp 段落輸出展開成該邊每個字元的 matched 布林陣列。`renderLonelyGroups(items, lonelyArr, diffClass, joinSep)` 把連續 lonely 字元合併成一個 span（避免破碎效果）。
+- 第三版本顏色：藍色 `.diff-comp2-unique` / `.diff-verse-tag.comp2`（紅綠藍三色組合在 sepia/dark/black 主題各有覆寫）。
+- 卡片標題顯示 3 個 pairwise 相似度（譬如 `和合本↔新譯本 97%`、`和合本↔呂振中 30%`、`新譯本↔呂振中 30%`），讀者一眼看出版本之間的兩兩距離。範圍模式 summary 同樣顯示 3 個總相似度。
+- 下拉相依鏈：`onDiffBaseChange()` 重建 comp1 + comp2；`onDiffComp1Change()` 只重建 comp2。`rebuildDiffComp2Options()` 排除 base 與 comp1 已選版本，且第一個選項永遠是「（不用）」。切換語言會把 comp2 退回 ''。
+- 已驗證 J3:16 三方：和合本 lonely=「將」一字、新譯本 lonely=「把」一字、呂振中 lonely=「上帝這樣地…而」整段——精確命中 3 個版本各自的「真正獨有」訊號。
 
 ### Three render paths converge on `sortedVers()`
 Read / Search / Quick-lookup all build a `verseMap` keyed by `chap:sec`, then render via `renderVerseGroup(...)` or inline equivalents. **All three paths sort their translation columns through `sortedVers()`**, which reads `userVersionOrder` from `localStorage`. If you add a new place that lists translations or builds copy/share text, run it through `sortedVers()` so the user's drag-to-reorder preference is respected.
