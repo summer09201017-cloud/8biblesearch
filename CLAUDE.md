@@ -62,15 +62,16 @@ Everything user-facing lives in `index.html` — CSS, HTML, and ~2700 lines of i
 `doQuickLookup()` 把輸入用 `[,，\n\r]+` 切成多段 ref，每段呼叫 `quickLookupSegment(seg, vers)`（已抽出的單段查詢函式）。多段模式下每段前面加 `.quick-segment-header` 標題，失敗的段以 `.quick-segment-error` 顯示警告但不中斷其他段。輸入框是 textarea 而非 input — Enter 送出，Shift+Enter 換行。
 
 ### 對讀比較分頁（Diff）
-新分頁 `#panel-diff`，自選基準與對比的單節 word-level diff。最簡版只支援一個對比，下版加第二個對比。
-- 基準與對比都是下拉，6 個英文版本可選（ESV/NIV/KJV/WEB/ASV/BBE）。預設基準=ESV（直譯，貼近原文）、對比=NIV（意動，看詮釋差異）。
+新分頁 `#panel-diff`，自選基準與對比版本的 word-level diff，支援單節或範圍。下版加第二個對比版本。
+- 基準與對比都是下拉，6 個英文版本可選（ESV/NIV/KJV/WEB/ASV/BBE）。預設基準=ESV、對比=NIV。
 - 對比下拉透過 `rebuildDiffCompOptions()` 動態排除目前選中的基準（避免兩邊同版本）；`runDiff()` 仍多一道防呆檢查。
-- `initDiffSelectors()` 在第一次切到 diff 分頁時懶初始化（建立書/章/節/基準/對比 selects），預設 John 3:16 + ESV vs NIV，dataReady 時自動跑一次 `runDiff()`。
+- 範圍輸入：「起始節 / 結束節」沿用閱讀分頁的邏輯——start+end → 範圍；只有 start → 單節；都空 → 整章；只有 end → 1..end。`runDiff()` 把 secs 算出後迴圈每節做 LCS。
+- `initDiffSelectors()` 懶初始化，預設 John 3:16 單節（end 留空）。
 - Tokenize：以空白切詞，`diffKey()` 把 token 小寫化並去除非 `[a-z0-9']` 字元作為比對鍵（忽略大小寫與標點）。
-- LCS：`diffLcsMatch()` 用 DP 算最長共同子序列（O(m×n)，verse 通常 30-100 字，可忽略）。回傳 `matchA/matchB` 標記每個 token 是否屬於 LCS。
-- 渲染：未匹配的 token 包 `.diff-base-unique`（基準側，純紅色背景，**沒有刪除線**——避免「這些字應該刪掉」的誤導語意）或 `.diff-comp-unique`（對比側，綠色高亮）。標題列顯示 `相似度 X%` = `2 × LCS / (lenA + lenB) × 100`。
-- 兩個版本都靠 `loadVersionData(ver)` 懶載入，避免使用者沒勾選某英文版時被卡住。
-- 主題色：`.diff-base-unique` / `.diff-comp-unique` 在 sepia/dark/black 各有覆寫，避免在深色底看不清。
+- LCS：`diffLcsMatch()` 用 DP 算最長共同子序列（O(m×n)，verse 通常 30-100 字，可忽略）。
+- 卡片設計：每節一張 `.diff-card`，內含基準/對比兩個 `.diff-verse-row`（基準＝紅標 tag + 紅色高亮獨有字；對比＝綠標 tag + 綠色高亮獨有字）。範圍模式上方多一張 `.diff-summary` 卡片，顯示 `總相似度 X%` = 加權平均 `2 × ΣLCS / (Σ基準字數 + Σ對比字數)`。
+- 紅色高亮 **沒有刪除線**——避免「這些字應該刪掉」的誤導語意，純紅底色就好。
+- 兩個版本都靠 `loadVersionData(ver)` 懶載入。主題色：`.diff-base-unique` / `.diff-comp-unique` 在 sepia/dark/black 各有覆寫。
 
 ### Three render paths converge on `sortedVers()`
 Read / Search / Quick-lookup all build a `verseMap` keyed by `chap:sec`, then render via `renderVerseGroup(...)` or inline equivalents. **All three paths sort their translation columns through `sortedVers()`**, which reads `userVersionOrder` from `localStorage`. If you add a new place that lists translations or builds copy/share text, run it through `sortedVers()` so the user's drag-to-reorder preference is respected.

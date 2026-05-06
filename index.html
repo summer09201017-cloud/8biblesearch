@@ -1292,6 +1292,44 @@ body {
   background:var(--bg2); border:1px solid var(--border);
   font-size:0.78rem; color:var(--text2); font-weight:600;
 }
+.diff-summary {
+  display:flex; gap:14px; flex-wrap:wrap; align-items:center;
+  padding:12px 16px; margin-bottom:14px;
+  background:var(--bg2); border:1px solid var(--border); border-radius:10px;
+  box-shadow:0 1px 3px var(--shadow);
+}
+.diff-summary-label { font-weight:700; font-size:0.96rem; color:var(--text); }
+.diff-summary-meta { font-size:0.82rem; color:var(--text2); }
+.diff-summary-sim {
+  font-size:0.92rem; padding:4px 14px;
+  background:linear-gradient(90deg, rgba(220,53,69,0.15), rgba(40,167,69,0.15));
+  border-color:var(--accent2); color:var(--text);
+}
+.diff-verse-row {
+  display:flex; gap:10px; align-items:flex-start;
+  margin:8px 0; line-height:1.85;
+}
+.diff-verse-row + .diff-verse-row { margin-top:6px; padding-top:8px; border-top:1px dashed var(--border); }
+.diff-verse-tag {
+  flex-shrink:0; padding:2px 9px; border-radius:10px;
+  font-size:0.7rem; font-weight:700; letter-spacing:0.3px;
+  color:white; align-self:flex-start; margin-top:6px;
+  min-width:42px; text-align:center;
+}
+.diff-verse-tag.base { background:#a02030; }
+.diff-verse-tag.comp { background:#1e7d3a; }
+[data-theme="dark"] .diff-verse-tag.base, [data-theme="black"] .diff-verse-tag.base { background:#c0392b; }
+[data-theme="dark"] .diff-verse-tag.comp, [data-theme="black"] .diff-verse-tag.comp { background:#27ae60; }
+.diff-verse-text {
+  flex:1; min-width:0;
+  font-size:1.0rem;
+  font-family: Georgia, "Times New Roman", serif;
+}
+.diff-error-card {
+  padding:10px 14px; margin-bottom:10px;
+  background:var(--bg2); border:1px dashed var(--border); border-radius:8px;
+  font-size:0.86rem; color:var(--text2);
+}
 
 /* ===== 信望愛註釋彈窗（iframe + 獨立字體大小調整） ===== */
 .comment-modal {
@@ -1530,13 +1568,14 @@ body {
 
   <div id="panel-diff" class="panel">
     <div class="diff-intro" style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:0.88rem; line-height:1.6;">
-      <b>📊 英文譯本逐字對讀（最簡版）</b><br>
-      自選一個基準版本與一個對比版本，做單節 word-level 對比。預設基準為 <b>ESV</b>（直譯，貼近原文），對比為 <b>NIV</b>（意動，看詮釋差異）。<span style="color:var(--text2);">下版會加入第二個對比版本。</span>
+      <b>📊 英文譯本逐字對讀</b><br>
+      自選基準與對比版本做 word-level 對比。預設基準為 <b>ESV</b>（直譯，貼近原文），對比為 <b>NIV</b>（意動，看詮釋差異）。<span style="color:var(--text2);">「結束節」留空＝只比一節；起／訖都留空＝整章；範圍模式會顯示總相似度。</span>
     </div>
     <div class="selector-row">
       <div class="selector-group"><label>書卷</label><select id="diff-sel-book" onchange="onDiffBookChange()"></select></div>
       <div class="selector-group"><label>章</label><select id="diff-sel-chap" onchange="onDiffChapChange()"></select></div>
-      <div class="selector-group"><label>節</label><select id="diff-sel-sec" onchange="runDiff()"></select></div>
+      <div class="selector-group"><label>起始節</label><select id="diff-sel-sec-start" onchange="runDiff()"></select></div>
+      <div class="selector-group"><label>結束節</label><select id="diff-sel-sec-end" onchange="runDiff()"></select></div>
       <div class="selector-group"><label>基準版本</label><select id="diff-sel-base" onchange="onDiffBaseChange()"></select></div>
       <div class="selector-group"><label>對比版本</label><select id="diff-sel-comp" onchange="runDiff()"></select></div>
       <button class="btn btn-query-large" onclick="runDiff()">比較</button>
@@ -3317,12 +3356,13 @@ function initDiffSelectors() {
   // 對比下拉：排除基準後生成；預設 NIV
   rebuildDiffCompOptions('niv');
 
-  // 預設「約翰福音 3:16」
+  // 預設「約翰福音 3:16」單節
   sb.value = '43';
   onDiffBookChange();
   document.getElementById('diff-sel-chap').value = '3';
   onDiffChapChange();
-  document.getElementById('diff-sel-sec').value = '16';
+  document.getElementById('diff-sel-sec-start').value = '16';
+  // 結束節留空 = 單節
   if (dataReady) runDiff();
 }
 
@@ -3360,11 +3400,13 @@ function onDiffChapChange() {
   const chap = parseInt(document.getElementById('diff-sel-chap').value, 10);
   const vc = VERSE_COUNTS[bid];
   const mx = vc && vc[chap-1] ? vc[chap-1] : 30;
-  const ss = document.getElementById('diff-sel-sec');
-  ss.innerHTML = '';
+  const ss = document.getElementById('diff-sel-sec-start');
+  const se = document.getElementById('diff-sel-sec-end');
+  ss.innerHTML = '<option value="">全章</option>';
+  se.innerHTML = '<option value="">末節</option>';
   for (let i = 1; i <= mx; i++) {
-    const o = document.createElement('option'); o.value = i; o.textContent = i;
-    ss.appendChild(o);
+    ss.innerHTML += `<option value="${i}">${i}</option>`;
+    se.innerHTML += `<option value="${i}">${i}</option>`;
   }
 }
 
@@ -3415,16 +3457,35 @@ async function runDiff() {
   if (!div) return;
   const bid = parseInt(document.getElementById('diff-sel-book').value, 10);
   const chap = parseInt(document.getElementById('diff-sel-chap').value, 10);
-  const sec = parseInt(document.getElementById('diff-sel-sec').value, 10);
+  const secStartRaw = document.getElementById('diff-sel-sec-start').value;
+  const secEndRaw = document.getElementById('diff-sel-sec-end').value;
   const baseVer = document.getElementById('diff-sel-base').value;
   const compVer = document.getElementById('diff-sel-comp').value;
   const book = BOOKS.find(b => b.bid === bid);
-  if (!book || !chap || !sec) {
-    div.innerHTML = '<div class="error-msg">請選擇書卷、章、節</div>';
+  if (!book || !chap) {
+    div.innerHTML = '<div class="error-msg">請選擇書卷與章</div>';
     return;
   }
   if (baseVer === compVer) {
     div.innerHTML = '<div class="error-msg">基準與對比不能是同一個版本</div>';
+    return;
+  }
+
+  // 計算節範圍（沿用閱讀分頁邏輯）
+  let secs = [];
+  if (secStartRaw && secEndRaw) {
+    const a = parseInt(secStartRaw, 10), b = parseInt(secEndRaw, 10);
+    for (let s = Math.min(a,b); s <= Math.max(a,b); s++) secs.push(s);
+  } else if (secStartRaw) {
+    secs.push(parseInt(secStartRaw, 10));
+  } else {
+    const vc = VERSE_COUNTS[bid];
+    const mx = vc && vc[chap-1] ? vc[chap-1] : 30;
+    const upper = secEndRaw ? Math.min(parseInt(secEndRaw,10), mx) : mx;
+    for (let i = 1; i <= upper; i++) secs.push(i);
+  }
+  if (secs.length === 0) {
+    div.innerHTML = '<div class="error-msg">節範圍無效</div>';
     return;
   }
 
@@ -3434,52 +3495,75 @@ async function runDiff() {
   if (!okBase) { div.innerHTML = `<div class="error-msg">${baseVer.toUpperCase()} 資料載入失敗</div>`; return; }
   if (!okComp) { div.innerHTML = `<div class="error-msg">${compVer.toUpperCase()} 資料載入失敗</div>`; return; }
 
-  const baseText = stripHtml(getLocalVerse(baseVer, bid, chap, sec) || '');
-  const compText = stripHtml(getLocalVerse(compVer, bid, chap, sec) || '');
   const baseName = (VERSIONS.find(v => v.code === baseVer) || {}).name || baseVer.toUpperCase();
   const compName = (VERSIONS.find(v => v.code === compVer) || {}).name || compVer.toUpperCase();
-  const ref = `${book.chinesef} ${chap}:${sec} (${book.engs} ${chap}:${sec})`;
 
-  if (!baseText && !compText) {
-    div.innerHTML = `<div class="error-msg">兩個版本都沒有 ${ref} 的經文</div>`;
-    return;
+  let sumA = 0, sumB = 0, sumLcs = 0, validVerses = 0;
+  const cards = [];
+
+  for (const sec of secs) {
+    const verseRefShort = `${book.engs} ${chap}:${sec}`;
+    const baseText = stripHtml(getLocalVerse(baseVer, bid, chap, sec) || '');
+    const compText = stripHtml(getLocalVerse(compVer, bid, chap, sec) || '');
+
+    if (!baseText && !compText) {
+      cards.push(`<div class="diff-error-card">${escHtml(verseRefShort)}：兩個版本都沒有此節</div>`);
+      continue;
+    }
+    if (!baseText) {
+      cards.push(`<div class="diff-error-card">${escHtml(verseRefShort)}：${escHtml(baseName)} 沒有此節</div>`);
+      continue;
+    }
+    if (!compText) {
+      cards.push(`<div class="diff-error-card">${escHtml(verseRefShort)}：${escHtml(compName)} 沒有此節</div>`);
+      continue;
+    }
+
+    const tokA = diffTokenize(baseText);
+    const tokB = diffTokenize(compText);
+    const keyA = tokA.map(diffKey);
+    const keyB = tokB.map(diffKey);
+    const { matchA, matchB, lcsLen } = diffLcsMatch(keyA, keyB);
+    const totalA = tokA.length, totalB = tokB.length;
+    const sim = (totalA + totalB) > 0 ? Math.round(2 * lcsLen / (totalA + totalB) * 100) : 0;
+
+    sumA += totalA; sumB += totalB; sumLcs += lcsLen; validVerses++;
+
+    cards.push(
+      `<div class="diff-card">
+        <div class="diff-card-header">
+          <span class="diff-card-label">${escHtml(verseRefShort)}</span>
+          <span class="diff-similarity" title="此節 LCS 字級相似度">相似度 ${sim}%</span>
+          <span class="diff-card-meta">${escHtml(baseName)} ${totalA} 字 ／ ${escHtml(compName)} ${totalB} 字</span>
+        </div>
+        <div class="diff-verse-row">
+          <span class="diff-verse-tag base">${escHtml(baseName)}</span>
+          <span class="diff-verse-text">${renderDiffSide(tokA, matchA, 'diff-base-unique')}</span>
+        </div>
+        <div class="diff-verse-row">
+          <span class="diff-verse-tag comp">${escHtml(compName)}</span>
+          <span class="diff-verse-text">${renderDiffSide(tokB, matchB, 'diff-comp-unique')}</span>
+        </div>
+      </div>`
+    );
   }
-  if (!baseText) {
-    div.innerHTML = `<div class="error-msg">${baseName} 沒有 ${ref}（無法以 ${baseName} 為基準比較）</div>`;
-    return;
-  }
-  if (!compText) {
-    div.innerHTML = `<div class="error-msg">${compName} 沒有 ${ref}</div>`;
-    return;
-  }
 
-  const tokA = diffTokenize(baseText);
-  const tokB = diffTokenize(compText);
-  const keyA = tokA.map(diffKey);
-  const keyB = tokB.map(diffKey);
-  const { matchA, matchB, lcsLen } = diffLcsMatch(keyA, keyB);
+  // 範圍標籤與整體相似度
+  const isRange = secs.length > 1;
+  const rangeLabel = isRange
+    ? `${book.chinesef} ${chap}:${secs[0]}-${secs[secs.length-1]} (${book.engs} ${chap}:${secs[0]}-${secs[secs.length-1]})`
+    : `${book.chinesef} ${chap}:${secs[0]} (${book.engs} ${chap}:${secs[0]})`;
+  const overall = (sumA + sumB) > 0 ? Math.round(2 * sumLcs / (sumA + sumB) * 100) : 0;
 
-  const totalA = tokA.length, totalB = tokB.length;
-  const sim = Math.round(2 * lcsLen / (totalA + totalB) * 100);
-  const diffsA = totalA - lcsLen;
-  const diffsB = totalB - lcsLen;
-
-  div.innerHTML =
-    `<div class="diff-card">
-      <div class="diff-card-header">
-        <span class="diff-card-label">${escHtml(baseName)}（基準）— ${escHtml(ref)}</span>
-        <span class="diff-card-meta">${totalA} 字｜${diffsA} 個獨有字</span>
-      </div>
-      <div class="diff-text">${renderDiffSide(tokA, matchA, 'diff-base-unique')}</div>
-    </div>
-    <div class="diff-card">
-      <div class="diff-card-header">
-        <span class="diff-card-label">${escHtml(compName)} — ${escHtml(ref)}</span>
-        <span class="diff-card-meta">${totalB} 字｜${diffsB} 個獨有字</span>
-        <span class="diff-similarity" title="LCS 字級相似度（忽略大小寫與標點）">相似度 ${sim}%</span>
-      </div>
-      <div class="diff-text">${renderDiffSide(tokB, matchB, 'diff-comp-unique')}</div>
+  const summaryHtml =
+    `<div class="diff-summary">
+      <span class="diff-summary-label">${escHtml(rangeLabel)}</span>
+      <span class="diff-summary-meta">${escHtml(baseName)} 基準 ↔ ${escHtml(compName)} 對比</span>
+      ${isRange ? `<span class="diff-similarity diff-summary-sim" title="加權平均：2 × ΣLCS / (Σ基準字數 + Σ對比字數)">總相似度 ${overall}%</span>` : ''}
+      <span class="diff-summary-meta">${validVerses} 節｜${sumA} 字 vs ${sumB} 字</span>
     </div>`;
+
+  div.innerHTML = summaryHtml + cards.join('');
 }
 
 // ====== 筆記列表頁 ======
