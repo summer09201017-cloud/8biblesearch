@@ -1247,6 +1247,53 @@ body {
 .btn-copy-inline:hover { filter:brightness(1.08); box-shadow:0 2px 6px rgba(192,57,43,0.35); transform:translateY(-1px); }
 .btn-copy-inline:active { transform:translateY(0) scale(0.96); }
 
+/* ====== 對讀比較 (Diff) ====== */
+.diff-legend {
+  display:flex; gap:14px; flex-wrap:wrap;
+  font-size:0.78rem; color:var(--text2);
+  padding:8px 12px; margin-bottom:14px;
+  background:var(--bg2); border:1px dashed var(--border); border-radius:6px;
+}
+.diff-card {
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 3px var(--shadow);
+}
+.diff-card-header {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  margin-bottom:8px; padding-bottom:8px;
+  border-bottom:1px solid var(--border);
+}
+.diff-card-label { font-weight:700; font-size:0.92rem; color:var(--text); }
+.diff-card-meta { color:var(--text2); font-size:0.78rem; }
+.diff-text {
+  font-size:1.02rem; line-height:1.95; word-spacing:1px;
+  font-family: Georgia, "Times New Roman", serif;
+}
+.diff-base-unique {
+  background:rgba(220,53,69,0.18); color:#a02030;
+  padding:1px 4px; border-radius:3px;
+  text-decoration:line-through; text-decoration-color:rgba(160,30,40,0.55);
+  font-weight:600;
+}
+.diff-comp-unique {
+  background:rgba(40,167,69,0.20); color:#1e7d3a;
+  padding:1px 4px; border-radius:3px;
+  font-weight:700;
+}
+[data-theme="sepia"] .diff-base-unique { background:rgba(192,57,43,0.22); color:#8b1e1e; }
+[data-theme="sepia"] .diff-comp-unique { background:rgba(46,125,50,0.22); color:#2c5d1e; }
+[data-theme="dark"] .diff-base-unique, [data-theme="black"] .diff-base-unique {
+  background:rgba(220,53,69,0.30); color:#ff9999;
+}
+[data-theme="dark"] .diff-comp-unique, [data-theme="black"] .diff-comp-unique {
+  background:rgba(40,167,69,0.30); color:#7be07b;
+}
+.diff-similarity {
+  display:inline-block; padding:2px 10px; border-radius:12px;
+  background:var(--bg2); border:1px solid var(--border);
+  font-size:0.78rem; color:var(--text2); font-weight:600;
+}
+
 /* ===== 信望愛註釋彈窗（iframe + 獨立字體大小調整） ===== */
 .comment-modal {
   position:fixed; inset:0; z-index:9998;
@@ -1362,6 +1409,7 @@ body {
   <button class="tab active" data-tab="read" onclick="switchTab('read')">經文閱讀</button>
   <button class="tab" data-tab="search" onclick="switchTab('search')">關鍵字搜尋</button>
   <button class="tab" data-tab="quick" onclick="switchTab('quick')">快速查詢</button>
+  <button class="tab" data-tab="diff" onclick="switchTab('diff')">📊 對讀比較</button>
   <button class="tab" data-tab="notes" onclick="switchTab('notes')">我的筆記</button>
   <button class="tab" data-tab="settings" onclick="switchTab('settings')">設定/資料</button>
 </nav>
@@ -1478,6 +1526,34 @@ body {
     <div class="version-toggles" id="version-toggles-quick"></div>
     <div id="results-quick">
       <div class="empty-state"><div class="icon">⚡</div><p>輸入經文參照快速查詢</p><p style="font-size:0.8rem;">支援單段（約 3:16）或<b>多段比對</b>（創 1:1, 約 1:1, 來 1:1）</p></div>
+    </div>
+  </div>
+
+  <div id="panel-diff" class="panel">
+    <div class="diff-intro" style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:0.88rem; line-height:1.6;">
+      <b>📊 英文譯本逐字對讀（最簡版）</b><br>
+      以 <b>NIV</b>（意動翻譯）為基準，挑一個英文譯本進行單節 word-level 對比。<span style="color:var(--text2);">下版會加入第二個對比版本。</span>
+    </div>
+    <div class="selector-row">
+      <div class="selector-group"><label>書卷</label><select id="diff-sel-book" onchange="onDiffBookChange()"></select></div>
+      <div class="selector-group"><label>章</label><select id="diff-sel-chap" onchange="onDiffChapChange()"></select></div>
+      <div class="selector-group"><label>節</label><select id="diff-sel-sec" onchange="runDiff()"></select></div>
+      <div class="selector-group"><label>對比版本</label><select id="diff-sel-comp" onchange="runDiff()">
+        <option value="esv" selected>ESV（直譯）</option>
+        <option value="kjv">KJV（古典）</option>
+        <option value="web">WEB</option>
+        <option value="asv">ASV</option>
+        <option value="bbe">BBE（簡易）</option>
+      </select></div>
+      <button class="btn btn-query-large" onclick="runDiff()">比較</button>
+    </div>
+    <div class="diff-legend">
+      <span><span class="diff-base-unique">紅色刪除</span> = 只在 NIV 出現的字</span>
+      <span><span class="diff-comp-unique">綠色標示</span> = 只在對比版本出現的字</span>
+      <span style="color:var(--text2);">字面相同的字維持原色（標點、大小寫忽略）</span>
+    </div>
+    <div class="results-area" id="results-diff">
+      <div class="empty-state"><div class="icon">📊</div><p>選擇單節後按「比較」查看 NIV 與英文譯本逐字差異</p></div>
     </div>
   </div>
 
@@ -3212,6 +3288,167 @@ function switchTab(name) {
     renderSnapshotList();
     refreshLastExportHint();
   }
+  else if (name === 'diff') initDiffSelectors();
+}
+
+// ====== 對讀比較（NIV ↔ 任一英文譯本，word-level diff） ======
+let _diffInited = false;
+function initDiffSelectors() {
+  if (_diffInited) return;
+  _diffInited = true;
+  const sb = document.getElementById('diff-sel-book');
+  if (!sb) return;
+  const otG = document.createElement('optgroup'); otG.label = '舊約';
+  const ntG = document.createElement('optgroup'); ntG.label = '新約';
+  BOOKS.forEach(b => {
+    const o = document.createElement('option');
+    o.value = b.bid;
+    o.textContent = `${b.chinesef} (${b.engs})`;
+    (b.bid <= 39 ? otG : ntG).appendChild(o);
+  });
+  sb.appendChild(otG); sb.appendChild(ntG);
+  // 預設「約翰福音 3:16」
+  sb.value = '43';
+  onDiffBookChange();
+  document.getElementById('diff-sel-chap').value = '3';
+  onDiffChapChange();
+  document.getElementById('diff-sel-sec').value = '16';
+  if (dataReady) runDiff();
+}
+
+function onDiffBookChange() {
+  const bid = parseInt(document.getElementById('diff-sel-book').value, 10);
+  const book = BOOKS.find(b => b.bid === bid);
+  if (!book) return;
+  const sc = document.getElementById('diff-sel-chap');
+  sc.innerHTML = '';
+  for (let i = 1; i <= book.chapters; i++) {
+    const o = document.createElement('option'); o.value = i; o.textContent = i;
+    sc.appendChild(o);
+  }
+  onDiffChapChange();
+}
+
+function onDiffChapChange() {
+  const bid = parseInt(document.getElementById('diff-sel-book').value, 10);
+  const chap = parseInt(document.getElementById('diff-sel-chap').value, 10);
+  const vc = VERSE_COUNTS[bid];
+  const mx = vc && vc[chap-1] ? vc[chap-1] : 30;
+  const ss = document.getElementById('diff-sel-sec');
+  ss.innerHTML = '';
+  for (let i = 1; i <= mx; i++) {
+    const o = document.createElement('option'); o.value = i; o.textContent = i;
+    ss.appendChild(o);
+  }
+}
+
+// 字級 LCS：計算兩個 token 陣列的最長共同子序列，回傳每個 token 是否為「共同字」
+function diffLcsMatch(a, b) {
+  const m = a.length, n = b.length;
+  // dp[i][j] = LCS(a[0..i], b[0..j])
+  const dp = new Array(m + 1);
+  for (let i = 0; i <= m; i++) dp[i] = new Int32Array(n + 1); // 含 dp[0] 全零 base case
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = (a[i-1] === b[j-1]) ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1]);
+    }
+  }
+  const matchA = new Array(m).fill(false);
+  const matchB = new Array(n).fill(false);
+  let i = m, j = n;
+  while (i > 0 && j > 0) {
+    if (a[i-1] === b[j-1]) { matchA[i-1] = true; matchB[j-1] = true; i--; j--; }
+    else if (dp[i-1][j] >= dp[i][j-1]) i--;
+    else j--;
+  }
+  return { matchA, matchB, lcsLen: dp[m][n] };
+}
+
+function diffTokenize(s) {
+  return String(s || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+}
+
+function diffKey(t) {
+  // 比對用：去除非字母數字，統一小寫
+  return String(t).toLowerCase().replace(/[^a-z0-9']/g, '');
+}
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+
+function renderDiffSide(tokens, matchArr, diffClass) {
+  return tokens.map((t, i) => {
+    const safe = escHtml(t);
+    return matchArr[i] ? safe : `<span class="${diffClass}">${safe}</span>`;
+  }).join(' ');
+}
+
+async function runDiff() {
+  const div = document.getElementById('results-diff');
+  if (!div) return;
+  const bid = parseInt(document.getElementById('diff-sel-book').value, 10);
+  const chap = parseInt(document.getElementById('diff-sel-chap').value, 10);
+  const sec = parseInt(document.getElementById('diff-sel-sec').value, 10);
+  const compVer = document.getElementById('diff-sel-comp').value;
+  const book = BOOKS.find(b => b.bid === bid);
+  if (!book || !chap || !sec) {
+    div.innerHTML = '<div class="error-msg">請選擇書卷、章、節</div>';
+    return;
+  }
+
+  div.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text2);">⏳ 載入並比對中...</div>';
+  // 確保兩邊資料都載入
+  const okNiv = await loadVersionData('niv');
+  const okComp = await loadVersionData(compVer);
+  if (!okNiv) { div.innerHTML = '<div class="error-msg">NIV 資料載入失敗</div>'; return; }
+  if (!okComp) { div.innerHTML = `<div class="error-msg">${compVer.toUpperCase()} 資料載入失敗</div>`; return; }
+
+  const nivText = stripHtml(getLocalVerse('niv', bid, chap, sec) || '');
+  const compText = stripHtml(getLocalVerse(compVer, bid, chap, sec) || '');
+  const compName = (VERSIONS.find(v => v.code === compVer) || {}).name || compVer.toUpperCase();
+  const ref = `${book.chinesef} ${chap}:${sec} (${book.engs} ${chap}:${sec})`;
+
+  if (!nivText && !compText) {
+    div.innerHTML = `<div class="error-msg">兩個版本都沒有 ${ref} 的經文</div>`;
+    return;
+  }
+  if (!nivText) {
+    div.innerHTML = `<div class="error-msg">NIV 沒有 ${ref}（無法以 NIV 為基準比較）</div>`;
+    return;
+  }
+  if (!compText) {
+    div.innerHTML = `<div class="error-msg">${compName} 沒有 ${ref}</div>`;
+    return;
+  }
+
+  const tokA = diffTokenize(nivText);
+  const tokB = diffTokenize(compText);
+  const keyA = tokA.map(diffKey);
+  const keyB = tokB.map(diffKey);
+  const { matchA, matchB, lcsLen } = diffLcsMatch(keyA, keyB);
+
+  const totalA = tokA.length, totalB = tokB.length;
+  const sim = Math.round(2 * lcsLen / (totalA + totalB) * 100);
+  const diffsA = totalA - lcsLen;
+  const diffsB = totalB - lcsLen;
+
+  div.innerHTML =
+    `<div class="diff-card">
+      <div class="diff-card-header">
+        <span class="diff-card-label">NIV（基準）— ${escHtml(ref)}</span>
+        <span class="diff-card-meta">${totalA} 字｜${diffsA} 個獨有字</span>
+      </div>
+      <div class="diff-text">${renderDiffSide(tokA, matchA, 'diff-base-unique')}</div>
+    </div>
+    <div class="diff-card">
+      <div class="diff-card-header">
+        <span class="diff-card-label">${escHtml(compName)} — ${escHtml(ref)}</span>
+        <span class="diff-card-meta">${totalB} 字｜${diffsB} 個獨有字</span>
+        <span class="diff-similarity" title="LCS 字級相似度（忽略大小寫與標點）">相似度 ${sim}%</span>
+      </div>
+      <div class="diff-text">${renderDiffSide(tokB, matchB, 'diff-comp-unique')}</div>
+    </div>`;
 }
 
 // ====== 筆記列表頁 ======
