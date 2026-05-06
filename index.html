@@ -3466,20 +3466,17 @@ function diffLcsMatch(a, b) {
   return { matchA, matchB, lcsLen: dp[m][n] };
 }
 
-// 中文 char-level / 英文 word-level 自動切詞
-// ver 用來特別處理 和合本 神-前空白（避免假差異）
+// 中文 char-level / 英文 word-level 自動切詞（給英文路徑與 LCS fallback 用）
 function diffTokenize(s, ver) {
   let text = String(s || '');
   if (ver === 'unv') text = normalizeUnvSpacesBeforeShen(text);
   if (/[一-鿿]/.test(text)) {
-    // 中文：每個非空白字元一個 token（保留標點）
     return [...text].filter(c => !/\s/.test(c));
   }
   return text.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
 }
 
 function diffKey(t) {
-  // 中文：原字 token 即比對鍵；英文：去除非字母數字並小寫
   if (/[一-鿿]/.test(t)) return t;
   return String(t).toLowerCase().replace(/[^a-z0-9']/g, '');
 }
@@ -3493,6 +3490,81 @@ function renderDiffSide(tokens, matchArr, diffClass, joinSep) {
     const safe = escHtml(t);
     return matchArr[i] ? safe : `<span class="${diffClass}">${safe}</span>`;
   }).join(joinSep != null ? joinSep : ' ');
+}
+
+// 懶載入 diff-match-patch（本機 vendor），第一次中文 diff 時才下載；之後 SW 快取會接手
+let _dmpLoadPromise = null;
+function loadDiffMatchPatch() {
+  if (typeof window.diff_match_patch !== 'undefined') return Promise.resolve(true);
+  if (_dmpLoadPromise) return _dmpLoadPromise;
+  _dmpLoadPromise = new Promise(resolve => {
+    const s = document.createElement('script');
+    s.src = 'vendor/diff_match_patch.js';
+    s.onload = () => resolve(true);
+    s.onerror = () => { console.warn('dmp load failed; 退回 LCS 模式'); resolve(false); };
+    document.head.appendChild(s);
+  });
+  return _dmpLoadPromise;
+}
+
+// 把 dmp 的 [op,text] 段落渲染成 baseHtml/compHtml（已 escHtml 處理）
+function buildDiffHtmlFromDmp(diffs) {
+  let baseHtml = '', compHtml = '', lcs = 0, lenA = 0, lenB = 0;
+  for (let i = 0; i < diffs.length; i++) {
+    const op = diffs[i][0], text = diffs[i][1];
+    const safe = escHtml(text);
+    if (op === 0) {
+      baseHtml += safe; compHtml += safe;
+      lcs += text.length; lenA += text.length; lenB += text.length;
+    } else if (op === -1) {
+      baseHtml += `<span class="diff-base-unique">${safe}</span>`;
+      lenA += text.length;
+    } else {
+      compHtml += `<span class="diff-comp-unique">${safe}</span>`;
+      lenB += text.length;
+    }
+  }
+  return { baseHtml, compHtml, lcsLen: lcs, totalA: lenA, totalB: lenB };
+}
+
+// 統一回傳格式 { baseHtml, compHtml, totalA, totalB, lcsLen, sim }
+function computeDiffEnglish(baseText, compText) {
+  const tokA = diffTokenize(baseText);
+  const tokB = diffTokenize(compText);
+  const keyA = tokA.map(diffKey);
+  const keyB = tokB.map(diffKey);
+  const r = diffLcsMatch(keyA, keyB);
+  const totalA = tokA.length, totalB = tokB.length;
+  const sim = (totalA + totalB) > 0 ? Math.round(2 * r.lcsLen / (totalA + totalB) * 100) : 0;
+  const baseHtml = renderDiffSide(tokA, r.matchA, 'diff-base-unique', ' ');
+  const compHtml = renderDiffSide(tokB, r.matchB, 'diff-comp-unique', ' ');
+  return { baseHtml, compHtml, totalA, totalB, lcsLen: r.lcsLen, sim };
+}
+
+function computeDiffChinese(baseText, compText, baseVer, compVer) {
+  const a = baseVer === 'unv' ? normalizeUnvSpacesBeforeShen(baseText) : baseText;
+  const b = compVer === 'unv' ? normalizeUnvSpacesBeforeShen(compText) : compText;
+
+  if (typeof window.diff_match_patch !== 'undefined') {
+    // dmp + cleanupSemantic：把零碎匹配合併成有意義短語塊，去除標點假差異
+    const dmp = new window.diff_match_patch();
+    dmp.Diff_Timeout = 1.0;
+    const diffs = dmp.diff_main(a, b);
+    dmp.diff_cleanupSemantic(diffs);
+    const r = buildDiffHtmlFromDmp(diffs);
+    const sim = (r.totalA + r.totalB) > 0 ? Math.round(2 * r.lcsLen / (r.totalA + r.totalB) * 100) : 0;
+    return { ...r, sim };
+  }
+
+  // Fallback：dmp 還沒載入時用舊的 char-level LCS
+  const tokA = [...a].filter(c => !/\s/.test(c));
+  const tokB = [...b].filter(c => !/\s/.test(c));
+  const r = diffLcsMatch(tokA, tokB);
+  const totalA = tokA.length, totalB = tokB.length;
+  const sim = (totalA + totalB) > 0 ? Math.round(2 * r.lcsLen / (totalA + totalB) * 100) : 0;
+  const baseHtml = renderDiffSide(tokA, r.matchA, 'diff-base-unique', '');
+  const compHtml = renderDiffSide(tokB, r.matchB, 'diff-comp-unique', '');
+  return { baseHtml, compHtml, totalA, totalB, lcsLen: r.lcsLen, sim };
 }
 
 async function runDiff() {
@@ -3549,6 +3621,9 @@ async function runDiff() {
   if (!okBase) { div.innerHTML = `<div class="error-msg">${baseVer.toUpperCase()} 資料載入失敗</div>`; return; }
   if (!okComp) { div.innerHTML = `<div class="error-msg">${compVer.toUpperCase()} 資料載入失敗</div>`; return; }
 
+  // 中文模式：先確保 dmp 載入（首次 ~80KB；之後 SW 快取秒回）
+  if (isZh) await loadDiffMatchPatch();
+
   const baseName = diffVersionLabel(baseVer).replace(/（.*$/, ''); // 卡片標籤用簡名（去掉括號註）
   const compName = diffVersionLabel(compVer).replace(/（.*$/, '');
 
@@ -3573,30 +3648,26 @@ async function runDiff() {
       continue;
     }
 
-    const tokA = diffTokenize(baseText, baseVer);
-    const tokB = diffTokenize(compText, compVer);
-    const keyA = tokA.map(diffKey);
-    const keyB = tokB.map(diffKey);
-    const { matchA, matchB, lcsLen } = diffLcsMatch(keyA, keyB);
-    const totalA = tokA.length, totalB = tokB.length;
-    const sim = (totalA + totalB) > 0 ? Math.round(2 * lcsLen / (totalA + totalB) * 100) : 0;
+    const r = isZh
+      ? computeDiffChinese(baseText, compText, baseVer, compVer)
+      : computeDiffEnglish(baseText, compText);
 
-    sumA += totalA; sumB += totalB; sumLcs += lcsLen; validVerses++;
+    sumA += r.totalA; sumB += r.totalB; sumLcs += r.lcsLen; validVerses++;
 
     cards.push(
       `<div class="diff-card">
         <div class="diff-card-header">
           <span class="diff-card-label">${escHtml(verseRefShort)}</span>
-          <span class="diff-similarity" title="此節 LCS ${charLabel}級相似度">相似度 ${sim}%</span>
-          <span class="diff-card-meta">${escHtml(baseName)} ${totalA} ${charLabel} ／ ${escHtml(compName)} ${totalB} ${charLabel}</span>
+          <span class="diff-similarity" title="此節相似度（${isZh ? 'dmp 字級' : 'LCS 詞級'}）">相似度 ${r.sim}%</span>
+          <span class="diff-card-meta">${escHtml(baseName)} ${r.totalA} ${charLabel} ／ ${escHtml(compName)} ${r.totalB} ${charLabel}</span>
         </div>
         <div class="diff-verse-row${isZh ? ' zh' : ''}">
           <span class="diff-verse-tag base">${escHtml(baseName)}</span>
-          <span class="diff-verse-text${isZh ? ' zh' : ''}">${renderDiffSide(tokA, matchA, 'diff-base-unique', joinSep)}</span>
+          <span class="diff-verse-text${isZh ? ' zh' : ''}">${r.baseHtml}</span>
         </div>
         <div class="diff-verse-row${isZh ? ' zh' : ''}">
           <span class="diff-verse-tag comp">${escHtml(compName)}</span>
-          <span class="diff-verse-text${isZh ? ' zh' : ''}">${renderDiffSide(tokB, matchB, 'diff-comp-unique', joinSep)}</span>
+          <span class="diff-verse-text${isZh ? ' zh' : ''}">${r.compHtml}</span>
         </div>
       </div>`
     );

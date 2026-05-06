@@ -1,6 +1,6 @@
 /* 多譯本聖經查詢 — Service Worker：離線殼層 + 本地譯本 JSON 快取 */
-const CACHE_NAME = 'bible-multi-v43';
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE_NAME = 'bible-multi-v44';
+const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/vendor/diff_match_patch.js'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -59,8 +59,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // manifest、圖示等：快取優先
-  if (path.endsWith('.webmanifest') || path.startsWith('/icons/')) {
+  // manifest、圖示、本機 vendor 函式庫：快取優先
+  if (path.endsWith('.webmanifest') || path.startsWith('/icons/') || path.startsWith('/vendor/')) {
     event.respondWith(
       caches.match(request).then((hit) => hit || fetch(request).then((resp) => {
         if (resp.ok) caches.open(CACHE_NAME).then((c) => c.put(request, resp.clone()));
