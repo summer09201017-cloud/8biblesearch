@@ -62,11 +62,13 @@ Everything user-facing lives in `index.html` — CSS, HTML, and ~2700 lines of i
 `doQuickLookup()` 把輸入用 `[,，\n\r]+` 切成多段 ref，每段呼叫 `quickLookupSegment(seg, vers)`（已抽出的單段查詢函式）。多段模式下每段前面加 `.quick-segment-header` 標題，失敗的段以 `.quick-segment-error` 顯示警告但不中斷其他段。輸入框是 textarea 而非 input — Enter 送出，Shift+Enter 換行。
 
 ### 對讀比較分頁（Diff）
-新分頁 `#panel-diff`，以 NIV 為基準對單節做 word-level diff。最簡版只支援一個對比版本（ESV/KJV/WEB/ASV/BBE），下版加第二個對比。
-- `initDiffSelectors()` 在第一次切到 diff 分頁時懶初始化（建立書/章/節 select），預設值為 John 3:16，dataReady 時自動跑一次 `runDiff()`。
+新分頁 `#panel-diff`，自選基準與對比的單節 word-level diff。最簡版只支援一個對比，下版加第二個對比。
+- 基準與對比都是下拉，6 個英文版本可選（ESV/NIV/KJV/WEB/ASV/BBE）。預設基準=ESV（直譯，貼近原文）、對比=NIV（意動，看詮釋差異）。
+- 對比下拉透過 `rebuildDiffCompOptions()` 動態排除目前選中的基準（避免兩邊同版本）；`runDiff()` 仍多一道防呆檢查。
+- `initDiffSelectors()` 在第一次切到 diff 分頁時懶初始化（建立書/章/節/基準/對比 selects），預設 John 3:16 + ESV vs NIV，dataReady 時自動跑一次 `runDiff()`。
 - Tokenize：以空白切詞，`diffKey()` 把 token 小寫化並去除非 `[a-z0-9']` 字元作為比對鍵（忽略大小寫與標點）。
 - LCS：`diffLcsMatch()` 用 DP 算最長共同子序列（O(m×n)，verse 通常 30-100 字，可忽略）。回傳 `matchA/matchB` 標記每個 token 是否屬於 LCS。
-- 渲染：未匹配的 token 包 `.diff-base-unique`（NIV 側，紅色刪除線）或 `.diff-comp-unique`（對比側，綠色高亮）。標題列顯示 `相似度 X%` = `2 × LCS / (lenA + lenB) × 100`。
+- 渲染：未匹配的 token 包 `.diff-base-unique`（基準側，純紅色背景，**沒有刪除線**——避免「這些字應該刪掉」的誤導語意）或 `.diff-comp-unique`（對比側，綠色高亮）。標題列顯示 `相似度 X%` = `2 × LCS / (lenA + lenB) × 100`。
 - 兩個版本都靠 `loadVersionData(ver)` 懶載入，避免使用者沒勾選某英文版時被卡住。
 - 主題色：`.diff-base-unique` / `.diff-comp-unique` 在 sepia/dark/black 各有覆寫，避免在深色底看不清。
 

@@ -1272,7 +1272,6 @@ body {
 .diff-base-unique {
   background:rgba(220,53,69,0.18); color:#a02030;
   padding:1px 4px; border-radius:3px;
-  text-decoration:line-through; text-decoration-color:rgba(160,30,40,0.55);
   font-weight:600;
 }
 .diff-comp-unique {
@@ -1532,28 +1531,23 @@ body {
   <div id="panel-diff" class="panel">
     <div class="diff-intro" style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:0.88rem; line-height:1.6;">
       <b>📊 英文譯本逐字對讀（最簡版）</b><br>
-      以 <b>NIV</b>（意動翻譯）為基準，挑一個英文譯本進行單節 word-level 對比。<span style="color:var(--text2);">下版會加入第二個對比版本。</span>
+      自選一個基準版本與一個對比版本，做單節 word-level 對比。預設基準為 <b>ESV</b>（直譯，貼近原文），對比為 <b>NIV</b>（意動，看詮釋差異）。<span style="color:var(--text2);">下版會加入第二個對比版本。</span>
     </div>
     <div class="selector-row">
       <div class="selector-group"><label>書卷</label><select id="diff-sel-book" onchange="onDiffBookChange()"></select></div>
       <div class="selector-group"><label>章</label><select id="diff-sel-chap" onchange="onDiffChapChange()"></select></div>
       <div class="selector-group"><label>節</label><select id="diff-sel-sec" onchange="runDiff()"></select></div>
-      <div class="selector-group"><label>對比版本</label><select id="diff-sel-comp" onchange="runDiff()">
-        <option value="esv" selected>ESV（直譯）</option>
-        <option value="kjv">KJV（古典）</option>
-        <option value="web">WEB</option>
-        <option value="asv">ASV</option>
-        <option value="bbe">BBE（簡易）</option>
-      </select></div>
+      <div class="selector-group"><label>基準版本</label><select id="diff-sel-base" onchange="onDiffBaseChange()"></select></div>
+      <div class="selector-group"><label>對比版本</label><select id="diff-sel-comp" onchange="runDiff()"></select></div>
       <button class="btn btn-query-large" onclick="runDiff()">比較</button>
     </div>
     <div class="diff-legend">
-      <span><span class="diff-base-unique">紅色刪除</span> = 只在 NIV 出現的字</span>
-      <span><span class="diff-comp-unique">綠色標示</span> = 只在對比版本出現的字</span>
+      <span><span class="diff-base-unique">紅色標示</span> = 只在「基準」版本出現的字</span>
+      <span><span class="diff-comp-unique">綠色標示</span> = 只在「對比」版本出現的字</span>
       <span style="color:var(--text2);">字面相同的字維持原色（標點、大小寫忽略）</span>
     </div>
     <div class="results-area" id="results-diff">
-      <div class="empty-state"><div class="icon">📊</div><p>選擇單節後按「比較」查看 NIV 與英文譯本逐字差異</p></div>
+      <div class="empty-state"><div class="icon">📊</div><p>選擇單節後按「比較」查看英文譯本逐字差異</p></div>
     </div>
   </div>
 
@@ -3291,7 +3285,15 @@ function switchTab(name) {
   else if (name === 'diff') initDiffSelectors();
 }
 
-// ====== 對讀比較（NIV ↔ 任一英文譯本，word-level diff） ======
+// ====== 對讀比較（任選基準 ↔ 任選對比，word-level diff） ======
+const DIFF_ENG_VERSIONS = [
+  { code:'esv', label:'ESV（直譯）' },
+  { code:'niv', label:'NIV（意動）' },
+  { code:'kjv', label:'KJV（古典）' },
+  { code:'web', label:'WEB' },
+  { code:'asv', label:'ASV' },
+  { code:'bbe', label:'BBE（簡易）' }
+];
 let _diffInited = false;
 function initDiffSelectors() {
   if (_diffInited) return;
@@ -3307,6 +3309,14 @@ function initDiffSelectors() {
     (b.bid <= 39 ? otG : ntG).appendChild(o);
   });
   sb.appendChild(otG); sb.appendChild(ntG);
+
+  // 基準下拉：6 個英文版本全列；預設 ESV
+  const base = document.getElementById('diff-sel-base');
+  base.innerHTML = DIFF_ENG_VERSIONS.map(v => `<option value="${v.code}">${v.label}</option>`).join('');
+  base.value = 'esv';
+  // 對比下拉：排除基準後生成；預設 NIV
+  rebuildDiffCompOptions('niv');
+
   // 預設「約翰福音 3:16」
   sb.value = '43';
   onDiffBookChange();
@@ -3314,6 +3324,22 @@ function initDiffSelectors() {
   onDiffChapChange();
   document.getElementById('diff-sel-sec').value = '16';
   if (dataReady) runDiff();
+}
+
+function rebuildDiffCompOptions(preferredCode) {
+  const base = document.getElementById('diff-sel-base').value;
+  const comp = document.getElementById('diff-sel-comp');
+  const prev = preferredCode || comp.value;
+  const opts = DIFF_ENG_VERSIONS.filter(v => v.code !== base);
+  comp.innerHTML = opts.map(v => `<option value="${v.code}">${v.label}</option>`).join('');
+  if (opts.find(v => v.code === prev)) comp.value = prev;
+  else if (opts.find(v => v.code === 'niv')) comp.value = 'niv';
+  else comp.value = opts[0].code;
+}
+
+function onDiffBaseChange() {
+  rebuildDiffCompOptions();
+  runDiff();
 }
 
 function onDiffBookChange() {
@@ -3390,31 +3416,36 @@ async function runDiff() {
   const bid = parseInt(document.getElementById('diff-sel-book').value, 10);
   const chap = parseInt(document.getElementById('diff-sel-chap').value, 10);
   const sec = parseInt(document.getElementById('diff-sel-sec').value, 10);
+  const baseVer = document.getElementById('diff-sel-base').value;
   const compVer = document.getElementById('diff-sel-comp').value;
   const book = BOOKS.find(b => b.bid === bid);
   if (!book || !chap || !sec) {
     div.innerHTML = '<div class="error-msg">請選擇書卷、章、節</div>';
     return;
   }
+  if (baseVer === compVer) {
+    div.innerHTML = '<div class="error-msg">基準與對比不能是同一個版本</div>';
+    return;
+  }
 
   div.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text2);">⏳ 載入並比對中...</div>';
-  // 確保兩邊資料都載入
-  const okNiv = await loadVersionData('niv');
+  const okBase = await loadVersionData(baseVer);
   const okComp = await loadVersionData(compVer);
-  if (!okNiv) { div.innerHTML = '<div class="error-msg">NIV 資料載入失敗</div>'; return; }
+  if (!okBase) { div.innerHTML = `<div class="error-msg">${baseVer.toUpperCase()} 資料載入失敗</div>`; return; }
   if (!okComp) { div.innerHTML = `<div class="error-msg">${compVer.toUpperCase()} 資料載入失敗</div>`; return; }
 
-  const nivText = stripHtml(getLocalVerse('niv', bid, chap, sec) || '');
+  const baseText = stripHtml(getLocalVerse(baseVer, bid, chap, sec) || '');
   const compText = stripHtml(getLocalVerse(compVer, bid, chap, sec) || '');
+  const baseName = (VERSIONS.find(v => v.code === baseVer) || {}).name || baseVer.toUpperCase();
   const compName = (VERSIONS.find(v => v.code === compVer) || {}).name || compVer.toUpperCase();
   const ref = `${book.chinesef} ${chap}:${sec} (${book.engs} ${chap}:${sec})`;
 
-  if (!nivText && !compText) {
+  if (!baseText && !compText) {
     div.innerHTML = `<div class="error-msg">兩個版本都沒有 ${ref} 的經文</div>`;
     return;
   }
-  if (!nivText) {
-    div.innerHTML = `<div class="error-msg">NIV 沒有 ${ref}（無法以 NIV 為基準比較）</div>`;
+  if (!baseText) {
+    div.innerHTML = `<div class="error-msg">${baseName} 沒有 ${ref}（無法以 ${baseName} 為基準比較）</div>`;
     return;
   }
   if (!compText) {
@@ -3422,7 +3453,7 @@ async function runDiff() {
     return;
   }
 
-  const tokA = diffTokenize(nivText);
+  const tokA = diffTokenize(baseText);
   const tokB = diffTokenize(compText);
   const keyA = tokA.map(diffKey);
   const keyB = tokB.map(diffKey);
@@ -3436,7 +3467,7 @@ async function runDiff() {
   div.innerHTML =
     `<div class="diff-card">
       <div class="diff-card-header">
-        <span class="diff-card-label">NIV（基準）— ${escHtml(ref)}</span>
+        <span class="diff-card-label">${escHtml(baseName)}（基準）— ${escHtml(ref)}</span>
         <span class="diff-card-meta">${totalA} 字｜${diffsA} 個獨有字</span>
       </div>
       <div class="diff-text">${renderDiffSide(tokA, matchA, 'diff-base-unique')}</div>
