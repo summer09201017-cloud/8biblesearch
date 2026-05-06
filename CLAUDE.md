@@ -66,6 +66,8 @@ Read / Search / Quick-lookup all build a `verseMap` keyed by `chap:sec`, then re
 
 `renderVerseGroup` accepts an optional `opts.copyHandler` string (a JS expression like `'copyReadSelection()'`) — when present, a 📋 button is added to the verse-header. The "read" path passes `copyReadSelection()`; the search path inlines a similar button calling `copyPickedSearchVerses()` directly in its template. Quick-lookup intentionally omits the inline copy button.
 
+The inline 📋 button label is **dynamic**: it shows 「📋 複製 N 節」when N > 0 verses are checked in the same area, and 「📋 勾選後複製」when N = 0. Each button has a `data-copy-mode="read"` or `"search"` attribute so `updateCopyButtonCounts(mode)` can find them. Counts update via delegated `change` listeners on `#results-read` / `#results-search`. Programmatic toggles (`toggleAllReadPicks`, `toggleAllSearchPicks`) call `updateCopyButtonCounts(mode)` explicitly because setting `checked` in JS does not fire `change`.
+
 ### `verse-header` row layout
 A `flex-wrap:wrap` row: book+chapter ref on the left, then the right-side action cluster `📖註釋 / 📝筆記 / 📋複製 / ☑勾選` (in that order) inside `.verse-read-pick`. On wide screens or short refs both stay on one line; on narrow screens or with long book names (e.g. 撒迦利亞) the cluster wraps to a second line — this is intentional and replaces an earlier `nowrap` design where 📝 筆記 visually overlapped 📖 註釋. Keep all four actions in the right cluster (don't put 📖 註釋 inside `.verse-ref-title` again — `text-overflow:ellipsis` can't truncate `<a>` children, and the layout breaks). On mobile the verse-read-check label is also hidden via CSS to keep the cluster compact.
 

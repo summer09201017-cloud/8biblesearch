@@ -2284,7 +2284,38 @@ function copyReadSelection() {
 
 function toggleAllSearchPicks(checked) {
   document.querySelectorAll('#results-search .search-pick-cb').forEach(function (cb) { cb.checked = checked; });
+  updateCopyButtonCounts('search');
 }
+
+/** 更新查詢結果中「📋 複製 N 節」按鈕的文字（N = 已勾選節數） */
+function updateCopyButtonCounts(mode) {
+  if (!mode || mode === 'read') {
+    var nR = document.querySelectorAll('#results-read .read-pick-cb:checked').length;
+    var labelR = nR > 0 ? '📋 複製 ' + nR + ' 節' : '📋 勾選後複製';
+    document.querySelectorAll('#results-read .btn-copy-inline[data-copy-mode="read"]').forEach(function (b) { b.textContent = labelR; });
+  }
+  if (!mode || mode === 'search') {
+    var nS = document.querySelectorAll('#results-search .search-pick-cb:checked').length;
+    var labelS = nS > 0 ? '📋 複製 ' + nS + ' 節' : '📋 勾選後複製';
+    document.querySelectorAll('#results-search .btn-copy-inline[data-copy-mode="search"]').forEach(function (b) { b.textContent = labelS; });
+  }
+}
+
+// 委派 change 事件 — 用戶點任何 checkbox 都會即時更新計數按鈕
+(function bindCopyCountListeners() {
+  var readArea = document.getElementById('results-read');
+  if (readArea) readArea.addEventListener('change', function (e) {
+    if (e.target && e.target.classList && e.target.classList.contains('read-pick-cb')) {
+      updateCopyButtonCounts('read');
+    }
+  });
+  var searchArea = document.getElementById('results-search');
+  if (searchArea) searchArea.addEventListener('change', function (e) {
+    if (e.target && e.target.classList && e.target.classList.contains('search-pick-cb')) {
+      updateCopyButtonCounts('search');
+    }
+  });
+})();
 
 function buildPickedSearchPlain() {
   const data = window.__lastSearch;
@@ -2400,6 +2431,7 @@ function onChapChange() {
 
 function toggleAllReadPicks(checked) {
   document.querySelectorAll('#results-read .read-pick-cb').forEach(function (cb) { cb.checked = checked; });
+  updateCopyButtonCounts('read');
 }
 
 // ====== 使用者譯本排序 ======
@@ -2608,7 +2640,7 @@ function renderVerseGroup(bid, chap, sec, ref, versionsToShow, textsMap, opts) {
   }).join('');
   const links = fhlLinksHtml(bid, chap, sec);
   const copyBtn = opts.copyHandler
-    ? `<button type="button" class="btn-copy-inline" onclick="event.preventDefault();event.stopPropagation();${opts.copyHandler}" title="複製目前所有勾選的經文（未勾選則依目前查詢範圍）">📋 複製</button>`
+    ? `<button type="button" class="btn-copy-inline" data-copy-mode="read" onclick="event.preventDefault();event.stopPropagation();${opts.copyHandler}" title="複製目前所有勾選的經文（未勾選則依目前查詢範圍）">📋 勾選後複製</button>`
     : '';
   return `<div class="verse-group" data-bid="${bid}" data-chap="${chap}" data-sec="${sec}"><div class="verse-header"><span class="verse-ref-title">${ref}</span><div class="verse-read-pick" onclick="event.stopPropagation()">${links}<a class="fhl-com-link" href="#" onclick="event.preventDefault();openNoteModal(${bid},${chap},${sec},'${ref}')" title="筆記與標記">📝 筆記</a>${copyBtn}<label class="verse-read-check"><span class="verse-read-check-label">勾選複製經文</span><input type="checkbox" class="read-pick-cb" aria-label="勾選複製經文"></label></div></div><div class="verse-translations ${parallelClass}">${trs}</div>${noteHtml}</div>`;
 }
@@ -3017,7 +3049,7 @@ function doSearch() {
       
       return `<div class="search-result-item" data-idx="${idx}">
         <div class="search-result-main">
-        <div class="search-ref"><span class="search-ref-link" onclick="goToVerse(${v.bid},${v.chap},${v.sec})" title="開啟此章閱讀此節">${refStr}</span>${srLinks}<a class="fhl-com-link" href="#" onclick="event.preventDefault();event.stopPropagation();openNoteModal(${v.bid},${v.chap},${v.sec},'${refStr}')" title="筆記與標記">📝 筆記</a><button type="button" class="btn-copy-inline" onclick="event.preventDefault();event.stopPropagation();copyPickedSearchVerses()" title="複製目前所有勾選的經文">📋 複製</button><label class="search-result-check" onclick="event.stopPropagation()" title="勾選此節（用於批次複製/分享）"><input type="checkbox" class="search-pick-cb" aria-label="選取此節"></label></div>${trs}${noteHtml}</div></div>`;
+        <div class="search-ref"><span class="search-ref-link" onclick="goToVerse(${v.bid},${v.chap},${v.sec})" title="開啟此章閱讀此節">${refStr}</span>${srLinks}<a class="fhl-com-link" href="#" onclick="event.preventDefault();event.stopPropagation();openNoteModal(${v.bid},${v.chap},${v.sec},'${refStr}')" title="筆記與標記">📝 筆記</a><button type="button" class="btn-copy-inline" data-copy-mode="search" onclick="event.preventDefault();event.stopPropagation();copyPickedSearchVerses()" title="複製目前所有勾選的經文">📋 勾選後複製</button><label class="search-result-check" onclick="event.stopPropagation()" title="勾選此節（用於批次複製/分享）"><input type="checkbox" class="search-pick-cb" aria-label="選取此節"></label></div>${trs}${noteHtml}</div></div>`;
     }).join('');
 
     div.innerHTML = statsHtml + html + searchActionsFooterHtml();
