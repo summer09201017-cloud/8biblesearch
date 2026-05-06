@@ -1541,8 +1541,11 @@ body {
 
   <div id="panel-search" class="panel">
     <div class="search-box">
-      <input type="text" id="search-input" placeholder="輸入關鍵字後按 Enter 或點搜尋鈕..." onkeydown="if(event.key==='Enter')doSearchWithFlash()">
+      <input type="text" id="search-input" placeholder="輸入關鍵字（多字以空白分隔＝都要出現），按 Enter 搜尋" onkeydown="if(event.key==='Enter')doSearchWithFlash()">
       <button class="btn" id="btn-search" onclick="doSearchWithFlash()">搜尋</button>
+    </div>
+    <div class="search-hint" style="font-size:0.78rem; color:var(--text2); margin:-6px 0 10px 2px;">
+      💡 多關鍵字以空白或逗號分隔，<b>所有關鍵字都要出現</b>才會命中（例：<code>信心 愛</code>、<code>義人,信</code>）
     </div>
     <div id="search-history" class="history-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
     <div class="version-toggles" id="version-toggles-search"></div>
@@ -2107,12 +2110,22 @@ function normalizeUnvSpacesBeforeShen(s) {
   return String(s).replace(/[\s\u3000\uFEFF]+(?=神)/g, '');
 }
 
+/** 把搜尋字串切成多個 token：空白／全形空白／半形或全形逗號都當分隔符。
+ *  單一 token 行為與舊版完全一致；多個 token 進入 AND 模式（每節都要全部包含）。 */
+function parseSearchTokens(q) {
+  return [...new Set(String(q || '').trim().split(/[\s　,，]+/).filter(Boolean))];
+}
+
 function searchLocal(ver, keyword, range) {
   const d = bibleData[ver];
   if (!d) return [];
+  const tokens = parseSearchTokens(keyword);
+  if (tokens.length === 0) return [];
+  // 每個 token 各自做 unv 神-前空白正規化與小寫化
+  const lowerTokens = tokens.map(t =>
+    (ver === 'unv' ? normalizeUnvSpacesBeforeShen(t) : t).toLowerCase()
+  );
   const results = [];
-  const kw = keyword.trim();
-  const lower = ver === 'unv' ? normalizeUnvSpacesBeforeShen(kw).toLowerCase() : kw.toLowerCase();
   for (const bid of Object.keys(d)) {
     const bidNum = parseInt(bid);
     if (range === '1' && bidNum < 40) continue;
@@ -2122,8 +2135,9 @@ function searchLocal(ver, keyword, range) {
       for (const sec of Object.keys(d[bid][chap])) {
         const text = d[bid][chap][sec];
         if (!text) continue;
-        const haystack = ver === 'unv' ? normalizeUnvSpacesBeforeShen(text) : text;
-        if (haystack.toLowerCase().includes(lower)) {
+        const haystack = (ver === 'unv' ? normalizeUnvSpacesBeforeShen(text) : text).toLowerCase();
+        // AND：所有 token 都要在這節中出現
+        if (lowerTokens.every(tok => haystack.includes(tok))) {
           results.push({ bid:bidNum, chap:parseInt(chap), sec:parseInt(sec), text, bookName: book ? book.chinesef : '' });
         }
       }
@@ -3151,11 +3165,17 @@ function doSearch() {
     const rangeLabel = rangeSel.options[rangeSel.selectedIndex].text;
     window.__lastSearch = { q, rangeLabel, total: verseMap.size, sorted };
 
-    const escQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const tokens = parseSearchTokens(q);
+    const escTokens = tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     /** 和合本：高亮時允許「神」前有空白，與 normalizeUnvSpacesBeforeShen 一致 */
-    const escQUnvHighlight = escQ.replace(/神/g, '[\\s\\u3000\\uFEFF]*神');
+    const escTokensUnv = escTokens.map(t => t.replace(/神/g, '[\\s\\u3000\\uFEFF]*神'));
+    const escQ    = escTokens.join('|');
+    const escQUnvHighlight = escTokensUnv.join('|');
     const elapsed = (performance.now() - t0).toFixed(0);
-    const statsHtml = `<div class="search-stats">搜尋「${q}」，共 ${verseMap.size} 節，耗時 ${elapsed} ms</div>`;
+    const queryLabel = tokens.length > 1
+      ? tokens.map(t => `「${escHtml(t)}」`).join(' ') + '（全部都要包含）'
+      : `「${escHtml(tokens[0] || q)}」`;
+    const statsHtml = `<div class="search-stats">搜尋 ${queryLabel}，共 ${verseMap.size} 節，耗時 ${elapsed} ms</div>`;
 
     const orderedVers = sortedVers(vers);
     const html = sorted.map(([k, v], idx) => {

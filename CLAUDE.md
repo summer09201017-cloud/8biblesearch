@@ -104,6 +104,13 @@ A `flex-wrap:wrap` row: book+chapter ref on the left, then the right-side action
 ### 和合本 search quirk
 和合本 prepends an ideographic space before 神. `normalizeUnvSpacesBeforeShen()` strips those spaces before substring matching, and the highlight regex uses a parallel `escQUnvHighlight` so search still highlights the 神 even with the space. Preserve this behavior when touching `searchLocal()` or the search render path.
 
+### Search query parsing (AND mode)
+`parseSearchTokens(q)` splits the query on whitespace / 全形空白 / `,` / `，` and dedupes. Single-token query behaves identically to the old single-substring search. Multi-token query enters **AND mode**: a verse only matches if it contains ALL tokens (case-insensitive substring per token). For 和合本, each token is independently passed through `normalizeUnvSpacesBeforeShen()` before matching.
+
+The highlight regex joins all escaped tokens with `|` so every matched token gets `.highlight-match`. Stats line displays `「token1」「token2」（全部都要包含）` in multi-token mode.
+
+Intentionally **no support for**: phrase-quotes (`"..."` is just literal substring already because no tokenization), OR (`|`), exclude (`-X`), or scope syntax. The tier-1 AND-only feature covers ~80% of search refinement needs without adding learning curve for non-technical church users.
+
 ### localStorage keys (all writes are best-effort, wrapped in try/catch)
 | Key | Contents |
 |---|---|
