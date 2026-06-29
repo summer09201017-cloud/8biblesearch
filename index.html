@@ -120,7 +120,7 @@
 .theme-chip[data-theme-set="dark"]   { background:#232936; color:#e8c878; }
 .theme-chip[data-theme-set="black"]  { background:#000;    color:#f0c060; border-color:#444; }
 @media (max-width:600px) {
-  .theme-chip { width:24px; height:24px; }
+  .theme-chip { width:20px; height:20px; font-size:0.72rem; border-width:1.5px; }
   .theme-bar-label { display:none; }
 }
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -150,6 +150,7 @@ body {
 }
 .app-brand h1 { font-size:1.4rem; font-weight:700; letter-spacing:4px; }
 .app-brand .subtitle { font-size:0.75rem; opacity:0.7; margin-top:2px; }
+.brand-row { display:contents; } /* 桌機：透明容器，副標與主題照常各自成列；手機才並排（見 media query） */
 .app-header-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
 .btn-install {
   padding:8px 14px; font-size:0.8rem; font-weight:600; border-radius:8px;
@@ -1229,13 +1230,14 @@ body {
   .app-header { padding:0; box-shadow:none; min-height:0; }
   .app-header-inner { flex-direction:column; align-items:stretch; text-align:center; }
   .app-header-right { justify-content:center; min-width:0; width:100%; }
-  /* 手機精簡頂部：隱藏中文大標題；英文副標與主題（護眼）鈕並排一列，騰出中間讀經空間 */
-  .app-brand { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:4px 10px; padding:6px 12px; }
+  /* 手機精簡頂部：隱藏中文大標題；英文副標與主題（護眼）鈕並排「同一列」，騰出中間讀經空間 */
+  .app-brand { padding:6px 12px; }
   .app-brand h1 { display:none; }
-  .app-brand .subtitle { text-align:center; margin:0; }
-  .app-brand .theme-bar { margin:0; }
+  .brand-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:5px 10px; }
+  .app-brand .subtitle { text-align:center; margin:0; font-size:0.62rem; }
+  .app-brand .theme-bar { margin:0; padding:3px 8px; gap:5px; }
   .app-brand .theme-bar-label { display:none; }
-  .app-brand .ios-install-hint { flex-basis:100%; margin-top:2px; }
+  .app-brand .ios-install-hint { margin-top:4px; }
   /* 手機：文字大小列改「固定在底部」，避開瀏海／動態島／網址列把頂端拉桿蓋住，
      也讓單手拇指更好操作（拉桿移到最下面） */
   .font-size-bar {
@@ -1454,13 +1456,15 @@ body {
 
 <div class="app-brand">
   <h1>多譯本聖經查詢</h1>
-  <div class="subtitle">Multi-Version Bible Reader</div>
-  <div class="theme-bar" role="group" aria-label="主題切換">
-    <span class="theme-bar-label">主題</span>
-    <button type="button" class="theme-chip" data-theme-set="paper" onclick="setTheme('paper')" title="米紙（預設）" aria-label="米紙">📄</button>
-    <button type="button" class="theme-chip" data-theme-set="sepia" onclick="setTheme('sepia')" title="印刷棕（護眼）" aria-label="印刷棕">📜</button>
-    <button type="button" class="theme-chip" data-theme-set="dark" onclick="setTheme('dark')" title="深色（夜間）" aria-label="深色">🌙</button>
-    <button type="button" class="theme-chip" data-theme-set="black" onclick="setTheme('black')" title="純黑（OLED 省電）" aria-label="純黑">⬛</button>
+  <div class="brand-row">
+    <div class="subtitle">Multi-Version Bible Reader</div>
+    <div class="theme-bar" role="group" aria-label="主題切換">
+      <span class="theme-bar-label">主題</span>
+      <button type="button" class="theme-chip" data-theme-set="paper" onclick="setTheme('paper')" title="米紙（預設）" aria-label="米紙">📄</button>
+      <button type="button" class="theme-chip" data-theme-set="sepia" onclick="setTheme('sepia')" title="印刷棕（護眼）" aria-label="印刷棕">📜</button>
+      <button type="button" class="theme-chip" data-theme-set="dark" onclick="setTheme('dark')" title="深色（夜間）" aria-label="深色">🌙</button>
+      <button type="button" class="theme-chip" data-theme-set="black" onclick="setTheme('black')" title="純黑（OLED 省電）" aria-label="純黑">⬛</button>
+    </div>
   </div>
   <button type="button" class="btn-install" id="btn-install-pwa" hidden>📲 安裝 App</button>
   <p class="ios-install-hint" id="ios-install-hint">iPhone／iPad：請用 Safari 開啟本頁，點 <b>分享</b> → <b>加入主畫面</b>，即可像 App 使用。</p>
