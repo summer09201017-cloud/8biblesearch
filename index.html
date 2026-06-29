@@ -1225,10 +1225,17 @@ body {
 @keyframes fs-speak-pulse { 0%,100%{opacity:1;} 50%{opacity:0.65;} }
 @media (prefers-reduced-motion:reduce){ .font-size-bar .fs-speak-btn.speaking{ animation:none; } }
 @media (max-width:600px) {
-  .app-header { padding:6px 12px; }
+  /* 手機：字體列已固定在底部、安裝鈕已移到 app-brand，頂部 header 不再需要 → 塌成 0，去掉殘留棕色細條 */
+  .app-header { padding:0; box-shadow:none; min-height:0; }
   .app-header-inner { flex-direction:column; align-items:stretch; text-align:center; }
   .app-header-right { justify-content:center; min-width:0; width:100%; }
-  .app-brand h1, .app-brand .subtitle { text-align:center; }
+  /* 手機精簡頂部：隱藏中文大標題；英文副標與主題（護眼）鈕並排一列，騰出中間讀經空間 */
+  .app-brand { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:4px 10px; padding:6px 12px; }
+  .app-brand h1 { display:none; }
+  .app-brand .subtitle { text-align:center; margin:0; }
+  .app-brand .theme-bar { margin:0; }
+  .app-brand .theme-bar-label { display:none; }
+  .app-brand .ios-install-hint { flex-basis:100%; margin-top:2px; }
   /* 手機：文字大小列改「固定在底部」，避開瀏海／動態島／網址列把頂端拉桿蓋住，
      也讓單手拇指更好操作（拉桿移到最下面） */
   .font-size-bar {
@@ -1434,15 +1441,13 @@ body {
         <button type="button" class="fs-btn" onclick="adjustFontSize(-2)" aria-label="縮小字體">A-</button>
         <span id="fs-label" class="fs-bar-value">16px</span>
         <button type="button" class="fs-btn" onclick="adjustFontSize(2)" aria-label="放大字體">A+</button>
-        <input id="fs-slider" type="range" min="10" max="40" step="1" value="16" oninput="setFontSize(this.value)" aria-label="文字大小滑桿">
+        <button type="button" id="btn-speak" class="fs-btn fs-speak-btn" onclick="toggleReadAloud()" aria-label="朗讀畫面經文" title="朗讀目前畫面上的經文（再按一次停止）">🔊 朗讀</button>
         <select id="speak-ver" class="fs-speak-ver" onmousedown="refreshSpeakOptions()" onfocus="refreshSpeakOptions()" onchange="saveSpeakVer()" aria-label="選擇要朗讀的譯本" title="選擇要朗讀哪一個譯本（中文或英文）">
           <option value="">🔊 讀：第一個譯本</option>
         </select>
-        <button type="button" id="btn-speak" class="fs-btn fs-speak-btn" onclick="toggleReadAloud()" aria-label="朗讀畫面經文" title="朗讀目前畫面上的經文（再按一次停止）">🔊 朗讀</button>
+        <input id="fs-slider" type="range" min="10" max="40" step="1" value="16" oninput="setFontSize(this.value)" aria-label="文字大小滑桿">
       </div>
-      <div class="app-header-actions">
-        <button type="button" class="btn-install" id="btn-install-pwa" hidden>📲 安裝 App</button>
-      </div>
+      <div class="app-header-actions"></div>
     </div>
   </div>
 </header>
@@ -1457,6 +1462,7 @@ body {
     <button type="button" class="theme-chip" data-theme-set="dark" onclick="setTheme('dark')" title="深色（夜間）" aria-label="深色">🌙</button>
     <button type="button" class="theme-chip" data-theme-set="black" onclick="setTheme('black')" title="純黑（OLED 省電）" aria-label="純黑">⬛</button>
   </div>
+  <button type="button" class="btn-install" id="btn-install-pwa" hidden>📲 安裝 App</button>
   <p class="ios-install-hint" id="ios-install-hint">iPhone／iPad：請用 Safari 開啟本頁，點 <b>分享</b> → <b>加入主畫面</b>，即可像 App 使用。</p>
 </div>
 
