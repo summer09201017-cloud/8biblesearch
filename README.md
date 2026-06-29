@@ -1,25 +1,47 @@
 # 多譯本聖經查詢（PWA）
 
-離線讀取 `data/*.json` 的多譯本聖經查詢網頁：經文閱讀、關鍵字搜尋、快速查詢、勾選複製／LINE／Email 分享，並支援安裝到手機主畫面。
+離線可用的多譯本聖經查詢網頁。單一 static HTML + 各譯本 JSON，無後端、無建置步驟，部署到 Netlify 即可。
+
+**譯本（9 種）**：和合本 (unv)、新譯本 (ncv)、呂振中 (lcc)、ESV、NIV、KJV、ASV、WEB、BBE。
+
+## 功能
+
+- **經文閱讀**：多譯本並排／堆疊、連讀模式（章末自動接下一章）、字體大小調整、記住上次位置。
+- **🔊 朗讀經文**：用瀏覽器內建語音朗讀目前畫面的經文（零音檔、可離線、免費）；可用「版本選擇器」挑要朗讀的中文或英文譯本；裝置沒對應語音時安靜略過。
+- **關鍵字搜尋**：支援多關鍵字 AND（空白／逗號分隔）；可勾選經節，複製／LINE／Email 分享。
+- **快速查詢**：一次輸入多段經文出處（逗號或換行分隔）。
+- **對讀比較**：任選基準與對比譯本做差異比對（中文逐字、英文逐詞），支援單節／範圍／三版本同時比較，附相似度。
+- **我的筆記**：分類、標籤、釘選、書籤、禱告／問題狀態、時間軸；可匯出 Markdown 或列印 PDF。
+- **四種主題（護眼）**：米紙／印刷棕／深色／純黑。
+- **資料備份**：JSON 匯入匯出；選用 Google Drive 同步（只存到使用者自己的 App 專屬資料夾，五道安全保險）。
+- **可安裝**：加入手機主畫面，離線使用（PWA）。
+
+> 手機版頂部已精簡（隱藏大標題、控制列移到底部）、經文卡片加寬貼近邊界，方便長輩閱讀。
 
 ## 本機預覽
 
-在專案根目錄用靜態伺服器開啟（需能讀取 `data/`），例如：
+需用靜態伺服器（要能 fetch `data/`，不能直接 file:// 開）：
 
 ```powershell
-# Python 3
-py -3 -m http.server 8081
+py -3 -m http.server 8081      # 然後開 http://localhost:8081/
 ```
 
-瀏覽器開啟 `http://localhost:8081/`（或執行根目錄的 `啟動網站.bat`）。
+或雙擊根目錄的 `啟動網站.bat`。
 
 ## 資料檔
 
-執行 `node download_bible.js` 自 [信望愛 qb.php](https://bible.fhl.net/json/qb.php) 下載譯本至 `data/`。詳見 **`DEPLOY.md`**。
+執行 `node download_bible.js` 自 [信望愛 qb.php](https://bible.fhl.net/json/qb.php) 下載譯本到 `data/`。NIV 等流程見 **`DEPLOY.md`**。
 
-## 部署到 GitHub + Netlify
+## 部署與更新
 
-完整步驟、Netlify 設定與注意事項請看 **`DEPLOY.md`**。
+push 到 GitHub `main` → Netlify 自動部署。**改動 `index.html`／manifest／icons 後，務必把 `sw.js` 的 `CACHE_NAME` 版本號 +1**，否則已安裝的使用者會看到舊版。可在本 repo 用 `/ship` 指令一鍵檢查。完整步驟見 **`DEPLOY.md`**。
+
+## 文件導覽
+
+- **`roadmap.md`** — 已完成 vs 待做（單一真相，先讀這個）。
+- **`CLAUDE.md`** — 給 AI／開發者的完整架構說明。
+- **`讀我-HANDOFF.txt`** — 換機／接手交接快照。
+- **`DEPLOY.md`** — 部署細節。
 
 ## 授權與聲明
 

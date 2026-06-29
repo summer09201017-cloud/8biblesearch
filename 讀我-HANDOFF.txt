@@ -1,0 +1,68 @@
+============================================================
+讀我 — HANDOFF（多譯本聖經查詢 PWA）
+交接日期：2026-06-29
+給：另一台 PC（HFPC）的 AI / 接手的人
+============================================================
+
+■ 這是什麼
+  繁體中文「多譯本聖經查詢」PWA。單一 static HTML（index.html，約 5000 行內含 CSS/JS）
+  + 每譯本一個 data/*.json。無後端、無建置步驟。離線優先；使用者資料存 localStorage，
+  另有選用的 Google Drive 同步（drive.appdata，五道安全保險）。
+  受眾＝教會非技術長輩（低視力多），介面全繁中。
+
+■ 現在到哪（2026-06-29 已完成的重點）
+  - 9 譯本：unv 和合本 / ncv 新譯本 / lcc 呂振中 / esv / niv / kjv / asv / web / bbe
+  - 閱讀 / 關鍵字搜尋(AND) / 快速查詢(多段) / 對讀比較(中dmp+英LCS, 3-way) / 我的筆記 / 設定資料
+  - 本輪新增：
+      * 🔊 朗讀經文（Web Speech API，讀畫面可見經文，連續、中英自動選語音、靜默 fallback）
+      * 🔊 朗讀「版本選擇器」（下拉只列畫面上的譯本，可選中文或任一英文版，記憶選擇）
+      * 手機：字體大小列移到「底部固定」（避開瀏海遮擋）
+      * 手機：頂部精簡（隱藏中文大標題、副標＋主題鈕並排、護眼鈕縮小、安裝鈕移入 brand、去除空 header 棕條）
+      * 手機：經文卡片加寬到幾乎貼邊（container 左右 padding 2px）
+  - 詳細「已完成 vs 待做」見 roadmap.md（單一真相）。
+
+■ 怎麼跑 / 驗證 / 部署
+  本機預覽（一定要 HTTP，不能 file://，因為要 fetch data/*.json）：
+      py -3 -m http.server 8081   →  開 http://localhost:8081/
+      （或雙擊 啟動網站.bat）
+  驗證內嵌 JS 能 parse（這專案沒有測試/linter，這是唯一檢查）：
+      node -e "const fs=require('fs'),m=fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*?)<\/script>/);new Function(m[1]);console.log('JS OK')"
+  一鍵上線前檢查：在本 repo 打  /ship  （驗證 JS + 檢查/bump SW + 資料健檢 + 部署提醒）
+  部署：push main → Netlify 自動部署（repo summer09201017-cloud/8biblesearch）。
+
+■ 本機地雷（最常重犯，務必記住）
+  1) 改 index.html / manifest / icons / vendor 後，**一定要 bump sw.js 的 CACHE_NAME=bible-multi-vN**，
+     否則已安裝 PWA 的使用者卡在舊殼層。目前 v53。（本 repo 有 hook 會自動提醒；用 /ship 會自動 bump。）
+  2) 這個資料夾底下還有 **2 層同名巢狀舊副本**（聖經查詢CUR/聖經查詢CUR/...），各自一個 .git，是舊備份。
+     **別改錯層、別 commit 錯 repo**。正本＝最外層（index.html 約 277KB 的這個）。roadmap 待做 #2 是清掉它們（需點頭）。
+  3) localStorage 的 try/catch 不要拆（Safari 私密模式會丟例外）。
+  4) 桌機與手機共用同一段 DOM；版面差異一律用 @media (max-width:600px) 處理，別動桌機。
+
+■ 檔案在哪
+  index.html ............ 全部前端（CSS + HTML + JS）
+  sw.js ................. Service Worker（CACHE_NAME 在這）
+  data/*.json ........... 9 譯本經文
+  vendor/diff_match_patch.js  對讀比較用
+  CLAUDE.md ............. 給 AI 的完整架構說明（最權威）
+  README.md ............. 給使用者/部署者
+  roadmap.md ........... 已完成 vs 待做（單一真相）★先讀這個
+  DEPLOY.md ............ 部署細節
+  .claude/commands/ship.md ......... /ship 指令
+  .claude/settings.local.json ...... SW-bump 提醒 hook
+  handoff/skills/ ...... 本輪新建的跨專案 skill 備份（見下）
+
+■ 跨專案工具（這輪建/改的）
+  - MCP「cuv」已升級成 9 譯本：伺服器與資料在 ~/.claude/cuv-data/（cuv-mcp.mjs + 各譯本 json），
+    登記於 ~/.claude.json。寫經文前可用 mcp__cuv__lookup 核對。HFPC 那台若 cuv-data 缺檔，
+    把本 repo data/ 的 niv.json web.json bbe.json lcc.json 複製進該機 ~/.claude/cuv-data/ 即可。
+  - 新 skill「static-pwa-ship」：給「無建置 static PWA」的上線把關（驗證內嵌 JS + bump SW + 部署）。
+    正本應放 ~/.claude/skills/static-pwa-ship/SKILL.md；本 repo handoff/skills/ 有一份備份。
+    要讓 HFPC 那台用：把備份複製進該機 ~/.claude/skills/static-pwa-ship/，再 /sync-skills 發佈。
+
+■ 下一步最該做的一件事
+  做 roadmap.md「待做 #1：每日金句／今日經文卡」（~2hr，純 reader、會部署、可接朗讀）。
+  或先做 #2：清巢狀舊 repo（需先跟使用者確認）。
+
+============================================================
+（這份是純文字快照；最完整、會更新的版本看 roadmap.md 與 CLAUDE.md）
+============================================================

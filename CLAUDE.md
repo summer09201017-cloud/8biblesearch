@@ -8,6 +8,22 @@ A multi-translation Bible reader PWA (繁體中文介面). Single static HTML fi
 
 Production translations: 和合本 (unv) · ESV · NIV · WEB · BBE · 新譯本 (ncv) · 呂振中 (lcc) · ASV · KJV.
 
+## 現況 (2026-06-29) — 已完成 vs 待做
+
+**完整、會更新的「已完成 vs 真正待做」清單見 `roadmap.md`（單一真相）。** 交接快照見 `讀我-HANDOFF.txt`。
+
+最近一輪 (2026-06-29) 新增，動程式碼前請先知道這些已存在：
+- 🔊 **朗讀經文** (Web Speech API)：讀「目前分頁畫面上可見」的經文，連續逐節、中英依文字自動選語音 (zh-TW/en)、無語音時靜默 fallback、切分頁自動停。函式 `initSpeech / toggleReadAloud / _gatherVisibleVerses / stopReadAloud`，按鈕 `#btn-speak` 在 `.font-size-bar`。
+- 🔊 **朗讀版本選擇器** `#speak-ver`：下拉只列「畫面上有的譯本」(掃 `.version-badge`)，預設第一個譯本 (value `''`)，可選任一中/英版；`refreshSpeakOptions()` 在 mousedown/focus/switchTab 重建；選擇存 `bible-speak-version`。
+- 📱 **手機 `.font-size-bar` 改固定底部** (`position:fixed; bottom:0` + `env(safe-area-inset-bottom)`)：避開瀏海/動態島把頂端拉桿蓋住。桌機維持右上角。`body` 補底部留白。
+- 📱 **手機頂部精簡**：`.app-brand h1` 隱藏；`.brand-row` 包住「副標+主題鈕」(桌機 `display:contents` 不變、手機 flex 並排)；主題鈕 24→20px；安裝鈕由 `.app-header` 移入 `.app-brand`；空 `.app-header` 在手機塌成 0 (`padding:0`，font-size-bar 是 fixed 不受影響)。
+- 📱 **經文卡片加寬**：手機 `.container` 左右 padding 10→2px、`.verse-translation` 12→10px。
+- 🛠 **`/ship`** (`.claude/commands/ship.md`)：上線前一條龍 (驗證內嵌 JS + 檢查/bump SW + 資料健檢 + 部署提醒)。
+- 🛠 **SW-bump 提醒 hook** (`.claude/settings.local.json` PostToolUse)：改到 `index.html` 自動提醒 bump SW。
+- 🔌 **cuv MCP 升級 9 譯本**：`~/.claude/cuv-data/` 補 niv/web/bbe/lcc，`mcp__cuv__lookup` 可查全部 9 譯本 (寫經文前核對用)。
+
+`localStorage` 新增鍵：`bible-speak-version`（朗讀選擇的譯本，`''`＝第一個）。
+
 ## Common commands
 
 ```powershell
