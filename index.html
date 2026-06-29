@@ -1211,6 +1211,13 @@ body {
   white-space:nowrap; padding:0 2px;
   background:rgba(0,0,0,0.18); border-radius:4px;
 }
+.font-size-bar .fs-speak-btn { min-width:auto; white-space:nowrap; }
+.font-size-bar .fs-speak-btn.speaking {
+  background:#c0392b; color:#fff; border-color:#e74c3c;
+  animation:fs-speak-pulse 1.1s ease-in-out infinite;
+}
+@keyframes fs-speak-pulse { 0%,100%{opacity:1;} 50%{opacity:0.65;} }
+@media (prefers-reduced-motion:reduce){ .font-size-bar .fs-speak-btn.speaking{ animation:none; } }
 @media (max-width:600px) {
   .app-header { padding:6px 12px; }
   .app-header-inner { flex-direction:column; align-items:stretch; text-align:center; }
@@ -1422,6 +1429,7 @@ body {
         <span id="fs-label" class="fs-bar-value">16px</span>
         <button type="button" class="fs-btn" onclick="adjustFontSize(2)" aria-label="放大字體">A+</button>
         <input id="fs-slider" type="range" min="10" max="40" step="1" value="16" oninput="setFontSize(this.value)" aria-label="文字大小滑桿">
+        <button type="button" id="btn-speak" class="fs-btn fs-speak-btn" onclick="toggleReadAloud()" aria-label="朗讀畫面經文" title="朗讀目前畫面上的經文（再按一次停止）">🔊 朗讀</button>
       </div>
       <div class="app-header-actions">
         <button type="button" class="btn-install" id="btn-install-pwa" hidden>📲 安裝 App</button>
@@ -2187,6 +2195,84 @@ function adjustFontSize(delta) {
     if (saved >= FS_MIN && saved <= FS_MAX) setFontSize(saved);
   } catch(e) {}
 })();
+
+// ====== 朗讀經文（Web Speech API：零音檔、可離線、免費；無語音時靜默 fallback） ======
+// 讀「目前分頁畫面上看得到」的經文：一般分頁取每節第一個譯本（多為和合本），
+// 對讀分頁取基準欄。中文用 zh 語音、英文用 en 語音（依文字自動判斷）。
+let _speakVoices = [];
+let _speaking = false;
+let _speakQueue = [];
+function _loadVoices() {
+  try { _speakVoices = ('speechSynthesis' in window) ? speechSynthesis.getVoices() : []; }
+  catch(e) { _speakVoices = []; }
+}
+function initSpeech() {
+  if (!('speechSynthesis' in window)) return;
+  _loadVoices();
+  try { speechSynthesis.onvoiceschanged = _loadVoices; } catch(e) {}
+}
+function _pickVoice(lang) {
+  const vs = (_speakVoices && _speakVoices.length) ? _speakVoices
+    : (('speechSynthesis' in window) ? speechSynthesis.getVoices() : []);
+  if (lang === 'zh') {
+    return vs.find(v => /zh[-_]TW/i.test(v.lang)) || vs.find(v => /zh[-_]HK/i.test(v.lang))
+        || vs.find(v => /^zh/i.test(v.lang)) || null;
+  }
+  return vs.find(v => /^en[-_]US/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
+}
+function _detectLang(text) { return /[㐀-鿿]/.test(text) ? 'zh' : 'en'; }
+function _setSpeakBtn(on) {
+  const b = document.getElementById('btn-speak');
+  if (b) { b.textContent = on ? '⏹ 停止' : '🔊 朗讀'; b.classList.toggle('speaking', on); }
+}
+function stopReadAloud() {
+  _speaking = false; _speakQueue = [];
+  try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch(e) {}
+  _setSpeakBtn(false);
+}
+function _speakNext() {
+  if (!_speaking || !_speakQueue.length) { stopReadAloud(); return; }
+  const text = _speakQueue.shift();
+  let u;
+  try { u = new SpeechSynthesisUtterance(text.replace(/\s+/g, '')); } catch(e) { stopReadAloud(); return; }
+  const lang = _detectLang(text);
+  const v = _pickVoice(lang);
+  if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = (lang === 'zh') ? 'zh-TW' : 'en-US'; }
+  u.rate = 0.9; u.pitch = 1;
+  u.onend = () => { if (_speaking) _speakNext(); };
+  u.onerror = () => { if (_speaking) _speakNext(); };
+  try { speechSynthesis.speak(u); } catch(e) { stopReadAloud(); }
+}
+function _gatherVisibleVerses() {
+  const panel = document.querySelector('.panel.active');
+  if (!panel) return [];
+  const out = [];
+  const groups = panel.querySelectorAll('.verse-group');
+  if (groups.length) {
+    groups.forEach(g => {
+      const t = g.querySelector('.verse-translation .verse-text') || g.querySelector('.verse-text');
+      if (t && t.textContent.trim()) out.push(t.textContent.trim());
+    });
+    return out;
+  }
+  // 對讀比較分頁：讀基準欄經文
+  panel.querySelectorAll('.diff-verse-text').forEach(t => {
+    if (t.textContent.trim()) out.push(t.textContent.trim());
+  });
+  return out;
+}
+function toggleReadAloud() {
+  if (_speaking) { stopReadAloud(); return; }
+  if (!('speechSynthesis' in window)) { toast('此瀏覽器不支援語音朗讀'); return; }
+  const verses = _gatherVisibleVerses();
+  if (!verses.length) { toast('目前畫面上沒有可朗讀的經文'); return; }
+  _loadVoices();
+  _speakQueue = verses.slice(0, 300); // 安全上限，避免一次塞太多
+  _speaking = true;
+  _setSpeakBtn(true);
+  _speakNext();
+}
+initSpeech();
 
 // ====== 主題切換 ======
 const THEME_KEY = 'bible-theme';
@@ -3360,6 +3446,7 @@ function parseQuickRef(raw) {
 }
 
 function switchTab(name) {
+  if (typeof stopReadAloud === 'function') stopReadAloud();
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
