@@ -1212,6 +1212,12 @@ body {
   background:rgba(0,0,0,0.18); border-radius:4px;
 }
 .font-size-bar .fs-speak-btn { min-width:auto; white-space:nowrap; }
+.font-size-bar .fs-speak-ver {
+  font-size:0.8rem; padding:4px 6px; border-radius:6px; max-width:11em;
+  background:rgba(255,255,255,0.1); color:#f5e6c8; font-family:inherit;
+  border:1px solid rgba(240,216,144,0.4); cursor:pointer;
+}
+.font-size-bar .fs-speak-ver option { color:#222; }
 .font-size-bar .fs-speak-btn.speaking {
   background:#c0392b; color:#fff; border-color:#e74c3c;
   animation:fs-speak-pulse 1.1s ease-in-out infinite;
@@ -1429,6 +1435,9 @@ body {
         <span id="fs-label" class="fs-bar-value">16px</span>
         <button type="button" class="fs-btn" onclick="adjustFontSize(2)" aria-label="放大字體">A+</button>
         <input id="fs-slider" type="range" min="10" max="40" step="1" value="16" oninput="setFontSize(this.value)" aria-label="文字大小滑桿">
+        <select id="speak-ver" class="fs-speak-ver" onmousedown="refreshSpeakOptions()" onfocus="refreshSpeakOptions()" onchange="saveSpeakVer()" aria-label="選擇要朗讀的譯本" title="選擇要朗讀哪一個譯本（中文或英文）">
+          <option value="">🔊 讀：第一個譯本</option>
+        </select>
         <button type="button" id="btn-speak" class="fs-btn fs-speak-btn" onclick="toggleReadAloud()" aria-label="朗讀畫面經文" title="朗讀目前畫面上的經文（再按一次停止）">🔊 朗讀</button>
       </div>
       <div class="app-header-actions">
@@ -2243,15 +2252,25 @@ function _speakNext() {
   u.onerror = () => { if (_speaking) _speakNext(); };
   try { speechSynthesis.speak(u); } catch(e) { stopReadAloud(); }
 }
-function _gatherVisibleVerses() {
+function _gatherVisibleVerses(verName) {
   const panel = document.querySelector('.panel.active');
   if (!panel) return [];
   const out = [];
   const groups = panel.querySelectorAll('.verse-group');
   if (groups.length) {
     groups.forEach(g => {
-      const t = g.querySelector('.verse-translation .verse-text') || g.querySelector('.verse-text');
-      if (t && t.textContent.trim()) out.push(t.textContent.trim());
+      let t = null;
+      if (verName) {
+        // 指定譯本：找該節中徽章名稱相符的那一欄
+        g.querySelectorAll('.verse-translation').forEach(tr => {
+          if (t) return;
+          const b = tr.querySelector('.version-badge');
+          if (b && b.textContent.trim() === verName) t = tr.querySelector('.verse-text');
+        });
+      }
+      if (!t) t = g.querySelector('.verse-translation .verse-text') || g.querySelector('.verse-text');
+      const s = t ? t.textContent.trim() : '';
+      if (s && s !== '（此版本無此節經文）') out.push(s);
     });
     return out;
   }
@@ -2261,10 +2280,40 @@ function _gatherVisibleVerses() {
   });
   return out;
 }
+// 朗讀版本選擇器：只列「目前畫面上有的譯本」，預設＝第一個譯本（''）
+const SPEAK_VER_KEY = 'bible-speak-version';
+function refreshSpeakOptions() {
+  const sel = document.getElementById('speak-ver');
+  if (!sel) return;
+  const panel = document.querySelector('.panel.active');
+  const names = [];
+  if (panel) {
+    panel.querySelectorAll('.verse-group .version-badge').forEach(b => {
+      const n = b.textContent.trim();
+      if (n && names.indexOf(n) < 0) names.push(n);
+    });
+  }
+  let saved = '';
+  try { saved = localStorage.getItem(SPEAK_VER_KEY) || ''; } catch(e) {}
+  const prev = sel.value || saved;
+  let html = '<option value="">🔊 讀：第一個譯本</option>';
+  names.forEach(n => {
+    const esc = n.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    html += '<option value="' + esc + '">🔊 讀：' + esc + '</option>';
+  });
+  sel.innerHTML = html;
+  sel.value = (prev && names.indexOf(prev) >= 0) ? prev : '';
+}
+function saveSpeakVer() {
+  const sel = document.getElementById('speak-ver');
+  try { localStorage.setItem(SPEAK_VER_KEY, sel ? sel.value : ''); } catch(e) {}
+}
 function toggleReadAloud() {
   if (_speaking) { stopReadAloud(); return; }
   if (!('speechSynthesis' in window)) { toast('此瀏覽器不支援語音朗讀'); return; }
-  const verses = _gatherVisibleVerses();
+  const sel = document.getElementById('speak-ver');
+  const verName = sel ? sel.value : '';
+  const verses = _gatherVisibleVerses(verName);
   if (!verses.length) { toast('目前畫面上沒有可朗讀的經文'); return; }
   _loadVoices();
   _speakQueue = verses.slice(0, 300); // 安全上限，避免一次塞太多
@@ -2273,6 +2322,7 @@ function toggleReadAloud() {
   _speakNext();
 }
 initSpeech();
+refreshSpeakOptions();
 
 // ====== 主題切換 ======
 const THEME_KEY = 'bible-theme';
@@ -3459,6 +3509,7 @@ function switchTab(name) {
     refreshLastExportHint();
   }
   else if (name === 'diff') initDiffSelectors();
+  if (typeof refreshSpeakOptions === 'function') refreshSpeakOptions();
 }
 
 // ====== 對讀比較（任選基準 ↔ 任選對比，中英自動切詞 + LCS diff） ======
