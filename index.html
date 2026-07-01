@@ -1230,14 +1230,19 @@ body {
   .app-header { padding:0; box-shadow:none; min-height:0; }
   .app-header-inner { flex-direction:column; align-items:stretch; text-align:center; }
   .app-header-right { justify-content:center; min-width:0; width:100%; }
-  /* 手機精簡頂部：隱藏中文大標題；英文副標與主題（護眼）鈕並排「同一列」，騰出中間讀經空間 */
-  .app-brand { padding:6px 12px; }
-  .app-brand h1 { display:none; }
-  .brand-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:5px 10px; }
-  .app-brand .subtitle { text-align:center; margin:0; font-size:0.62rem; }
-  .app-brand .theme-bar { margin:0; padding:3px 8px; gap:5px; }
+  /* 手機頂部：中文標題與 4 護眼鈕同一列；英文副標放大擺第二列（保留身分感又幾乎不吃讀經空間）。
+     .brand-row 維持基礎的 display:contents，讓副標與主題直接成為 .app-brand 的 flex 項目，
+     再用 order + flex-basis:100% 排出「標題＋護眼一列、英文換行、安裝鈕/iOS 提示各自成列」。 */
+  .app-brand {
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+    gap:4px 10px; padding:6px 12px;
+  }
+  .app-brand h1 { display:block; order:1; font-size:1.05rem; letter-spacing:2px; }
+  .app-brand .theme-bar { order:2; margin:0; padding:3px 8px; gap:5px; }
   .app-brand .theme-bar-label { display:none; }
-  .app-brand .ios-install-hint { margin-top:4px; }
+  .app-brand .subtitle { order:3; flex-basis:100%; text-align:center; margin:0; font-size:0.72rem; }
+  .app-brand .btn-install { order:4; flex-basis:100%; }
+  .app-brand .ios-install-hint { order:5; flex-basis:100%; margin-top:4px; }
   /* 手機：文字大小列改「固定在底部」，避開瀏海／動態島／網址列把頂端拉桿蓋住，
      也讓單手拇指更好操作（拉桿移到最下面） */
   .font-size-bar {
