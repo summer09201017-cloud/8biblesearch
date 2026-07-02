@@ -67,6 +67,15 @@ Everything user-facing lives in `index.html` — CSS, HTML, and ~2700 lines of i
 - 連讀只影響閱讀分頁；搜尋／快速查詢／我的筆記不受影響。
 - `bible-last-read` 只在使用者「主動查詢」（非 append）時更新；自動接章不會把「上次位置」推進到很遠。
 
+### 讀經足跡（查了就自動打卡；分頁「📖 足跡」）
+「什麼才算讀過」是牧者定案的誠實性規則（2026-07-03），改動前先確認：
+- 閱讀分頁成功顯示一章且**停留 15 秒**＝算（`scheduleChapterRead()` dwell timer；新查詢會取消上一章未到期的計時——這擋掉「換書卷時章選單重設到第 1 章自動查詢」的路過灌水）。連讀 append 同樣走 dwell。
+- 快速查詢「整章」（`parseQuickRef` 無 `secRange`）＝算，立即記（使用者親手輸入的 ref，意圖明確）；查單節/範圍不算。
+- 關鍵字搜尋不算；啟動自動還原上次位置不算——`recordChapterRead()` 開頭以 `_autoQueryEnabled` 當閘門，**注意它是啟動完成後才被賦值的隱式全域，啟動期間是 `undefined`，所以判斷式必須把 undefined 也擋掉**。
+- 同一章 30 分鐘內只算一次（`bible-reading-log-last`）。
+
+按月分桶（見 localStorage 表），`sumTrackRange(log, '1'|'3'|'6'|'12'|'all')` 加總月桶得出任意範圍的每章次數；`trackStreak()` 由 `d` 桶往回數連續天。`renderTrackPanel()` 產出統計卡＋範圍 chips＋熱區排行＋全卷 1189 章格子圖（格子 onclick `goReadChapter()` 直接翻開那章）。設定頁可停用（`bible-reading-track='0'`，記錄保留）或清除。7 個分頁在手機靠 `.tabs { overflow-x:auto }` 橫向捲動。
+
 ### 筆記匯出（人類可讀格式）
 設定/資料頁有兩個按鈕：「📋 匯出 Markdown」（modal 顯示文字 + 複製/下載）與「🖨 列印 / 另存 PDF」（新視窗 + 自動 `window.print()`）。兩者共用 `gatherNotesForExport()` 抽取資料，依「釘選優先 → 月份分組（updatedAt desc）」排版。
 
@@ -145,8 +154,11 @@ Intentionally **no support for**: phrase-quotes (`"..."` is just literal substri
 | `bible-auto-cloud-check` | `"1"` / `"0"` — 啟動時是否自動偵測雲端有無更新（半自動同步開關，預設 `"0"`） |
 | `bible-cloud-linked` | `"1"` — 表示使用者曾成功連結 Google 帳號；啟動時用來決定是否要 silent refresh |
 | `bible-cloud-token-cache` | `{access_token, expiry, email}` — 快取 Google access token（~1 小時）避免每次 reload 都打網路；登出或撤銷時清除 |
+| `bible-reading-track` | `"1"`(預設) / `"0"` — 讀經足跡開關；停用只是不再記錄，既有記錄保留 |
+| `bible-reading-log` | `{ m:{ "YYYY-MM":{ "bid:chap":次數 } }, d:{ "YYYY-MM-DD":章次 } }` — 讀經足跡按月分桶；本月/近3月/近6月/近12月/歷年都靠加總月桶 |
+| `bible-reading-log-last` | `{ "bid:chap": ts }` — 同一章 30 分鐘防重計；寫入時順手清掉超過 1 小時的舊項 |
 
-The export/import JSON in 設定/資料 includes `userData`, `historySearch`, `historyQuick`, `exportedAt`. The cloud sync payload (schema 3) additionally carries `versionOrder`, `noteCount`, `timestamp`. Schema bumped 2 → 3 when notes gained type/tags/dates/status fields, but no read-side branching exists — `schema` is just a label, all readers do best-effort field access with fallbacks.
+The export/import JSON in 設定/資料 includes `userData`, `historySearch`, `historyQuick`, `readingLog`, `exportedAt`. The cloud sync payload (schema 3) additionally carries `versionOrder`, `noteCount`, `timestamp`, `readingLog`. Schema bumped 2 → 3 when notes gained type/tags/dates/status fields, but no read-side branching exists — `schema` is just a label, all readers do best-effort field access with fallbacks.
 
 ### Notes data shape (`NoteEntry` in `bible-user-data`)
 Each entry keyed by `bid-chap-sec`. Schema is **forward-only and tolerant** — readers must default-coalesce missing fields. Required (since v3):

@@ -1,7 +1,7 @@
-# 多譯本聖經查詢 — Roadmap（對齊現況 2026-06-29）
+# 多譯本聖經查詢 — Roadmap（對齊現況 2026-07-03）
 
 > 給接手的人/AI：這份是「**已完成 vs 真正待做**」的單一真相。已完成的別重做；待做的按 CP 值排序。
-> 線上：push `main` → Netlify 自動部署（repo `summer09201017-cloud/8biblesearch`）。SW 目前 **v53**。
+> 線上：push `main` → Netlify 自動部署（repo `summer09201017-cloud/8biblesearch`）。SW 目前 **v55**。
 
 ---
 
@@ -26,6 +26,9 @@
 - 🛠 **`/ship` 指令**（repo `.claude/commands/ship.md`）：驗證內嵌 JS + 檢查/bump SW + 資料檔健檢 + 部署提醒。
 - 🛠 **SW-bump 提醒 hook**（repo `.claude/settings.local.json`，PostToolUse）：改到 index.html 自動提醒 bump SW。
 - 🔌 **cuv MCP 升級成 9 譯本**（`~/.claude/cuv-data/` 補 niv/web/bbe/lcc；零改碼、lazy load；已驗證 live）。
+
+**這輪做的（2026-07-03）**
+- 📖 **讀經足跡**（新分頁「📖 足跡」）：查了就自動打卡——閱讀分頁顯示一章**停留 15 秒**、或快速查詢「整章」＝算讀過；關鍵字搜尋不計；啟動自動還原上次位置不計（`_autoQueryEnabled` 閘門）；同一章 30 分鐘內只算一次。統計卡（今日／連續天數／讀過章數／全卷 %）＋範圍切換（本月／近3月／近6月／近12月／歷年）＋熱區排行＋全卷 1189 章足跡地圖（點格子直接翻開那章）。可在設定停用（記錄保留）或清除。記錄按月分桶存 `bible-reading-log`，並已接進 JSON 匯出／匯入、本地快照、雲端同步 payload。手機分頁列改為可橫向捲動（容納第 7 個分頁）。
 
 ---
 
