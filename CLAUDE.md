@@ -8,11 +8,18 @@ A multi-translation Bible reader PWA (繁體中文介面). Single static HTML fi
 
 Production translations: 和合本 (unv) · ESV · NIV · WEB · BBE · 新譯本 (ncv) · 呂振中 (lcc) · ASV · KJV.
 
-## 現況 (2026-06-29) — 已完成 vs 待做
+## 現況 (2026-07-03) — 已完成 vs 待做
 
 **完整、會更新的「已完成 vs 真正待做」清單見 `roadmap.md`（單一真相）。** 交接快照見 `讀我-HANDOFF.txt`。
 
-最近一輪 (2026-06-29) 新增，動程式碼前請先知道這些已存在：
+最近一輪 (2026-07-03，在 HFP 那台) 新增：
+- 📖 **讀經足跡**（新分頁，排第 4 格）：查了就自動打卡。誠實性規則與實作細節見下方「讀經足跡」架構節——**改動前必讀**，尤其 `_autoQueryEnabled` 閘門與 dwell timer 兩個防灌水機制。
+- 🔗 **「啟動時自動連結 Google」開關**（`bible-auto-relink`，預設開）：見下方 Connection persistence 節。
+- 📑 分頁順序：足跡與對讀比較對調。SW 目前 **v57**。
+- 🧰 跨專案沉澱：skill `reading-footprint`（skill 合輯 repo 已有）。
+- ⚠ 本機路徑（HFP 那台）：正本 clone 在 `C:\Users\HFP\Downloads\hfpc\8biblesearch`；桌面舊交接資料夾 `聖經查詢CUR-交接-2026-06-29` **比遠端舊，別用**。
+
+上一輪 (2026-06-29) 新增，動程式碼前請先知道這些已存在：
 - 🔊 **朗讀經文** (Web Speech API)：讀「目前分頁畫面上可見」的經文，連續逐節、中英依文字自動選語音 (zh-TW/en)、無語音時靜默 fallback、切分頁自動停。函式 `initSpeech / toggleReadAloud / _gatherVisibleVerses / stopReadAloud`，按鈕 `#btn-speak` 在 `.font-size-bar`。
 - 🔊 **朗讀版本選擇器** `#speak-ver`：下拉只列「畫面上有的譯本」(掃 `.version-badge`)，預設第一個譯本 (value `''`)，可選任一中/英版；`refreshSpeakOptions()` 在 mousedown/focus/switchTab 重建；選擇存 `bible-speak-version`。
 - 📱 **手機 `.font-size-bar` 改固定底部** (`position:fixed; bottom:0` + `env(safe-area-inset-bottom)`)：避開瀏海/動態島把頂端拉桿蓋住。桌機維持右上角。`body` 補底部留白。

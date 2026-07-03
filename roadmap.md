@@ -38,12 +38,12 @@
 
 | # | 項目 | 類型 | ★價值 | ⏱開發 | 備註 |
 |---|------|------|------|------|------|
-| 1 | **每日金句／今日經文卡**（開啟依日期顯示一節，可朗讀） | 功能 | ★★★★ | ~2hr | 純 reader、會部署；可接 🔊 |
-| 2 | **清理巢狀舊 repo**（`聖經查詢CUR/聖經查詢CUR/...` 3 層） | 整理 | ★★★★ | ~30min | **需使用者點頭才刪 git** |
-| 3 | **`bible-reader-reviewer` agent**（仿 bible-game-reviewer：經文正確性〔用 cuv MCP 核對〕、無障礙、localStorage 安全、PWA 正確性） | agent（跨專案） | ★★★ | ~1hr | 放 `~/.claude/agents/` |
-| 4 | **pre-push-guard 裝到本 repo**（git pre-push 跑 JS 驗證 + SW-bump 檢查） | hook | ★★★ | ~30min | 沿用遊戲 pre-push-guard 範式 |
-| 5 | **讀經里程碑 confetti + 讀經獎狀**（複用 win-confetti / completion-certificate） | 功能複用 | ★★★ | ~2hr | 讀完一卷書慶祝、好玩 |
-| 6 | **讀經進度／一年讀經計畫**（沿用 `bible-last-read`） | 功能 | ★★★ | ~半天 | devotional、黏著 |
+| 1 | **每日金句／今日經文卡**（開啟依日期顯示一節，可朗讀） | 功能 | ★★★★ | ~2hr | 純 reader、會部署；可接 🔊；照 [[daily-verse]] skill「每天同一句要確定性」 |
+| 2 | **讀完一卷書 → 彩帶＋里程碑**（足跡的 `m` 桶已能算出「某卷全部章都讀過」，偵測免費） | 功能複用 | ★★★★ | ~2hr | 複用 win-confetti；好玩、黏著；足跡上線後 CP 值大漲 |
+| 3 | **一年讀經計畫模式**（麥琴表或一年表：今天該讀哪幾章 → 足跡自動打勾、落後提醒） | 功能 | ★★★★★ | ~1 天 | 足跡是現成的打卡底層,只差「計畫表」層;門訓剛需 |
+| 4 | **清理巢狀舊 repo**（`聖經查詢CUR/聖經查詢CUR/...` 3 層） | 整理 | ★★★★ | ~30min | **需使用者點頭才刪 git**;另桌面 `聖經查詢CUR-交接-2026-06-29` 快照已過時可一併處理 |
+| 5 | **pre-push-guard 裝到本 repo**（git pre-push 跑 JS 驗證 + SW-bump 檢查） | hook | ★★★ | ~30min | 沿用遊戲 pre-push-guard 範式 |
+| 6 | **足跡月報分享卡**（canvas 把本月足跡格子＋統計輸出成 PNG 傳 LINE 小組互相激勵） | 功能 | ★★★ | ~半天 | 照 [[share-card]] skill;小組讀經同行 |
 | 7 | **經文分享圖卡**（canvas 產金句圖分享 LINE，取代純文字） | 功能 | ★★★ | ~半天 | 重度用 LINE |
 | 8 | **朗讀增強**：跨章連續朗讀（接連讀模式）／每節獨立 🔊 鈕 | 功能 | ★★ | ~2hr | 看使用回饋再決定 |
 | 9 | **README/CLAUDE 持續對齊**（每次大改後跑 /handoff） | 流程 | ★★ | — | 維持文件不脫節 |
@@ -65,8 +65,10 @@
 | 工具 | 類型 | 位置 | 狀態 |
 |------|------|------|------|
 | `cuv` 9 譯本經文查詢 | MCP | `~/.claude/cuv-data/cuv-mcp.mjs`（登記於 `~/.claude.json`） | ✅ 已升級 9 譯本 |
-| `web-speech-scripture` | skill | `~/.claude/skills/`（已存在） | ✅ 本輪已套用到 reader |
-| `static-pwa-ship` | skill（跨專案） | `~/.claude/skills/static-pwa-ship/` + 本 repo `handoff/skills/` 備份 | ✅ 本輪新建 |
+| `web-speech-scripture` | skill | `~/.claude/skills/`（已存在） | ✅ 已套用到 reader |
+| `static-pwa-ship` | skill（跨專案） | `~/.claude/skills/static-pwa-ship/` | ✅ |
+| `reading-footprint` | skill（跨專案） | `~/.claude/skills/reading-footprint/`（skill 合輯已同步） | ✅ 2026-07-03 新建（本 repo 足跡＝活範例） |
+| `bible-reader-reviewer` | agent（跨專案） | `~/.claude/agents/bible-reader-reviewer.md`（skill 合輯已同步） | ✅ 2026-07-03 新建（經文正確性/localStorage 安全/PWA/長輩友善 四維審查） |
 | `/ship` | slash（本 repo） | `.claude/commands/ship.md` | ✅ |
 | SW-bump 提醒 | hook（本 repo） | `.claude/settings.local.json` PostToolUse | ✅ |
 
