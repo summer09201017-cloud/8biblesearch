@@ -154,6 +154,7 @@ Intentionally **no support for**: phrase-quotes (`"..."` is just literal substri
 | `bible-auto-cloud-check` | `"1"` / `"0"` — 啟動時是否自動偵測雲端有無更新（半自動同步開關，預設 `"0"`） |
 | `bible-cloud-linked` | `"1"` — 表示使用者曾成功連結 Google 帳號；啟動時用來決定是否要 silent refresh |
 | `bible-cloud-token-cache` | `{access_token, expiry, email}` — 快取 Google access token（~1 小時）避免每次 reload 都打網路；登出或撤銷時清除 |
+| `bible-auto-relink` | `"1"`(預設) / `"0"` — 啟動時要不要自動連結 Google。`"0"` = 啟動完全不碰 Google（不還原快取、不 silent refresh、也跳過 autoCheckCloudOnLaunch），顯示「尚未連結」，手動按「連結」才動；token 快取保留，重新開啟開關下次啟動即恢復 |
 | `bible-reading-track` | `"1"`(預設) / `"0"` — 讀經足跡開關；停用只是不再記錄，既有記錄保留 |
 | `bible-reading-log` | `{ m:{ "YYYY-MM":{ "bid:chap":次數 } }, d:{ "YYYY-MM-DD":章次 } }` — 讀經足跡按月分桶；本月/近3月/近6月/近12月/歷年都靠加總月桶 |
 | `bible-reading-log-last` | `{ "bid:chap": ts }` — 同一章 30 分鐘防重計；寫入時順手清掉超過 1 小時的舊項 |
@@ -220,6 +221,7 @@ Five safety fuses are non-negotiable; do not remove any when refactoring:
 5. **No-op when `GOOGLE_CLIENT_ID === ''`** — the UI shows a "not configured" notice and no sync code paths run.
 
 #### Connection persistence (`autoRelinkOnLaunch`)
+**使用者可關（2026-07-03 牧者要求）**：sync 區塊有勾選框「🔗 啟動時自動連結 Google 帳號（這台裝置）」（`bible-auto-relink`，預設開＝現行行為）。關掉後三個啟動路徑都被 `autoRelinkEnabled()` 擋住：init 的同步 `restoreCachedToken()`、1.5s 的 `autoRelinkOnLaunch()`、連帶 `autoCheckCloudOnLaunch()`（沒 token 必失敗，一起跳過）。只管「自動連結」；上傳／還原的五道安全保險不受影響。
 Critical UX fix — Google access tokens used to live only in memory, so every page reload / F5 / PWA restart forced the user to click 「🔗 連結 Google 帳號」 again. Now:
 - On every successful sign-in/refresh, `persistCloudLinkedState()` writes `{access_token, expiry, email}` to `bible-cloud-token-cache` and sets `bible-cloud-linked = "1"`.
 - Init script does a synchronous `restoreCachedToken()` before the first `updateSyncUi()` so the UI shows 「已連結」immediately (no flash of 「尚未連結」) when cache is fresh (<55 min old).

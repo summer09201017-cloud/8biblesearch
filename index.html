@@ -1838,6 +1838,16 @@ body {
           <p class="sync-tutorial-tip">💡 <b>請記下您用哪個 Google 帳號連結</b>。換手機 / 清快取後要還原筆記，必須登入「同一個」帳號才能找到您的備份。</p>
         </details>
 
+        <div class="sync-auto-check" style="margin-bottom:12px;">
+          <label>
+            <input type="checkbox" id="auto-relink-toggle" onchange="setAutoRelink(this.checked)">
+            <span>
+              <b>🔗 啟動時自動連結 Google 帳號（這台裝置）</b>
+              <span class="sync-auto-check-desc">開啟＝開 App 自動恢復上次的連結（現行行為）。關閉＝開 App 完全不碰 Google、顯示「尚未連結」，要備份時再手動按「連結」即可。不論開關，上傳／還原永遠要您手動按鈕確認，不會自動覆蓋資料。</span>
+            </span>
+          </label>
+        </div>
+
         <div id="sync-signed-out" hidden>
           <button class="btn" onclick="gisSignInWithWarning()">🔗 連結 Google 帳號</button>
         </div>
@@ -5690,6 +5700,23 @@ const SNAPSHOT_MAX = 3;
 // 持久化連結狀態（避免每次 reload 都要重新簽入）
 const CLOUD_LINKED_KEY = 'bible-cloud-linked';
 const CLOUD_TOKEN_CACHE_KEY = 'bible-cloud-token-cache';
+// 啟動時要不要自動連結 Google(2026-07-03 牧者要求可手動關):
+// '1'(預設)=維持原行為(還原快取+silent refresh);'0'=啟動完全不碰 Google,
+// 顯示「尚未連結」,要用雲端同步時再手動按「連結」。只管自動連結,
+// 不影響五道安全保險(上傳/還原永遠要手動按鈕+確認)。
+const AUTO_RELINK_KEY = 'bible-auto-relink';
+function autoRelinkEnabled() {
+  try { return localStorage.getItem(AUTO_RELINK_KEY) !== '0'; } catch(e) { return true; }
+}
+function setAutoRelink(on) {
+  try { localStorage.setItem(AUTO_RELINK_KEY, on ? '1' : '0'); } catch(e) {}
+  toast(on ? '下次開啟 App 會自動連結 Google' : '下次開啟 App 不再自動連結 Google（目前連線不變）');
+  refreshAutoRelinkToggle();
+}
+function refreshAutoRelinkToggle() {
+  const cb = document.getElementById('auto-relink-toggle');
+  if (cb) cb.checked = autoRelinkEnabled();
+}
 
 let gisTokenClient = null;
 let gisAccessToken = null;
@@ -6234,6 +6261,7 @@ async function silentTokenRefresh() {
 // 啟動時自動恢復連結（不論 auto-check 開關）— 這樣 reload / F5 不會掉線
 async function autoRelinkOnLaunch() {
   if (!GOOGLE_CLIENT_ID) return false;
+  if (!autoRelinkEnabled()) return false; // 使用者關掉「啟動時自動連結」→ 啟動不碰 Google
   let linked = '';
   try { linked = localStorage.getItem(CLOUD_LINKED_KEY) || ''; } catch(e) {}
   if (linked !== '1') return false;
@@ -6375,13 +6403,15 @@ initBookSelector();
 initVersionToggles();
 renderVersionOrderList();
 // 同步從 localStorage 恢復雲端連結，這樣 UI 不會先閃「尚未連結」
+// （使用者關掉「啟動時自動連結」時連快取也不還原——啟動完全不碰 Google）
 try {
-  if (GOOGLE_CLIENT_ID && localStorage.getItem(CLOUD_LINKED_KEY) === '1') {
+  if (GOOGLE_CLIENT_ID && autoRelinkEnabled() && localStorage.getItem(CLOUD_LINKED_KEY) === '1') {
     restoreCachedToken();
   }
 } catch(e) {}
 updateSyncUi();
 loadAutoCloudCheckPref();
+refreshAutoRelinkToggle();
 renderSnapshotList();
 loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
 loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
@@ -6422,7 +6452,9 @@ loadLocalData().then(() => {
   // 首次使用提示（看過後不再自動出現）；稍延後讓主畫面先穩定
   setTimeout(showWelcomeIfNew, 600);
   // 雲端：先恢復連結 → 再（若有開）偵測雲端更新
+  // （「啟動時自動連結」關掉時兩者都跳過——偵測雲端需要 token,沒連結必失敗）
   setTimeout(async () => {
+    if (!autoRelinkEnabled()) return;
     await autoRelinkOnLaunch();
     await autoCheckCloudOnLaunch();
   }, 1500);
