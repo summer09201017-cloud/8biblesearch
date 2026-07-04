@@ -1,11 +1,17 @@
-# 多譯本聖經查詢 — Roadmap（對齊現況 2026-07-03）
+# 多譯本聖經查詢 — Roadmap（對齊現況 2026-07-04）
 
 > 給接手的人/AI：這份是「**已完成 vs 真正待做**」的單一真相。已完成的別重做；待做的按 CP 值排序。
-> 線上：push `main` → Netlify 自動部署（repo `summer09201017-cloud/8biblesearch`）。SW 目前 **v55**。
+> 線上：push `main` → Netlify 自動部署（repo `summer09201017-cloud/8biblesearch`）。SW 目前 **v58**。
 
 ---
 
 ## ✅ 已完成（別重做）
+
+**2026-07-04（agape250 機）朗讀改進三件套（機器味＋破音字）**
+- 🔊 選聲排序：Edge Natural 神經語音 > Google 國語 > 傳統 SAPI；設定頁「🔊 朗讀聲音」下拉＋試聽（，''＝自動）。
+- 🔊 斷句抑揚：標點切短句逐句唸，問句尾音升、感嘆稍強、末句放慢；朗讀佇列改 {text,lang,pitch,rate} 物件。
+- 🔊 破音字同音替換 ＋（行傳→行撰、便雅憫→變雅憫、供物→貢物…）——只影響唸、不動畫面經文；唸錯回報一詞加一條。正本：skills 合輯 web-speech-scripture/assets/tts-fix.js。SW v57→**v58**。
+
 
 **核心功能（更早就有）**
 - 9 譯本離線閱讀：和合本 unv · 新譯本 ncv · 呂振中 lcc · ESV · NIV · KJV · ASV · WEB · BBE（`data/*.json`，SW cache-first 離線）。

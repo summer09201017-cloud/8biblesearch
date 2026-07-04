@@ -12,7 +12,10 @@ Production translations: 和合本 (unv) · ESV · NIV · WEB · BBE · 新譯�
 
 **完整、會更新的「已完成 vs 真正待做」清單見 `roadmap.md`（單一真相）。** 交接快照見 `讀我-HANDOFF.txt`。
 
-最近一輪 (2026-07-03，在 HFP 那台) 新增：
+最近一輪 (2026-07-04，agape250 機) 新增：
+- 🔊 **朗讀改進三件套**（機器味＋破音字，函式都在朗讀區塊）：①**選聲排序** `rankZhVoices()/_scoreZhVoice()`——Edge Natural 神經語音 > Google 國語 > 傳統 SAPI，zh-TW 優先；設定頁新卡「🔊 朗讀聲音」（`#speak-voice-sel` 下拉＋▶ 試聽 `previewSpeakVoice()`，存 `bible-speak-voice`，`''`＝自動）。②**斷句抑揚** `chunkClauses()`——主要標點切短句逐句唸（問句尾音升 pitch+0.1、感嘆 +0.06、末句 rate−0.05 收尾），`_speakQueue` 由「字串陣列」改為 `{text,lang,pitch,rate}` 物件陣列（改 `_speakNext`/`toggleReadAloud` 時注意）。③**破音字同音替換** `toSpeakable()`＋`TTS_PHRASES` 字典（行傳→行撰、便→變雅憫、供物→貢物…）——**只影響唸給引擎的字串，絕不動畫面經文**；牧者回報唸錯的詞就加一條（先耳朵驗收）。正本心法在 skills 合輯 `web-speech-scripture/assets/tts-fix.js`。SW **v58**。
+
+上一輪 (2026-07-03，在 HFP 那台) 新增：
 - 📖 **讀經足跡**（新分頁，排第 4 格）：查了就自動打卡。誠實性規則與實作細節見下方「讀經足跡」架構節——**改動前必讀**，尤其 `_autoQueryEnabled` 閘門與 dwell timer 兩個防灌水機制。
 - 🔗 **「啟動時自動連結 Google」開關**（`bible-auto-relink`，預設開）：見下方 Connection persistence 節。
 - 📑 分頁順序：足跡與對讀比較對調。SW 目前 **v57**。
@@ -165,6 +168,7 @@ Intentionally **no support for**: phrase-quotes (`"..."` is just literal substri
 | `bible-reading-track` | `"1"`(預設) / `"0"` — 讀經足跡開關；停用只是不再記錄，既有記錄保留 |
 | `bible-reading-log` | `{ m:{ "YYYY-MM":{ "bid:chap":次數 } }, d:{ "YYYY-MM-DD":章次 } }` — 讀經足跡按月分桶；本月/近3月/近6月/近12月/歷年都靠加總月桶 |
 | `bible-reading-log-last` | `{ "bid:chap": ts }` — 同一章 30 分鐘防重計；寫入時順手清掉超過 1 小時的舊項 |
+| `bible-speak-voice` | 朗讀聲音的 `voice.name`（設定頁「🔊 朗讀聲音」下拉；`''`＝自動挑最佳中文語音） |
 
 The export/import JSON in 設定/資料 includes `userData`, `historySearch`, `historyQuick`, `readingLog`, `exportedAt`. The cloud sync payload (schema 3) additionally carries `versionOrder`, `noteCount`, `timestamp`, `readingLog`. Schema bumped 2 → 3 when notes gained type/tags/dates/status fields, but no read-side branching exists — `schema` is just a label, all readers do best-effort field access with fallbacks.
 

@@ -1757,6 +1757,22 @@ body {
       <button class="btn btn-secondary btn-sm" onclick="resetVersionOrder()" style="margin-top:14px;">↺ 還原預設順序</button>
     </div>
 
+    <!-- 1.5 朗讀聲音 -->
+    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
+      <h3>🔊 朗讀聲音</h3>
+      <p style="font-size:0.9rem;color:var(--text2);margin-bottom:12px;">
+        選擇朗讀經文用的聲音，按「試聽」聽聽看。<b>不同瀏覽器內建的聲音不同</b>：
+        用 <b>Edge 瀏覽器</b>開本站會多出「Natural（自然）」語音，唸經文最接近真人。
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <select id="speak-voice-sel" class="fs-speak-ver" style="max-width:100%;min-width:200px;" onchange="saveSpeakVoice()" aria-label="選擇朗讀聲音"></select>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="previewSpeakVoice()">▶ 試聽</button>
+      </div>
+      <p style="font-size:0.78rem;color:var(--text2);margin-top:10px;">
+        💡 「自動（推薦）」會自己挑這台裝置上最自然的中文聲音。此設定只存在這台裝置。
+      </p>
+    </div>
+
     <!-- 2. 備份您的筆記（建議！）— 永遠可用、離線優先 -->
     <div class="settings-card-primary" style="background:var(--card); padding:20px; border-radius:12px; border:2px solid var(--accent); margin-bottom:16px; box-shadow:0 2px 8px var(--shadow);">
       <h3>💾 備份您的筆記（建議！）</h3>
@@ -2311,20 +2327,104 @@ let _speakQueue = [];
 function _loadVoices() {
   try { _speakVoices = ('speechSynthesis' in window) ? speechSynthesis.getVoices() : []; }
   catch(e) { _speakVoices = []; }
+  refreshVoiceOptions();
 }
 function initSpeech() {
   if (!('speechSynthesis' in window)) return;
   _loadVoices();
   try { speechSynthesis.onvoiceschanged = _loadVoices; } catch(e) {}
 }
+// ── 朗讀三件套（心法見 skill web-speech-scripture 的 tts-fix）──
+// ① 破音字典：把「常唸錯的詞」換成「讀音唯一且正確的同音字」。只影響唸、絕不影響畫面顯示。
+//    引擎本來就唸對時替換是聽感中性的（同音），所以安全；每條都要耳朵驗收過再加。
+const TTS_PHRASES = [
+  ['使徒行傳','使徒行撰'],['行傳','行撰'],['便雅憫','變雅憫'],['重生','崇生'],['重新','崇新'],
+  ['供物','貢物'],['供奉','貢奉'],['數算','屬算'],['數點','屬點'],['差遣','拆遣'],['奉差','奉拆'],
+  ['尼布甲尼撒','尼布甲尼灑'],['曝曬','瀑曬'],
+].sort((a,b) => b[0].length - a[0].length);
+function toSpeakable(text) {
+  let s = String(text || '');
+  for (let i = 0; i < TTS_PHRASES.length; i++) s = s.split(TTS_PHRASES[i][0]).join(TTS_PHRASES[i][1]);
+  return s;
+}
+// ② 斷句抑揚：主要標點切短句，問句尾音略升、感嘆稍強、末句放慢收尾（逐句 speak 天然停頓）。
+function chunkClauses(text, baseRate, basePitch) {
+  const s = String(text || '').trim();
+  if (!s) return [];
+  const parts = s.match(/[^。！？；!?;]+[。！？；!?;]?/g) || [s];
+  const out = [];
+  for (let i = 0; i < parts.length; i++) {
+    const t = parts[i].trim();
+    if (!t) continue;
+    const last = (i === parts.length - 1);
+    let p = basePitch, r = baseRate;
+    if (/[？?]$/.test(t)) p = basePitch + 0.1;
+    else if (/[！!]$/.test(t)) { p = basePitch + 0.06; r = baseRate + 0.03; }
+    if (last) r -= 0.05;
+    out.push({ text: t, pitch: Math.min(2, p), rate: Math.max(0.5, r) });
+  }
+  return out;
+}
+// ③ 中文語音排序：Edge 的 Natural 神經語音 > Google 國語 > 傳統 SAPI；zh-TW 優先。
+function _scoreZhVoice(v) {
+  let s = 0; const lang = String(v.lang||''), name = String(v.name||'');
+  if (/zh[-_]TW/i.test(lang)) s += 100;
+  else if (/zh[-_]HK/i.test(lang)) s += 60;
+  else if (/^zh/i.test(lang)) s += 40;
+  else return -1;
+  if (/natural|neural/i.test(name)) s += 50;
+  if (/曉|Hsiao|Xiao/i.test(name)) s += 20;
+  if (/雲|Yun/i.test(name)) s += 10;
+  if (/google/i.test(name)) s += 25;
+  return s;
+}
+function rankZhVoices() {
+  const vs = (_speakVoices && _speakVoices.length) ? _speakVoices
+    : (('speechSynthesis' in window) ? speechSynthesis.getVoices() : []);
+  return vs.map(v => ({ v, s: _scoreZhVoice(v) })).filter(x => x.s >= 0)
+    .sort((a, b) => b.s - a.s).map(x => x.v);
+}
+const SPEAK_VOICE_KEY = 'bible-speak-voice';
 function _pickVoice(lang) {
   const vs = (_speakVoices && _speakVoices.length) ? _speakVoices
     : (('speechSynthesis' in window) ? speechSynthesis.getVoices() : []);
   if (lang === 'zh') {
-    return vs.find(v => /zh[-_]TW/i.test(v.lang)) || vs.find(v => /zh[-_]HK/i.test(v.lang))
-        || vs.find(v => /^zh/i.test(v.lang)) || null;
+    const ranked = rankZhVoices();
+    let saved = '';
+    try { saved = localStorage.getItem(SPEAK_VOICE_KEY) || ''; } catch(e) {}
+    if (saved) { const hit = ranked.find(v => v.name === saved); if (hit) return hit; }
+    return ranked[0] || null;
   }
   return vs.find(v => /^en[-_]US/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
+}
+// 設定頁「朗讀聲音」下拉 + 試聽
+function refreshVoiceOptions() {
+  const sel = document.getElementById('speak-voice-sel');
+  if (!sel) return;
+  const ranked = rankZhVoices();
+  let saved = '';
+  try { saved = localStorage.getItem(SPEAK_VOICE_KEY) || ''; } catch(e) {}
+  let html = '<option value="">自動（推薦）</option>';
+  ranked.forEach(v => {
+    const label = v.name.replace(/Microsoft\s+/i,'').replace(/\s*-\s*Chinese.*$/i,'').replace(/\s*Online\s*/i,' ');
+    const esc = v.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    html += '<option value="' + esc + '">' + label.replace(/&/g,'&amp;').replace(/</g,'&lt;') + (/natural|neural/i.test(v.name) ? '（自然）' : '') + '</option>';
+  });
+  sel.innerHTML = html;
+  sel.value = (saved && ranked.some(v => v.name === saved)) ? saved : '';
+}
+function saveSpeakVoice() {
+  const sel = document.getElementById('speak-voice-sel');
+  try { localStorage.setItem(SPEAK_VOICE_KEY, sel ? sel.value : ''); } catch(e) {}
+}
+function previewSpeakVoice() {
+  if (!('speechSynthesis' in window)) { toast('此瀏覽器不支援語音朗讀'); return; }
+  stopReadAloud();
+  _loadVoices();
+  _speakQueue = chunkClauses(toSpeakable('起初，神創造天地。這是耶和華所定的日子，我們在其中要高興歡喜！'), 0.9, 1)
+    .map(c => ({ text: c.text, lang: 'zh', pitch: c.pitch, rate: c.rate }));
+  _speaking = true;
+  _speakNext();
 }
 function _detectLang(text) { return /[㐀-鿿]/.test(text) ? 'zh' : 'en'; }
 function _setSpeakBtn(on) {
@@ -2338,13 +2438,12 @@ function stopReadAloud() {
 }
 function _speakNext() {
   if (!_speaking || !_speakQueue.length) { stopReadAloud(); return; }
-  const text = _speakQueue.shift();
+  const item = _speakQueue.shift(); // { text, lang, pitch, rate }
   let u;
-  try { u = new SpeechSynthesisUtterance(text.replace(/\s+/g, '')); } catch(e) { stopReadAloud(); return; }
-  const lang = _detectLang(text);
-  const v = _pickVoice(lang);
-  if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = (lang === 'zh') ? 'zh-TW' : 'en-US'; }
-  u.rate = 0.9; u.pitch = 1;
+  try { u = new SpeechSynthesisUtterance(item.text.replace(/\s+/g, '')); } catch(e) { stopReadAloud(); return; }
+  const v = _pickVoice(item.lang);
+  if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = (item.lang === 'zh') ? 'zh-TW' : 'en-US'; }
+  u.rate = item.rate || 0.9; u.pitch = item.pitch || 1;
   u.onend = () => { if (_speaking) _speakNext(); };
   u.onerror = () => { if (_speaking) _speakNext(); };
   try { speechSynthesis.speak(u); } catch(e) { stopReadAloud(); }
@@ -2413,7 +2512,19 @@ function toggleReadAloud() {
   const verses = _gatherVisibleVerses(verName);
   if (!verses.length) { toast('目前畫面上沒有可朗讀的經文'); return; }
   _loadVoices();
-  _speakQueue = verses.slice(0, 300); // 安全上限，避免一次塞太多
+  // 每節依語言展開：中文先過破音字典再斷句抑揚；英文整節一句。
+  const q = [];
+  const capped = verses.slice(0, 300); // 安全上限，避免一次塞太多
+  for (let i = 0; i < capped.length; i++) {
+    const lang = _detectLang(capped[i]);
+    if (lang === 'zh') {
+      chunkClauses(toSpeakable(capped[i]), 0.9, 1).forEach(c => q.push({ text: c.text, lang: 'zh', pitch: c.pitch, rate: c.rate }));
+    } else {
+      q.push({ text: capped[i], lang: 'en', pitch: 1, rate: 0.9 });
+    }
+    if (q.length > 900) break; // 短句上限
+  }
+  _speakQueue = q;
   _speaking = true;
   _setSpeakBtn(true);
   _speakNext();
