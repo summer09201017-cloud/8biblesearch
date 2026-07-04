@@ -8,9 +8,9 @@
 ## ✅ 已完成（別重做）
 
 **2026-07-04（agape250 機）朗讀改進三件套（機器味＋破音字）**
-- 🔊 選聲排序：Edge Natural 神經語音 > Google 國語 > 傳統 SAPI；設定頁「🔊 朗讀聲音」下拉＋試聽（，''＝自動）。
+- 🔊 選聲排序：Edge Natural 神經語音 > Google 國語 > 傳統 SAPI；設定頁「🔊 朗讀聲音」下拉＋試聽（localStorage 鍵 bible-speak-voice，''＝自動）。
 - 🔊 斷句抑揚：標點切短句逐句唸，問句尾音升、感嘆稍強、末句放慢；朗讀佇列改 {text,lang,pitch,rate} 物件。
-- 🔊 破音字同音替換 ＋（行傳→行撰、便雅憫→變雅憫、供物→貢物…）——只影響唸、不動畫面經文；唸錯回報一詞加一條。正本：skills 合輯 web-speech-scripture/assets/tts-fix.js。SW v57→**v58**。
+- 🔊 破音字同音替換 toSpeakable()＋TTS_PHRASES 字典（行傳→行撰、便雅憫→變雅憫、供物→貢物…）——只影響唸、不動畫面經文；唸錯回報一詞加一條。正本：skills 合輯 web-speech-scripture/assets/tts-fix.js。SW v57→**v58**。
 
 
 **核心功能（更早就有）**
