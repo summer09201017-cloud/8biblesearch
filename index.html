@@ -5701,6 +5701,21 @@ function buildNotesPrintHtml() {
 </header>
 ${parts.join('')}
 ${list.length === 0 ? '<p style="text-align:center;color:#888;padding:40px;">目前沒有任何筆記</p>' : ''}
+    <script>
+      // play-stats 三層匿名計數(lobby-play-rank §3/§4):開啟 10 分去重;-start/-done 不去重;-done 帶 t=秒。零個資。
+      window.psPing = function (key, t) {
+        try {
+          if (!location.hostname.endsWith('netlify.app')) return;
+          var u = 'https://hfpc-play-stats.summer09201017.workers.dev/api/ping?g=' + key + (t ? '&t=' + t : '');
+          if (navigator.sendBeacon) navigator.sendBeacon(u); else fetch(u, { mode: 'no-cors' });
+        } catch (_) {}
+      };
+      try {
+        var psK = 'ps-last-8biblesearch';
+        var psLast = parseInt(localStorage.getItem(psK) || '0', 10);
+        if (Date.now() - psLast > 600000) { localStorage.setItem(psK, String(Date.now())); window.psPing('8biblesearch'); }
+      } catch (_) { window.psPing('8biblesearch'); }
+    </script>
 </body></html>`;
 }
 
