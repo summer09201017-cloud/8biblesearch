@@ -2,7 +2,7 @@
 # command = 部署閘門：驗證失敗 → 部署失敗 → 線上維持上一版（2026-07-19 白屏事故後加）
 [build]
   publish = "."
-  command = "node scripts/validate-deploy.mjs"
+  command = "node scripts/validate-deploy.mjs --selftest"
 
 # Service Worker 勿長期快取在 CDN（更新才會生效）
 [[headers]]
