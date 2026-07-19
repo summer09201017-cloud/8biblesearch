@@ -1482,6 +1482,29 @@ body {
   background:var(--card); border:1px solid var(--border); border-radius:12px;
   padding:24px; text-align:center; color:var(--text2);
 }
+/* 🏆 讀完一卷書:里程碑 */
+.track-book-name.done { color:#b8860b; font-weight:700; }
+.milestone-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.milestone-chip {
+  background:linear-gradient(135deg,#fff7dd,#ffe9a8); border:1px solid #e3c96b; color:#7a5c00;
+  border-radius:14px; padding:3px 10px; font-size:0.85rem; white-space:nowrap;
+}
+[data-theme="dark"] .milestone-chip, [data-theme="black"] .milestone-chip {
+  background:linear-gradient(135deg,#4a3d12,#6b570f); border-color:#8a7422; color:#ffe9a8;
+}
+.milestone-next { font-size:0.85rem; color:var(--text2); margin-top:6px; }
+.milestone-next b { color:var(--text); }
+/* 📤 月報分享卡 modal */
+#share-card-modal {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9000;
+  align-items:center; justify-content:center; padding:16px;
+}
+.share-card-box {
+  background:var(--card); border-radius:14px; padding:14px; max-width:420px; width:100%;
+  max-height:92vh; overflow-y:auto; text-align:center;
+}
+.share-card-box canvas { width:100%; height:auto; border-radius:8px; border:1px solid var(--border); }
+.share-card-actions { display:flex; gap:8px; justify-content:center; margin-top:10px; flex-wrap:wrap; }
 /* 7 個分頁在手機改為可橫向捲動,不再硬擠 */
 @media (max-width:600px) {
   .tabs { overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
@@ -1742,6 +1765,19 @@ body {
   <!-- 讀經足跡：查了就自動打卡（內容由 renderTrackPanel() 產生） -->
   <div id="panel-track" class="panel">
     <div id="track-content"></div>
+  </div>
+
+  <!-- 📤 足跡月報分享卡(canvas 產 PNG,可下載/分享 LINE) -->
+  <div id="share-card-modal" onclick="if(event.target===this)closeShareCardModal()">
+    <div class="share-card-box">
+      <div id="share-card-canvas-slot"></div>
+      <div class="share-card-actions">
+        <button class="btn" onclick="shareMonthCard()">📤 分享（LINE）</button>
+        <button class="btn btn-secondary" onclick="downloadMonthCard()">⬇️ 下載圖片</button>
+        <button class="btn btn-secondary" onclick="closeShareCardModal()">關閉</button>
+      </div>
+      <p style="font-size:0.78rem;color:var(--text2);margin-top:8px;">手機不支援直接分享時會自動改為下載，再從相簿傳到 LINE 即可。</p>
+    </div>
   </div>
 
   <div id="panel-settings" class="panel">
@@ -3739,6 +3775,7 @@ function clearReadingLog() {
   try {
     localStorage.removeItem(TRACK_LOG_KEY);
     localStorage.removeItem(TRACK_LAST_KEY);
+    localStorage.removeItem(MILESTONE_KEY); // 記錄沒了,慶祝記號也歸零(重讀完可再慶祝)
   } catch(e) {}
   toast('讀經足跡已清除');
   const p = document.getElementById('panel-track');
@@ -3783,6 +3820,7 @@ function recordChapterRead(bid, chap) {
     log.m[ym][key] = (log.m[ym][key] || 0) + 1;
     log.d[ymd] = (log.d[ymd] || 0) + 1;
     localStorage.setItem(TRACK_LOG_KEY, JSON.stringify(log));
+    checkBookMilestone(bid); // 🏆 這一章讓某卷全讀完了嗎?讀完就放彩帶(只慶祝一次)
   } catch(e) {}
 }
 
@@ -3824,6 +3862,235 @@ function goReadChapter(bid, chap) {
   window.scrollTo({ top: 0 });
 }
 
+// ====== 🏆 讀完一卷書 → 彩帶＋里程碑 ======
+// 完成判定永遠從 readingLog 現算(單一真相);MILESTONE_KEY 只記「慶祝過了沒」(防重複放彩帶)。
+const MILESTONE_KEY = 'bible-book-milestones'; // { "<bid>": 慶祝時的 ts }
+function loadBookMilestones() {
+  try { return JSON.parse(localStorage.getItem(MILESTONE_KEY) || '{}') || {}; } catch(e) { return {}; }
+}
+function isBookComplete(allCounts, book) {
+  for (let c = 1; c <= book.chapters; c++) if (!allCounts[book.bid + ':' + c]) return false;
+  return true;
+}
+function checkBookMilestone(bid) {
+  try {
+    const book = BOOKS.find(b => b.bid === bid);
+    if (!book) return;
+    const ms = loadBookMilestones();
+    if (ms[bid]) return; // 慶祝過了
+    if (!isBookComplete(sumTrackRange(loadReadingLog(), 'all'), book)) return;
+    ms[bid] = Date.now();
+    try { localStorage.setItem(MILESTONE_KEY, JSON.stringify(ms)); } catch(e) {}
+    celebrateConfetti({ origin: 'center', count: 180 });
+    toast('🎉 恭喜！《' + book.chinesef + '》全卷 ' + book.chapters + ' 章都讀過了！');
+  } catch(e) {}
+}
+// 啟動時把「上線前就已讀完」的書卷靜默補上記號(不放彩帶)——彩帶只留給「讀完當下」;
+// 也避免早就讀完的卷在下次隨手重讀某章時突然慶祝。匯入/雲端還原後也各補跑一次。
+function backfillBookMilestones() {
+  try {
+    const log = loadReadingLog();
+    if (!Object.keys(log.m).length) return;
+    const ms = loadBookMilestones();
+    const allCounts = sumTrackRange(log, 'all');
+    let changed = false;
+    BOOKS.forEach(b => { if (!ms[b.bid] && isBookComplete(allCounts, b)) { ms[b.bid] = Date.now(); changed = true; } });
+    if (changed) localStorage.setItem(MILESTONE_KEY, JSON.stringify(ms));
+  } catch(e) {}
+}
+
+// 零相依彩帶(win-confetti 範式):蓋最上層、不吃點擊、灑完自清、尊重 prefers-reduced-motion
+function celebrateConfetti(opts) {
+  opts = opts || {};
+  const count = opts.count || 140, duration = opts.duration || 2200;
+  const fromCenter = opts.origin === 'center';
+  try { if (matchMedia('(prefers-reduced-motion: reduce)').matches) return function(){}; } catch(e) {}
+  const COLORS = ['#ffd479','#ff7a59','#5ec5c5','#7ec850','#b18cff','#ff9ec4','#ffffff'];
+  const cv = document.createElement('canvas');
+  cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999';
+  document.body.appendChild(cv);
+  const ctx = cv.getContext('2d');
+  let dpr = Math.min(devicePixelRatio || 1, 2);
+  const resize = () => { dpr = Math.min(devicePixelRatio || 1, 2); cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; };
+  resize(); addEventListener('resize', resize);
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const parts = [];
+  function spawn() {
+    const x = fromCenter ? innerWidth / 2 : rnd(0, innerWidth);
+    const y = fromCenter ? innerHeight / 2 : rnd(-40, -10);
+    const ang = fromCenter ? rnd(0, Math.PI * 2) : rnd(Math.PI * 0.35, Math.PI * 0.65);
+    const spd = fromCenter ? rnd(4, 10) : rnd(2, 5);
+    parts.push({ x, y, vx: Math.cos(ang) * spd, vy: fromCenter ? Math.sin(ang) * spd : spd,
+      w: rnd(6, 11), h: rnd(8, 15), rot: rnd(0, Math.PI * 2), vr: rnd(-0.25, 0.25),
+      color: COLORS[(Math.random() * COLORS.length) | 0], sway: rnd(0, Math.PI * 2) });
+  }
+  const t0 = performance.now();
+  let raf = 0, alive = true;
+  function frame(now) {
+    if (!alive) return;
+    const elapsed = now - t0;
+    if (elapsed < duration) for (let i = 0; i < count / 26; i++) spawn();
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.save(); ctx.scale(dpr, dpr);
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i];
+      p.vy += 0.12; p.sway += 0.05;
+      p.x += p.vx + Math.sin(p.sway) * 0.6; p.y += p.vy; p.rot += p.vr; p.vx *= 0.99;
+      if (p.y > innerHeight + 20) { parts.splice(i, 1); continue; }
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.color; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    ctx.restore();
+    if (elapsed >= duration && parts.length === 0) return cleanup();
+    raf = requestAnimationFrame(frame);
+  }
+  raf = requestAnimationFrame(frame);
+  function cleanup() { alive = false; cancelAnimationFrame(raf); removeEventListener('resize', resize); cv.remove(); }
+  return cleanup;
+}
+
+// ====== 📤 足跡月報分享卡(share-card 範式:純 canvas → PNG;固定亮色不隨主題) ======
+// 卡上金句已用 cuv MCP 核對(詩篇 119:105 和合本,2026-07-19)——改金句必先 lookup 核對。
+const MONTH_CARD_VERSE = { text: '你的話是我腳前的燈，是我路上的光。', ref: '詩篇 119:105' };
+let _monthCardCanvas = null;
+// 圓角矩形路徑(不用 ctx.roundRect——iOS 16 以下 Safari 沒有,長輩舊裝置會炸)
+function _cardRR(x, px, py, w, h, r) {
+  x.beginPath();
+  x.moveTo(px + r, py);
+  x.arcTo(px + w, py, px + w, py + h, r);
+  x.arcTo(px + w, py + h, px, py + h, r);
+  x.arcTo(px, py + h, px, py, r);
+  x.arcTo(px, py, px + w, py, r);
+  x.closePath();
+}
+function buildMonthCardCanvas() {
+  const W = 1080, H = 1440;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const x = cv.getContext('2d');
+  const FONT = '"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';
+  const now = new Date();
+  const ym = _trackYm(now);
+  const log = loadReadingLog();
+  const monthCounts = sumTrackRange(log, '1');
+  const monthTotal = Object.values(log.m[ym] || {}).reduce((a, n) => a + n, 0);
+  const allCounts = sumTrackRange(log, 'all');
+  const distinctEver = Object.keys(allCounts).length;
+  const pct = Math.round((distinctEver / TOTAL_CHAPTERS) * 1000) / 10;
+  const streak = trackStreak(log);
+  const doneBooks = BOOKS.filter(b => isBookComplete(allCounts, b)).length;
+
+  // 底
+  x.fillStyle = '#faf6ee'; x.fillRect(0, 0, W, H);
+  x.strokeStyle = '#d9c9a3'; x.lineWidth = 6; x.strokeRect(24, 24, W - 48, H - 48);
+  // 標題
+  x.fillStyle = '#5a4630'; x.textAlign = 'center';
+  x.font = 'bold 64px ' + FONT;
+  x.fillText('📖 我的讀經足跡', W / 2, 130);
+  x.font = '44px ' + FONT; x.fillStyle = '#8a7454';
+  x.fillText(now.getFullYear() + ' 年 ' + (now.getMonth() + 1) + ' 月', W / 2, 195);
+  // 統計四格
+  const stats = [
+    [String(monthTotal), '本月章次'],
+    [String(streak), '連續天數'],
+    [pct + '%', '全卷足跡'],
+    ['🏆 ' + doneBooks, '讀完卷數'],
+  ];
+  const sw2 = (W - 120) / 4;
+  stats.forEach((s, i) => {
+    const sx = 60 + i * sw2;
+    x.fillStyle = '#fffdf7'; x.strokeStyle = '#e3d5b3'; x.lineWidth = 2;
+    _cardRR(x, sx + 8, 235, sw2 - 16, 150, 14); x.fill(); x.stroke();
+    x.fillStyle = '#7a5c00'; x.font = 'bold 56px ' + FONT;
+    x.fillText(s[0], sx + sw2 / 2, 310);
+    x.fillStyle = '#8a7454'; x.font = '30px ' + FONT;
+    x.fillText(s[1], sx + sw2 / 2, 358);
+  });
+  // 本月日曆熱圖(日一二三四五六 × 週)
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const cell = 108, gap = 14, gridW = 7 * cell + 6 * gap;
+  const gx0 = (W - gridW) / 2, gy0 = 500;
+  x.font = '34px ' + FONT; x.fillStyle = '#8a7454';
+  ['日','一','二','三','四','五','六'].forEach((d, i) => x.fillText(d, gx0 + i * (cell + gap) + cell / 2, gy0 - 20));
+  const tiers = ['#eee4cc', '#9be9a8', '#40c463', '#30a14e', '#216e39'];
+  for (let day = 1; day <= daysInMonth; day++) {
+    const idx = first.getDay() + day - 1;
+    const col = idx % 7, row = Math.floor(idx / 7);
+    const n = log.d[ym + '-' + String(day).padStart(2, '0')] || 0;
+    const tier = n >= 10 ? 4 : n >= 5 ? 3 : n >= 2 ? 2 : n >= 1 ? 1 : 0;
+    const cx = gx0 + col * (cell + gap), cy = gy0 + row * (cell + gap);
+    x.fillStyle = tiers[tier];
+    _cardRR(x, cx, cy, cell, cell, 16); x.fill();
+    x.fillStyle = tier >= 2 ? '#ffffff' : '#9c8a66'; x.font = '32px ' + FONT;
+    x.fillText(String(day), cx + cell / 2, cy + cell / 2 + 11);
+  }
+  const rows = Math.ceil((first.getDay() + daysInMonth) / 7);
+  let yAfter = gy0 + rows * (cell + gap) + 40;
+  // 本月熱區前 3
+  const hot = Object.keys(monthCounts).map(k => {
+    const seg = k.split(':'); return { bid: +seg[0], chap: +seg[1], n: monthCounts[k] };
+  }).sort((a, b) => b.n - a.n || a.bid - b.bid || a.chap - b.chap).slice(0, 3);
+  if (hot.length) {
+    x.fillStyle = '#5a4630'; x.font = 'bold 40px ' + FONT;
+    x.fillText('🔥 本月讀最多', W / 2, yAfter + 10);
+    x.font = '36px ' + FONT; x.fillStyle = '#7a6547';
+    hot.forEach((h, i) => {
+      const bk = BOOKS.find(b => b.bid === h.bid);
+      x.fillText((bk ? bk.chinesef : h.bid) + ' 第 ' + h.chap + ' 章 · ' + h.n + ' 次', W / 2, yAfter + 70 + i * 52);
+    });
+    yAfter += 70 + hot.length * 52;
+  }
+  // 金句(已 cuv 核對)
+  x.fillStyle = '#6b5638'; x.font = '38px ' + FONT;
+  x.fillText('「' + MONTH_CARD_VERSE.text + '」', W / 2, H - 200);
+  x.font = '30px ' + FONT; x.fillStyle = '#9c8a66';
+  x.fillText('— ' + MONTH_CARD_VERSE.ref + '（和合本）', W / 2, H - 150);
+  // 頁腳
+  x.font = '28px ' + FONT; x.fillStyle = '#b3a284';
+  x.fillText('多譯本聖經查詢 · 8biblesearch.netlify.app · ' + now.toLocaleDateString('zh-TW'), W / 2, H - 72);
+  return cv;
+}
+function openMonthShareCard() {
+  try {
+    _monthCardCanvas = buildMonthCardCanvas();
+    const slot = document.getElementById('share-card-canvas-slot');
+    slot.innerHTML = '';
+    slot.appendChild(_monthCardCanvas);
+    document.getElementById('share-card-modal').style.display = 'flex';
+  } catch(e) { toast('產生分享卡失敗：' + e.message); }
+}
+function closeShareCardModal() {
+  document.getElementById('share-card-modal').style.display = 'none';
+}
+function _monthCardFname() {
+  return '讀經足跡-' + _trackYm(new Date()) + '.png';
+}
+function downloadMonthCard() {
+  if (!_monthCardCanvas) return;
+  _monthCardCanvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = _monthCardFname(); a.click();
+    URL.revokeObjectURL(url);
+    toast('已下載本月讀經卡');
+  }, 'image/png');
+}
+function shareMonthCard() {
+  if (!_monthCardCanvas) return;
+  _monthCardCanvas.toBlob(async blob => {
+    try {
+      const file = new File([blob], _monthCardFname(), { type: 'image/png' });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: '我的讀經足跡' });
+        return;
+      }
+    } catch(e) { if (e && e.name === 'AbortError') return; }
+    // 不支援 Web Share(桌機瀏覽器多半如此)→ 退為下載
+    downloadMonthCard();
+  }, 'image/png');
+}
+
 const TRACK_RANGE_LABELS = { '1': '本月', '3': '近 3 個月', '6': '近 6 個月', '12': '近 12 個月', 'all': '歷年' };
 const TOTAL_CHAPTERS = BOOKS.reduce((n, b) => n + b.chapters, 0); // 66 卷合計 1189 章
 
@@ -3848,13 +4115,39 @@ function renderTrackPanel() {
   const counts = sumTrackRange(log, _trackRange);
   const rangeLabel = TRACK_RANGE_LABELS[_trackRange];
 
+  const completedBooks = BOOKS.filter(b => isBookComplete(allCounts, b));
+
   // 統計卡
   let html = `<div class="track-stats-row">
     <div class="track-stat-card"><div class="track-stat-num">${todayCount}</div><div class="track-stat-label">今日已讀（章次）</div></div>
     <div class="track-stat-card"><div class="track-stat-num">${streak}</div><div class="track-stat-label">連續天數</div></div>
     <div class="track-stat-card"><div class="track-stat-num">${distinctEver}</div><div class="track-stat-label">讀過章數（全聖經 ${TOTAL_CHAPTERS} 章）</div></div>
     <div class="track-stat-card"><div class="track-stat-num">${pct}%</div><div class="track-stat-label">全卷足跡</div></div>
+    <div class="track-stat-card"><div class="track-stat-num">🏆 ${completedBooks.length}</div><div class="track-stat-label">讀完卷數（66 卷）</div></div>
   </div>`;
+
+  // 📤 月報分享卡按鈕
+  html += `<div style="text-align:center;margin:4px 0 12px;">
+    <button class="btn" onclick="openMonthShareCard()" title="把本月讀經足跡做成一張圖，傳到 LINE 小組互相激勵">📤 產生本月讀經卡</button>
+  </div>`;
+
+  // 🏆 讀完的書卷里程碑
+  html += `<div class="track-section"><h3>🏆 讀完的書卷（${completedBooks.length} / 66）</h3>`;
+  if (completedBooks.length) {
+    html += `<div class="milestone-chips">` + completedBooks.map(b => `<span class="milestone-chip">🏆 ${b.chinesef}</span>`).join('') + `</div>`;
+  }
+  // 最接近讀完的書卷(前 3,給個目標)
+  const nearly = BOOKS.map(b => {
+    let read = 0;
+    for (let c = 1; c <= b.chapters; c++) if (allCounts[b.bid + ':' + c]) read++;
+    return { b, read, left: b.chapters - read };
+  }).filter(o => o.left > 0 && o.read > 0).sort((a, c) => a.left - c.left || a.b.bid - c.b.bid).slice(0, 3);
+  if (nearly.length) {
+    html += nearly.map(o => `<div class="milestone-next">📖 <b>${o.b.chinesef}</b> 還差 ${o.left} 章就讀完（${o.read}/${o.b.chapters}）</div>`).join('');
+  } else if (!completedBooks.length) {
+    html += `<p style="color:var(--text2);font-size:0.9rem;">讀完任何一卷書的全部章，就會在這裡掛上 🏆（俄巴底亞書只有 1 章，是個好起點 😉）。</p>`;
+  }
+  html += `</div>`;
 
   // 範圍切換
   html += `<div class="track-range-chips">` + Object.keys(TRACK_RANGE_LABELS).map(r =>
@@ -3889,7 +4182,8 @@ function renderTrackPanel() {
       const cls = n >= 10 ? 't4' : n >= 5 ? 't3' : n >= 2 ? 't2' : n >= 1 ? 't1' : '';
       cells += `<div class="track-cell ${cls}" onclick="goReadChapter(${b.bid},${c})" title="${b.chinesef} ${c} 章${n ? '：讀過 ' + n + ' 次' : ''}"></div>`;
     }
-    return `<div class="track-book-row"><div class="track-book-name">${b.chineses}</div><div class="track-cells">${cells}</div></div>`;
+    const done = isBookComplete(allCounts, b);
+    return `<div class="track-book-row"><div class="track-book-name${done ? ' done' : ''}" title="${b.chinesef}${done ? '：全卷讀完 🏆' : ''}">${done ? '🏆' : ''}${b.chineses}</div><div class="track-cells">${cells}</div></div>`;
   }).join('');
   html += `<div class="track-legend">少 <div class="track-cell"></div><div class="track-cell t1"></div><div class="track-cell t2"></div><div class="track-cell t3"></div><div class="track-cell t4"></div> 多（1 / 2 / 5 / 10 次以上）</div>`;
   html += `<p class="track-note">📌 打開一章停留 15 秒就自動記錄（同一章 30 分鐘內只算一次；搜尋不計）。記錄只存在這台裝置，每個人的進度各自獨立；可在「設定/資料」停用或清除。</p>`;
@@ -5734,6 +6028,7 @@ function exportUserData() {
     historyQuick: localStorage.getItem('bible-quick-history'),
     userData: localStorage.getItem(USER_DATA_KEY),
     readingLog: localStorage.getItem(TRACK_LOG_KEY),
+    bookMilestones: localStorage.getItem(MILESTONE_KEY),
     exportedAt: new Date().toISOString()
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
@@ -5777,6 +6072,8 @@ function importUserData(e) {
       if(data.historySearch) localStorage.setItem('bible-search-history', data.historySearch);
       if(data.historyQuick) localStorage.setItem('bible-quick-history', data.historyQuick);
       if(data.readingLog) localStorage.setItem(TRACK_LOG_KEY, data.readingLog);
+      if(data.bookMilestones) localStorage.setItem(MILESTONE_KEY, data.bookMilestones);
+      backfillBookMilestones(); // 匯入的記錄可能有「已讀完但沒慶祝記號」的卷,靜默補上
       if(data.userData) {
         localStorage.setItem(USER_DATA_KEY, data.userData);
         userData = JSON.parse(data.userData);
@@ -5880,7 +6177,8 @@ function snapshotLocal(reason) {
     historySearch: localStorage.getItem('bible-search-history') || '[]',
     historyQuick: localStorage.getItem('bible-quick-history') || '[]',
     versionOrder: localStorage.getItem(VERSION_ORDER_KEY) || 'null',
-    readingLog: localStorage.getItem(TRACK_LOG_KEY) || '{}'
+    readingLog: localStorage.getItem(TRACK_LOG_KEY) || '{}',
+    bookMilestones: localStorage.getItem(MILESTONE_KEY) || '{}'
   });
   arr = arr.slice(0, SNAPSHOT_MAX);
   try { localStorage.setItem(LOCAL_SNAPSHOTS_KEY, JSON.stringify(arr)); } catch(e) {
@@ -5927,6 +6225,8 @@ function restoreLocalSnapshot(idx) {
   if (snap.historyQuick) localStorage.setItem('bible-quick-history', snap.historyQuick);
   if (snap.versionOrder && snap.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, snap.versionOrder);
   if (snap.readingLog) localStorage.setItem(TRACK_LOG_KEY, snap.readingLog);
+  if (snap.bookMilestones) localStorage.setItem(MILESTONE_KEY, snap.bookMilestones);
+  backfillBookMilestones();
   userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
   migrateUserDataLazy();
   loadVersionOrder();
@@ -6206,7 +6506,8 @@ function buildCloudPayload() {
     historySearch: localStorage.getItem('bible-search-history') || '[]',
     historyQuick: localStorage.getItem('bible-quick-history') || '[]',
     versionOrder: localStorage.getItem(VERSION_ORDER_KEY) || 'null',
-    readingLog: localStorage.getItem(TRACK_LOG_KEY) || '{}'
+    readingLog: localStorage.getItem(TRACK_LOG_KEY) || '{}',
+    bookMilestones: localStorage.getItem(MILESTONE_KEY) || '{}'
   }, null, 2);
 }
 
@@ -6307,6 +6608,8 @@ async function cloudRestore() {
     if (payload.historyQuick) localStorage.setItem('bible-quick-history', payload.historyQuick);
     if (payload.versionOrder && payload.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, payload.versionOrder);
     if (payload.readingLog) localStorage.setItem(TRACK_LOG_KEY, payload.readingLog);
+    if (payload.bookMilestones) localStorage.setItem(MILESTONE_KEY, payload.bookMilestones);
+    backfillBookMilestones();
 
     userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
     migrateUserDataLazy();
@@ -6483,6 +6786,8 @@ async function autoCheckCloudOnLaunch(opts) {
     if (payload.historyQuick) localStorage.setItem('bible-quick-history', payload.historyQuick);
     if (payload.versionOrder && payload.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, payload.versionOrder);
     if (payload.readingLog) localStorage.setItem(TRACK_LOG_KEY, payload.readingLog);
+    if (payload.bookMilestones) localStorage.setItem(MILESTONE_KEY, payload.bookMilestones);
+    backfillBookMilestones();
     userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
     migrateUserDataLazy();
     loadVersionOrder();
@@ -6559,6 +6864,7 @@ loadLocalData().then(() => {
   }
   fetchVerses();
   _autoQueryEnabled = true;
+  backfillBookMilestones(); // 🏆 上線前就讀完的卷靜默補記號(彩帶只留給「讀完當下」)
   checkBackupReminder();
   // 首次使用提示（看過後不再自動出現）；稍延後讓主畫面先穩定
   setTimeout(showWelcomeIfNew, 600);

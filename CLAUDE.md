@@ -16,7 +16,9 @@ Production translations: 和合本 (unv) · ESV · NIV · WEB · BBE · 新譯�
 - 🚨 **白屏事故與修復**：play-stats beacon 批次（別台機器 push）把 snippet 插進 `buildNotesPrintHtml()` 模板字串（字串裡含完整 `</body></html>`），未跳脫的 `</script>` 提早關閉主腳本 → 整站 JS 變頁面文字。已移到真正頁尾獨立 `<script>`（`window.psPing`＋`ps-last-8biblesearch` 10 分去重）。**教訓：對本 repo 注入頁尾程式必須錨定「檔案最後一個 `</body>`」＋逐塊驗證。**
 - 🛡 **部署閘門 v2**：`scripts/validate-deploy.mjs`，netlify.toml `[build].command = "node scripts/validate-deploy.mjs --selftest"`——失敗＝部署失敗、線上維持前一版。檢查：真兇 fixture 自測（`tests/fixtures/broken-20260719-whitescreen.html`）／內嵌 JS 逐塊 `new Function`／列印模板完整性／衝突標記／`data/*.json` 完整性／**VERSE_COUNTS↔資料逐格一致**／SW+manifest。本機另有全域 pre-push hook（skill `deploy-gate`）。**改了閘門本身要跑 `--selftest` 且故意弄壞測一次。**
 - 🐛 **VERSE_COUNTS 修正**：手抄常數錯 43+ 格（民數記漏第 9 章→後 27 章位移、箴言漏 10 章、撒上 20/23/24、林前 16）。已改「9 譯本資料檔最大值」程式化重生成（約 7:53 和合本 52 節、他版 53 節——取最大）。**別手改這條常數；要更新就從 data/ 重生成，閘門會逐格對賬。**
-- 📑 分頁順序改為：閱讀／搜尋／**📖 足跡**／快速查詢／筆記／📊 對讀／設定。SW **v62**。
+- 📑 分頁順序改為：閱讀／搜尋／**📖 足跡**／快速查詢／筆記／📊 對讀／設定。
+- 🏆 **讀完一卷書里程碑**：`recordChapterRead()` 落帳後呼叫 `checkBookMilestone(bid)`——該卷全部章都讀過且沒慶祝過 → 中心爆彩帶（`celebrateConfetti`，零相依、尊重 reduced-motion、自清）＋toast。**完成判定永遠從 readingLog 現算**（`isBookComplete`）；`bible-book-milestones` 只記「慶祝過沒」。啟動/匯入/雲端還原/快照還原都跑 `backfillBookMilestones()` 靜默補記號（彩帶只留給讀完當下）；清除足跡連同清掉。足跡分頁：🏆 統計卡＋金色 chips＋「還差 N 章」前 3＋地圖書名掛 🏆。
+- 📤 **足跡月報分享卡**：足跡分頁「📤 產生本月讀經卡」→ `buildMonthCardCanvas()` 畫 1080×1440 PNG（統計四格＋本月日曆熱圖＋熱區前 3＋金句**詩 119:105 已 cuv 核對**——換金句必先 lookup）→ `#share-card-modal` 預覽＋Web Share（不支援退下載）。固定亮色不隨主題；**圓角用 `_cardRR` 手繪 path，別用 `ctx.roundRect`（舊 iOS Safari 沒有）**。SW **v63**。
 - 🧰 跨專案沉澱：skill `deploy-gate`（閘門範式＋全域 hook）、skill `bible-ref-kit`（66 卷表＋1189 章節數＋參照解析，抽自本 repo）、cuv MCP **v1.2.0**（+`parse_ref`/`search`）。
 
 上一輪 (2026-07-04，agape250 機) 新增：
@@ -179,6 +181,7 @@ Intentionally **no support for**: phrase-quotes (`"..."` is just literal substri
 | `bible-reading-log-last` | `{ "bid:chap": ts }` — 同一章 30 分鐘防重計；寫入時順手清掉超過 1 小時的舊項 |
 | `bible-speak-voice` | 朗讀聲音的 `voice.name`（設定頁「🔊 朗讀聲音」下拉；`''`＝自動挑最佳中文語音） |
 | `ps-last-8biblesearch` | play-stats 匿名開啟 ping 的 10 分鐘去重時戳（頁尾 beacon；只在 netlify.app 網域發送、零個資）。**不進備份鏈**——純去重用，遺失無所謂 |
+| `bible-book-milestones` | `{ "<bid>": ts }` — 讀完一卷書「慶祝過了沒」的記號（防重複放彩帶）。完成與否永遠從 `bible-reading-log` 現算，此鍵只管慶祝去重。已接備份鏈七站；清除足跡時一併清除 |
 
 The export/import JSON in 設定/資料 includes `userData`, `historySearch`, `historyQuick`, `readingLog`, `exportedAt`. The cloud sync payload (schema 3) additionally carries `versionOrder`, `noteCount`, `timestamp`, `readingLog`. Schema bumped 2 → 3 when notes gained type/tags/dates/status fields, but no read-side branching exists — `schema` is just a label, all readers do best-effort field access with fallbacks.
 
