@@ -1,4 +1,0 @@
-# 2026-07-20 遷 CF Pages:舊 Netlify 站 301 轉址到 hfpc-8biblesearch.pages.dev
-# ⚠ 只在 CF 站確認上線後才部署本檔(否則轉到空站)。部署=netlify deploy --prod --dir . --site c889cd5e-...
-# splat 保留路徑;301=永久轉址,舊書籤/舊連結自動跳新家。
-/*  https://hfpc-8biblesearch.pages.dev/:splat  301
