@@ -1,7 +1,7 @@
 ============================================================
 讀我 — HANDOFF（多譯本聖經查詢 PWA）
-交接日期：2026-07-03
-給：agape250 那台 PC 的 AI / 接手的人
+交接日期：2026-07-19
+給：另一台 PC 的 AI / 接手的人
 ============================================================
 
 ■ 這是什麼
@@ -10,10 +10,22 @@
   另有選用的 Google Drive 同步（drive.appdata，五道安全保險）。
   受眾＝教會非技術長輩（低視力多），介面全繁中。牧者本人+幾位朋友天天在用。
 
-■ 現在到哪（2026-07-03 已完成的重點）
+■ 現在到哪（2026-07-19 已完成的重點）
   - 9 譯本：unv 和合本 / ncv 新譯本 / lcc 呂振中 / esv / niv / kjv / asv / web / bbe
-  - 分頁順序：經文閱讀 / 關鍵字搜尋 / 快速查詢 / 📖 足跡 / 我的筆記 / 📊 對讀比較 / 設定/資料
-  - 本輪新增（2026-07-03，HFP 那台做的）：
+  - 分頁順序：經文閱讀 / 關鍵字搜尋 / 📖 足跡 / 快速查詢 / 我的筆記 / 📊 對讀比較 / 設定/資料
+  - 本輪新增（2026-07-19，agape250 機）——白屏事故閉環＋部署閘門：
+      * 🚨 白屏事故：beacon 批次把 snippet 插進 buildNotesPrintHtml() 模板字串（字串裡有
+        </body></html>），未跳脫 </script> 提早關閉主腳本 → 整站 JS 變頁面文字。已修復
+        （beacon 移到真正頁尾）並建立三道防線。
+      * 🛡 部署閘門 v2：scripts/validate-deploy.mjs（netlify.toml build command 帶 --selftest）
+        ——真兇 fixture 常駐自測 + 內嵌 JS 逐塊解析 + 列印模板完整性 + 衝突標記 +
+        data/*.json 完整性 + VERSE_COUNTS↔資料逐格一致 + SW/manifest。失敗＝部署失敗、
+        線上維持前一版。本機另有全域 pre-push hook（skill deploy-gate，hooks-片段 §15）。
+      * 🐛 VERSE_COUNTS 修正 43+ 格（民數記漏第9章→後27章位移、箴言漏10章、撒上/林前錯值）
+        ——已改「9 譯本資料檔最大值」程式化重生成。別手改這條常數，閘門會逐格對賬。
+      * 📑 足跡與快速查詢交換位置（足跡第 3 格）。
+      * 🧰 跨專案沉澱：skill deploy-gate / bible-ref-kit；cuv MCP v1.2.0（+parse_ref/search）。
+  - 上輪新增（2026-07-03，HFP 那台做的）：
       * 📖 讀經足跡：查了就自動打卡。誠實性規則（牧者定案）：閱讀一章「停留 15 秒」=算、
         快速查詢整章=算、搜尋不算、啟動還原不算、同章 30 分鐘只算一次。
         按月分桶 → 本月/近3/6/12月/歷年任意範圍加總、連續天數、熱區排行、
@@ -24,22 +36,31 @@
         關掉=開 App 完全不碰 Google、顯示尚未連結，手動按連結才動；token 快取保留。
         三個啟動路徑都有閘門（init 快取還原 / 1.5s autoRelink / autoCheckCloud）。
       * 手機分頁列可橫向捲動（容納 7 個分頁）。
-  - SW 目前 v57。上一輪（06-29）：朗讀經文/朗讀版本選擇器/手機底部字級列等，見 roadmap。
+  - SW 目前 v62（07-04 v58 → 07-19 beacon v59/白屏修復 v60/分頁 v61/VERSE_COUNTS v62）。
+  - 更早：07-04 朗讀三件套、07-03 讀經足跡、06-29 朗讀經文等，見 roadmap。
   - 詳細「已完成 vs 待做」見 roadmap.md（單一真相）。
 
 ■ 怎麼跑 / 驗證 / 部署
   本機預覽（一定要 HTTP，不能 file://）：
       py -3 -m http.server 8081   →  開 http://localhost:8081/（或雙擊 啟動網站.bat）
-  驗證內嵌 JS 能 parse（沒有測試/linter，這是唯一檢查）：
-      node -e "const fs=require('fs'),m=fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*?)<\/script>/);new Function(m[1]);console.log('JS OK')"
+  驗證（沒有測試/linter——部署閘門就是檢查，push 前必跑；⚠ index.html 現有 2 個 script
+  區塊，別再用只驗第一塊的老 one-liner）：
+      node scripts/validate-deploy.mjs --selftest
   一鍵上線前檢查：在本 repo 打 /ship（驗 JS + 檢查/bump SW + 資料健檢）
   部署：push main → Netlify 自動部署（repo summer09201017-cloud/8biblesearch，
-       線上 https://8biblesearch.netlify.app）。
-  驗收：可派 agent bible-reader-reviewer（2026-07-03 新建，經文/localStorage/PWA/長輩友善四維）。
+       線上 https://8biblesearch.netlify.app）。Netlify build 會先跑上面那支閘門，
+       失敗＝部署失敗、線上維持前一版（會寄通知信）。
+  驗收：可派 agent bible-reader-reviewer（經文/localStorage/PWA/長輩友善四維）；
+       部署後 runtime 抽驗可派 web-smoke-verifier / deploy-verifier。
 
 ■ 本機地雷（最常重犯，務必記住）
+  0) 🚨 buildNotesPrintHtml() 的模板字串裡有一份完整 </body></html> 假文件——任何
+     「注入 snippet 到 </body> 前」的批次腳本都會插錯進字串裡，字串內未跳脫的 </script>
+     會讓整站白屏（07-19 真實事故）。注入頁尾程式一律錨定「檔案最後一個 </body>」，
+     改完跑 node scripts/validate-deploy.mjs --selftest。
+  0b) VERSE_COUNTS 常數別手改——由 data/*.json 程式化重生成（9 版最大值），閘門會逐格對賬。
   1) 改 index.html / manifest / icons 後，一定要 bump sw.js 的 CACHE_NAME=bible-multi-vN，
-     否則已安裝 PWA 的使用者卡在舊殼層。目前 v57。（repo 有 hook 提醒；/ship 會自動 bump。）
+     否則已安裝 PWA 的使用者卡在舊殼層。目前 v62。（repo 有 hook 提醒；/ship 會自動 bump。）
   2) HFP 那台的正本 clone 在 C:\Users\HFP\Downloads\hfpc\8biblesearch。
      它 Downloads 下的「聖經查詢CUR-交接-2026-06-29」資料夾是舊快照（比遠端舊），別用；
      裡面還有 2 層同名巢狀舊副本各帶 .git（roadmap 待做 #4 是清掉它們，需牧者點頭）。
@@ -51,18 +72,24 @@
 
 ■ 檔案在哪
   index.html ............ 全部前端（CSS + HTML + JS）
-  sw.js ................. Service Worker（CACHE_NAME 在這，目前 v57）
+  sw.js ................. Service Worker（CACHE_NAME 在這，目前 v62）
   data/*.json ........... 9 譯本經文
+  scripts/validate-deploy.mjs ... 部署閘門（netlify.toml build command 帶 --selftest 跑它）
+  tests/fixtures/broken-20260719-whitescreen.html ... 白屏真兇原檔（閘門自測用，別刪）
   CLAUDE.md ............. 給 AI 的完整架構說明（最權威；「讀經足跡」節必讀）
   roadmap.md ............ 已完成 vs 待做（單一真相）★先讀這個
   README.md / DEPLOY.md . 使用者說明 / 部署細節
   .claude/commands/ship.md + .claude/settings.local.json（SW-bump hook）
 
 ■ 跨專案工具（用 /plugin marketplace update hfpc-skills 或合輯 repo git pull 取得）
+  - skill deploy-gate：部署閘門範式（本 repo＝活範例）＋全域 pre-push hook
+    （另一台機器裝法：合輯 repo 跑 node scripts/install-hooks.mjs --global --write）
+  - skill bible-ref-kit：66 卷表＋1189 章節數＋多段參照解析（assets/bible-ref.js，抽自本 repo）
+  - MCP cuv v1.2.0（9 譯本）：lookup（吃英文書名）＋parse_ref（參照解析）＋search（AND 全文搜尋）
+    ——寫任何內嵌經文前先 lookup 核對；改 server 後跑 node cuv-mcp.mjs --selftest
   - skill reading-footprint：本站足跡功能的沉澱範式（誠實性規則/三個灌水陷阱/按月分桶）
   - agent bible-reader-reviewer：reader 類 PWA 四維驗收
   - skill static-pwa-ship、daily-verse、share-card、web-speech-scripture：待做清單會用到
-  - MCP cuv（9 譯本）：寫任何內嵌經文前先 lookup 核對
 
 ■ 下一步最該做的一件事
   roadmap 待做 #1：每日金句／今日經文卡（~2hr，接 🔊 朗讀）。

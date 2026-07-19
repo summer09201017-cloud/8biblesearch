@@ -37,6 +37,12 @@ py -3 -m http.server 8081      # 然後開 http://localhost:8081/
 
 push 到 GitHub `main` → Netlify 自動部署。**改動 `index.html`／manifest／icons 後，務必把 `sw.js` 的 `CACHE_NAME` 版本號 +1**，否則已安裝的使用者會看到舊版。可在本 repo 用 `/ship` 指令一鍵檢查。完整步驟見 **`DEPLOY.md`**。
 
+**部署閘門（2026-07-19 起）**：每次部署 Netlify 會先跑 `node scripts/validate-deploy.mjs --selftest`——任何檢查失敗（內嵌 JS 壞掉、資料檔損毀、章節數常數與資料不符…）部署直接失敗、**線上維持前一版**，並寄失敗通知信。本機 push 前全域 hook 也會跑同一支腳本。手動驗證：
+
+```powershell
+node scripts/validate-deploy.mjs --selftest
+```
+
 ## 文件導覽
 
 - **`roadmap.md`** — 已完成 vs 待做（單一真相，先讀這個）。

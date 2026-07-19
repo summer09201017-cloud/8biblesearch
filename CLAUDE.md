@@ -8,11 +8,18 @@ A multi-translation Bible reader PWA (繁體中文介面). Single static HTML fi
 
 Production translations: 和合本 (unv) · ESV · NIV · WEB · BBE · 新譯本 (ncv) · 呂振中 (lcc) · ASV · KJV.
 
-## 現況 (2026-07-03) — 已完成 vs 待做
+## 現況 (2026-07-19) — 已完成 vs 待做
 
 **完整、會更新的「已完成 vs 真正待做」清單見 `roadmap.md`（單一真相）。** 交接快照見 `讀我-HANDOFF.txt`。
 
-最近一輪 (2026-07-04，agape250 機) 新增：
+最近一輪 (2026-07-19，agape250 機) 新增——**白屏事故閉環＋部署閘門**：
+- 🚨 **白屏事故與修復**：play-stats beacon 批次（別台機器 push）把 snippet 插進 `buildNotesPrintHtml()` 模板字串（字串裡含完整 `</body></html>`），未跳脫的 `</script>` 提早關閉主腳本 → 整站 JS 變頁面文字。已移到真正頁尾獨立 `<script>`（`window.psPing`＋`ps-last-8biblesearch` 10 分去重）。**教訓：對本 repo 注入頁尾程式必須錨定「檔案最後一個 `</body>`」＋逐塊驗證。**
+- 🛡 **部署閘門 v2**：`scripts/validate-deploy.mjs`，netlify.toml `[build].command = "node scripts/validate-deploy.mjs --selftest"`——失敗＝部署失敗、線上維持前一版。檢查：真兇 fixture 自測（`tests/fixtures/broken-20260719-whitescreen.html`）／內嵌 JS 逐塊 `new Function`／列印模板完整性／衝突標記／`data/*.json` 完整性／**VERSE_COUNTS↔資料逐格一致**／SW+manifest。本機另有全域 pre-push hook（skill `deploy-gate`）。**改了閘門本身要跑 `--selftest` 且故意弄壞測一次。**
+- 🐛 **VERSE_COUNTS 修正**：手抄常數錯 43+ 格（民數記漏第 9 章→後 27 章位移、箴言漏 10 章、撒上 20/23/24、林前 16）。已改「9 譯本資料檔最大值」程式化重生成（約 7:53 和合本 52 節、他版 53 節——取最大）。**別手改這條常數；要更新就從 data/ 重生成，閘門會逐格對賬。**
+- 📑 分頁順序改為：閱讀／搜尋／**📖 足跡**／快速查詢／筆記／📊 對讀／設定。SW **v62**。
+- 🧰 跨專案沉澱：skill `deploy-gate`（閘門範式＋全域 hook）、skill `bible-ref-kit`（66 卷表＋1189 章節數＋參照解析，抽自本 repo）、cuv MCP **v1.2.0**（+`parse_ref`/`search`）。
+
+上一輪 (2026-07-04，agape250 機) 新增：
 - 🔊 **朗讀改進三件套**（機器味＋破音字，函式都在朗讀區塊）：①**選聲排序** `rankZhVoices()/_scoreZhVoice()`——Edge Natural 神經語音 > Google 國語 > 傳統 SAPI，zh-TW 優先；設定頁新卡「🔊 朗讀聲音」（`#speak-voice-sel` 下拉＋▶ 試聽 `previewSpeakVoice()`，存 `bible-speak-voice`，`''`＝自動）。②**斷句抑揚** `chunkClauses()`——主要標點切短句逐句唸（問句尾音升 pitch+0.1、感嘆 +0.06、末句 rate−0.05 收尾），`_speakQueue` 由「字串陣列」改為 `{text,lang,pitch,rate}` 物件陣列（改 `_speakNext`/`toggleReadAloud` 時注意）。③**破音字同音替換** `toSpeakable()`＋`TTS_PHRASES` 字典（行傳→行撰、便→變雅憫、供物→貢物…）——**只影響唸給引擎的字串，絕不動畫面經文**；牧者回報唸錯的詞就加一條（先耳朵驗收）。正本心法在 skills 合輯 `web-speech-scripture/assets/tts-fix.js`。SW **v58**。
 
 上一輪 (2026-07-03，在 HFP 那台) 新增：
@@ -50,11 +57,13 @@ $env:API_BIBLE_KEY="..."; node fetch_niv_apibible.js   # licensed NIV via API.Bi
 node fetch_niv_legal.js                                # BBE fallback when no key
 ```
 
-There are **no tests, no linter, no build pipeline**. Validate JS syntax by extracting and parsing the inline script:
+There are **no tests, no linter, no build pipeline** — the deploy gate is the check. Run it before any push (the global pre-push hook and Netlify build both run it automatically):
 
 ```bash
-node -e "const fs=require('fs'),m=fs.readFileSync('index.html','utf8').match(/<script>([\\s\\S]*?)<\\/script>/);new Function(m[1]);console.log('JS OK')"
+node scripts/validate-deploy.mjs --selftest
 ```
+
+It validates: the 07-19 white-screen fixture is still caught, every inline `<script>` block parses (index.html has **2+ blocks** since 07-19 — never validate only the first), the print-template literal isn't broken by a stray `</script>`, no git conflict markers, `data/*.json` all parse, `VERSE_COUNTS` matches the data files cell-by-cell, and sw.js/manifest are intact.
 
 For local OAuth/Drive testing, the `http://localhost:8081` origin **must** be added to the OAuth Client's authorized JavaScript origins in Google Cloud Console (see `GOOGLE_DRIVE_SETUP.md`).
 
@@ -169,6 +178,7 @@ Intentionally **no support for**: phrase-quotes (`"..."` is just literal substri
 | `bible-reading-log` | `{ m:{ "YYYY-MM":{ "bid:chap":次數 } }, d:{ "YYYY-MM-DD":章次 } }` — 讀經足跡按月分桶；本月/近3月/近6月/近12月/歷年都靠加總月桶 |
 | `bible-reading-log-last` | `{ "bid:chap": ts }` — 同一章 30 分鐘防重計；寫入時順手清掉超過 1 小時的舊項 |
 | `bible-speak-voice` | 朗讀聲音的 `voice.name`（設定頁「🔊 朗讀聲音」下拉；`''`＝自動挑最佳中文語音） |
+| `ps-last-8biblesearch` | play-stats 匿名開啟 ping 的 10 分鐘去重時戳（頁尾 beacon；只在 netlify.app 網域發送、零個資）。**不進備份鏈**——純去重用，遺失無所謂 |
 
 The export/import JSON in 設定/資料 includes `userData`, `historySearch`, `historyQuick`, `readingLog`, `exportedAt`. The cloud sync payload (schema 3) additionally carries `versionOrder`, `noteCount`, `timestamp`, `readingLog`. Schema bumped 2 → 3 when notes gained type/tags/dates/status fields, but no read-side branching exists — `schema` is just a label, all readers do best-effort field access with fallbacks.
 
