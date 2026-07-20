@@ -2593,9 +2593,13 @@ async function shareVerseAudio() {
     if (!r.ok) throw new Error('tts ' + r.status);
     const blob = await r.blob();
     const file = new File([blob], '經文語音.wav', { type: 'audio/wav' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: '經文語音' });
-    } else {
+    // 手機才試「分享」(直接傳 LINE/訊息);桌機一律直接下載(桌機分享面板常失敗且會亂改副檔名)
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    let shared = false;
+    if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: '經文語音' }); shared = true; } catch (e) { shared = false; }
+    }
+    if (!shared) {
       const u = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = u; a.download = '經文語音.wav'; a.click();
       setTimeout(() => URL.revokeObjectURL(u), 5000);
