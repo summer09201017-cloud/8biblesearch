@@ -1528,6 +1528,12 @@ body {
           <option value="">🔊 讀：第一個譯本</option>
         </select>
         <button type="button" id="btn-speak-dl" class="fs-btn fs-speak-btn" onclick="shareVerseAudio()" aria-label="把畫面經文存成語音檔分享" title="把目前畫面的經文產生成語音檔（可下載或分享給別人聽）">⬇ 存語音</button>
+        <select id="speak-rate-bar" class="fs-speak-ver" onchange="setSpeakRate(this.value)" aria-label="朗讀速度" title="朗讀速度（英文會再自動放慢一些）">
+          <option value="0.6">🐢 很慢</option>
+          <option value="0.72">慢</option>
+          <option value="0.85">正常</option>
+          <option value="1">🐇 稍快</option>
+        </select>
         <input id="fs-slider" type="range" min="10" max="40" step="1" value="16" oninput="setFontSize(this.value)" aria-label="文字大小滑桿">
       </div>
       <div class="app-header-actions"></div>
@@ -2471,13 +2477,14 @@ function getSpeakRate() {
   try { const s = parseFloat(localStorage.getItem(SPEAK_RATE_KEY)); if (Number.isFinite(s)) r = s; } catch(e) {}
   return Math.max(0.5, Math.min(1.2, r));
 }
-function saveSpeakRate() {
-  const sel = document.getElementById('speak-rate-sel');
-  try { localStorage.setItem(SPEAK_RATE_KEY, sel ? sel.value : '0.72'); } catch(e) {}
+function setSpeakRate(v) {                       // 兩處控制共用:寫 localStorage + 同步設定頁與工具列兩個下拉
+  try { localStorage.setItem(SPEAK_RATE_KEY, String(v)); } catch(e) {}
+  ['speak-rate-sel', 'speak-rate-bar'].forEach(id => { const s = document.getElementById(id); if (s) s.value = String(v); });
 }
+function saveSpeakRate() { const sel = document.getElementById('speak-rate-sel'); if (sel) setSpeakRate(sel.value); }
 function initSpeakRate() {
-  const sel = document.getElementById('speak-rate-sel');
-  if (sel) sel.value = String(getSpeakRate());
+  const r = String(getSpeakRate());
+  ['speak-rate-sel', 'speak-rate-bar'].forEach(id => { const s = document.getElementById(id); if (s) s.value = r; });
 }
 try { window.addEventListener('load', initSpeakRate); } catch(e) {}
 function previewSpeakVoice() {
