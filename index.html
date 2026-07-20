@@ -1527,6 +1527,7 @@ body {
         <select id="speak-ver" class="fs-speak-ver" onmousedown="refreshSpeakOptions()" onfocus="refreshSpeakOptions()" onchange="saveSpeakVer()" aria-label="選擇要朗讀的譯本" title="選擇要朗讀哪一個譯本（中文或英文）">
           <option value="">🔊 讀：第一個譯本</option>
         </select>
+        <button type="button" id="btn-speak-dl" class="fs-btn fs-speak-btn" onclick="shareVerseAudio()" aria-label="把畫面經文存成語音檔分享" title="把目前畫面的經文產生成語音檔（可下載或分享給別人聽）">⬇ 存語音</button>
         <input id="fs-slider" type="range" min="10" max="40" step="1" value="16" oninput="setFontSize(this.value)" aria-label="文字大小滑桿">
       </div>
       <div class="app-header-actions"></div>
@@ -2565,6 +2566,31 @@ function refreshSpeakOptions() {
 function saveSpeakVer() {
   const sel = document.getElementById('speak-ver');
   try { localStorage.setItem(SPEAK_VER_KEY, sel ? sel.value : ''); } catch(e) {}
+}
+// 把畫面經文存成語音檔分享(Web Speech 無法錄檔 → 走 hfpc-tts Worker / Workers AI MeloTTS,回 WAV)
+async function shareVerseAudio() {
+  const sel = document.getElementById('speak-ver');
+  const verses = _gatherVisibleVerses(sel ? sel.value : '');
+  if (!verses.length) { toast('目前畫面上沒有可存的經文'); return; }
+  const text = verses.join(' ').replace(/\s+/g, ' ').trim().slice(0, 900);
+  const lang = _detectLang(text) === 'zh' ? 'zh' : 'en';
+  const btn = document.getElementById('btn-speak-dl');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = '⏳ 產生中…'; btn.disabled = true; }
+  try {
+    const r = await fetch('https://hfpc-tts.summer09201017.workers.dev/tts?lang=' + lang + '&text=' + encodeURIComponent(text));
+    if (!r.ok) throw new Error('tts ' + r.status);
+    const blob = await r.blob();
+    const file = new File([blob], '經文語音.wav', { type: 'audio/wav' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: '經文語音' });
+    } else {
+      const u = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = u; a.download = '經文語音.wav'; a.click();
+      setTimeout(() => URL.revokeObjectURL(u), 5000);
+    }
+  } catch (e) { toast('產生語音失敗，請稍後再試'); }
+  finally { if (btn) { btn.textContent = orig; btn.disabled = false; } }
 }
 function toggleReadAloud() {
   if (_speaking) { stopReadAloud(); return; }
