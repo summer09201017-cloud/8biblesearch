@@ -1804,8 +1804,18 @@ body {
         <select id="speak-voice-sel" class="fs-speak-ver" style="max-width:100%;min-width:200px;" onchange="saveSpeakVoice()" aria-label="選擇朗讀聲音"></select>
         <button class="btn btn-secondary btn-sm" type="button" onclick="previewSpeakVoice()">▶ 試聽</button>
       </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px;">
+        <label for="speak-rate-sel" style="font-size:0.92rem;font-weight:600;">朗讀速度</label>
+        <select id="speak-rate-sel" class="fs-speak-ver" style="min-width:170px;" onchange="saveSpeakRate()" aria-label="選擇朗讀速度">
+          <option value="0.6">🐢 很慢（最清楚）</option>
+          <option value="0.72">慢</option>
+          <option value="0.85">正常</option>
+          <option value="1">🐇 稍快</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="previewSpeakVoice()">▶ 試聽</button>
+      </div>
       <p style="font-size:0.78rem;color:var(--text2);margin-top:10px;">
-        💡 「自動（推薦）」會自己挑這台裝置上最自然的中文聲音。此設定只存在這台裝置。
+        💡 「自動（推薦）」會自己挑這台裝置上最自然的中文聲音。<b>英文朗讀通常偏快</b>，聽不清楚就把速度調到「很慢」。此設定只存在這台裝置。
       </p>
     </div>
 
@@ -2453,11 +2463,27 @@ function saveSpeakVoice() {
   const sel = document.getElementById('speak-voice-sel');
   try { localStorage.setItem(SPEAK_VOICE_KEY, sel ? sel.value : ''); } catch(e) {}
 }
+// 朗讀速度(可調;預設偏慢聽得清楚。英文另外再放慢一成)
+const SPEAK_RATE_KEY = 'bible-speak-rate';
+function getSpeakRate() {
+  let r = 0.72;
+  try { const s = parseFloat(localStorage.getItem(SPEAK_RATE_KEY)); if (Number.isFinite(s)) r = s; } catch(e) {}
+  return Math.max(0.5, Math.min(1.2, r));
+}
+function saveSpeakRate() {
+  const sel = document.getElementById('speak-rate-sel');
+  try { localStorage.setItem(SPEAK_RATE_KEY, sel ? sel.value : '0.72'); } catch(e) {}
+}
+function initSpeakRate() {
+  const sel = document.getElementById('speak-rate-sel');
+  if (sel) sel.value = String(getSpeakRate());
+}
+try { window.addEventListener('load', initSpeakRate); } catch(e) {}
 function previewSpeakVoice() {
   if (!('speechSynthesis' in window)) { toast('此瀏覽器不支援語音朗讀'); return; }
   stopReadAloud();
   _loadVoices();
-  _speakQueue = chunkClauses(toSpeakable('起初，神創造天地。這是耶和華所定的日子，我們在其中要高興歡喜！'), 0.9, 1)
+  _speakQueue = chunkClauses(toSpeakable('起初，神創造天地。這是耶和華所定的日子，我們在其中要高興歡喜！'), getSpeakRate(), 1)
     .map(c => ({ text: c.text, lang: 'zh', pitch: c.pitch, rate: c.rate }));
   _speaking = true;
   _speakNext();
@@ -2554,9 +2580,9 @@ function toggleReadAloud() {
   for (let i = 0; i < capped.length; i++) {
     const lang = _detectLang(capped[i]);
     if (lang === 'zh') {
-      chunkClauses(toSpeakable(capped[i]), 0.9, 1).forEach(c => q.push({ text: c.text, lang: 'zh', pitch: c.pitch, rate: c.rate }));
+      chunkClauses(toSpeakable(capped[i]), getSpeakRate(), 1).forEach(c => q.push({ text: c.text, lang: 'zh', pitch: c.pitch, rate: c.rate }));
     } else {
-      q.push({ text: capped[i], lang: 'en', pitch: 1, rate: 0.9 });
+      q.push({ text: capped[i], lang: 'en', pitch: 1, rate: Math.max(0.5, getSpeakRate() * 0.9) });
     }
     if (q.length > 900) break; // 短句上限
   }
