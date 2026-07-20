@@ -2518,11 +2518,11 @@ function _speakNext() {
   u.onerror = () => { if (_speaking) _speakNext(); };
   try { speechSynthesis.speak(u); } catch(e) { stopReadAloud(); }
 }
-function _gatherVisibleVerses(verName) {
+function _gatherVisibleVerses(verName, onlyGroups) {
   const panel = document.querySelector('.panel.active');
   if (!panel) return [];
   const out = [];
-  const groups = panel.querySelectorAll('.verse-group');
+  const groups = (onlyGroups && onlyGroups.length) ? onlyGroups : panel.querySelectorAll('.verse-group');
   if (groups.length) {
     groups.forEach(g => {
       let t = null;
@@ -2577,8 +2577,12 @@ function saveSpeakVer() {
 // 把畫面經文存成語音檔分享(Web Speech 無法錄檔 → 走 hfpc-tts Worker / Workers AI MeloTTS,回 WAV)
 async function shareVerseAudio() {
   const sel = document.getElementById('speak-ver');
-  const verses = _gatherVisibleVerses(sel ? sel.value : '');
+  // 勾選了哪幾節就只存那幾節(用「勾選複製經文」的核取方塊);沒勾才存整章
+  const picked = Array.prototype.slice.call(document.querySelectorAll('.read-pick-cb:checked'))
+    .map(function (cb) { return cb.closest('.verse-group'); }).filter(Boolean);
+  const verses = _gatherVisibleVerses(sel ? sel.value : '', picked.length ? picked : null);
   if (!verses.length) { toast('目前畫面上沒有可存的經文'); return; }
+  if (picked.length) toast('存已勾選的 ' + picked.length + ' 節…');
   const text = verses.join(' ').replace(/\s+/g, ' ').trim().slice(0, 900);
   const lang = _detectLang(text) === 'zh' ? 'zh' : 'en';
   const btn = document.getElementById('btn-speak-dl');
