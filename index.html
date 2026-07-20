@@ -2582,7 +2582,7 @@ function toggleReadAloud() {
     if (lang === 'zh') {
       chunkClauses(toSpeakable(capped[i]), getSpeakRate(), 1).forEach(c => q.push({ text: c.text, lang: 'zh', pitch: c.pitch, rate: c.rate }));
     } else {
-      q.push({ text: capped[i], lang: 'en', pitch: 1, rate: Math.max(0.5, getSpeakRate() * 0.9) });
+      q.push({ text: capped[i], lang: 'en', pitch: 1, rate: Math.max(0.4, getSpeakRate() * 0.72) });
     }
     if (q.length > 900) break; // 短句上限
   }
