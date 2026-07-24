@@ -7149,18 +7149,26 @@ try {
   var psLast = parseInt(localStorage.getItem(psK) || '0', 10);
   if (Date.now() - psLast > 600000) { localStorage.setItem(psK, String(Date.now())); window.psPing('8biblesearch'); }
 } catch (_) { window.psPing('8biblesearch'); }
-// 停留時長:離開頁面時回報這次停留秒數(閱讀類站的「一局」=一次查經 session)
+// 停留時長:累計「可見」時間、分段回報——第一段送 -done(記一次使用+秒數),之後回前景再離開的
+// 追加段送 -tadd(Worker 只加秒數、不加使用次數)。
+// 修(07-24):讀經是被動閱讀,手機螢幕自動鎖屏 ~45-60s 就觸發 hidden;舊版第一次 hidden 就鎖死,
+// 平均停留永遠≈鎖屏秒數(儀表板恆 0:47 的元兇),真實讀經時間被系統性截斷。
 (function () {
-  var psOpen = Date.now(), psSent = false;
-  function psDone() {
-    if (psSent) return;
-    var sec = Math.round((Date.now() - psOpen) / 1000);
-    psSent = true;
+  var visStart = document.visibilityState !== 'hidden' ? Date.now() : 0;
+  var sentDone = false;
+  function flush() {
+    if (!visStart) return;
+    var sec = Math.round((Date.now() - visStart) / 1000);
+    visStart = 0;
     if (sec < 3 || sec > 1800) return; // <3秒誤觸、>30分掛機 一律丟棄
-    window.psPing('8biblesearch-done', sec);
+    window.psPing('8biblesearch-' + (sentDone ? 'tadd' : 'done'), sec);
+    sentDone = true;
   }
-  window.addEventListener('pagehide', psDone);
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') psDone(); });
+  window.addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') flush();
+    else if (!visStart) visStart = Date.now(); // 回前景:重開下一段計時
+  });
 })();
 </script>
 </body>
