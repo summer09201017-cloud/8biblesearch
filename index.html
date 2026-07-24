@@ -7156,6 +7156,7 @@ try {
 (function () {
   var visStart = document.visibilityState !== 'hidden' ? Date.now() : 0;
   var sentDone = false;
+  var total = 0; // 本次 session 累計可見秒數(給最近一次停留)
   function flush() {
     if (!visStart) return;
     var sec = Math.round((Date.now() - visStart) / 1000);
@@ -7163,6 +7164,8 @@ try {
     if (sec < 3 || sec > 1800) return; // <3秒誤觸、>30分掛機 一律丟棄
     window.psPing('8biblesearch-' + (sentDone ? 'tadd' : 'done'), sec);
     sentDone = true;
+    total += sec;
+    window.psPing('8biblesearch-dwlast', Math.min(total, 1800)); // 最近一次=本 session 累計讀經時間
   }
   window.addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', function () {
