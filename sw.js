@@ -1,5 +1,5 @@
 /* 多譯本聖經查詢 — Service Worker：離線殼層 + 本地譯本 JSON 快取 */
-const CACHE_NAME = 'bible-multi-v76';   /* v76(0802):收回線上失散的 0724-25 停留三件(last=/一發搞定/25s心跳)+ 複製鈕改名 + 標題列單行 + 經文貼邊。
+const CACHE_NAME = 'bible-multi-v77';   /* v77(0802):筆記鈕只留 📝 鉛筆圖示(書卷名太長被省略號吃掉,再讓出空間) */   /* v76(0802):收回線上失散的 0724-25 停留三件(last=/一發搞定/25s心跳)+ 複製鈕改名 + 標題列單行 + 經文貼邊。
    ⚠ 版號史:git 曾停在 v73,但線上 07-24 已部署過(未 push 的)v74/v75 ⇒ 0802 我在 git 又發了同名 v74/v75=同名不同內容。
    v76 起兩線合一;以後懷疑「線上比 git 新」先跑 netlify api listSiteDeploys 比對部署時間 vs git log。 */
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/vendor/diff_match_patch.js'];
