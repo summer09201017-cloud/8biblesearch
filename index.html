@@ -7138,10 +7138,12 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 // play-stats 匿名計數(lobby-play-rank §3):開啟 10 分去重;停留時長 -done(帶 t=秒,<3秒誤觸/>30分掛機一律丟棄)。零個資。
-window.psPing = function (key, t) {
+// ⚠ 0802 收回:下面 psPing(last=)/一發搞定/心跳 三件是 07-24/25 只部署未 push 的線上失散源碼,
+//   從線上那份原封不動移植回來(當時 sw v74/v75 的內容);別再改回兩發式。
+window.psPing = function (key, t, last) {
   try {
     if (['localhost', '127.0.0.1'].includes(location.hostname)) return; // 雙平台版:只擋本機開發
-    var u = 'https://hfpc-play-stats.summer09201017.workers.dev/api/ping?g=' + key + (t ? '&t=' + t : '');
+    var u = 'https://hfpc-play-stats.summer09201017.workers.dev/api/ping?g=' + key + (t ? '&t=' + t : '') + (last ? '&last=' + last : '');
     if (navigator.sendBeacon) navigator.sendBeacon(u); else fetch(u, { mode: 'no-cors' });
   } catch (_) {}
 };
@@ -7151,9 +7153,11 @@ try {
   if (Date.now() - psLast > 600000) { localStorage.setItem(psK, String(Date.now())); window.psPing('8biblesearch'); }
 } catch (_) { window.psPing('8biblesearch'); }
 // 停留時長:累計「可見」時間、分段回報——第一段送 -done(記一次使用+秒數),之後回前景再離開的
-// 追加段送 -tadd(Worker 只加秒數、不加使用次數)。
+// 追加段送 -tadd(Worker 只加秒數、不加使用次數)。「最近一次」=本 session 累計秒數,用 last= 併進同一發。
 // 修(07-24):讀經是被動閱讀,手機螢幕自動鎖屏 ~45-60s 就觸發 hidden;舊版第一次 hidden 就鎖死,
 // 平均停留永遠≈鎖屏秒數(儀表板恆 0:47 的元兇),真實讀經時間被系統性截斷。
+// 修(07-25):最近一次停留 由獨立第二發 -dwlast 改為併進 -done/-tadd 的 last= 參數——
+// 手機(尤其 iOS)關頁/鎖屏常只送出佇列第一發 sendBeacon,第二發 -dwlast 被丟=手機記不到最近一次。
 (function () {
   var visStart = document.visibilityState !== 'hidden' ? Date.now() : 0;
   var sentDone = false;
@@ -7163,16 +7167,23 @@ try {
     var sec = Math.round((Date.now() - visStart) / 1000);
     visStart = 0;
     if (sec < 3 || sec > 1800) return; // <3秒誤觸、>30分掛機 一律丟棄
-    window.psPing('8biblesearch-' + (sentDone ? 'tadd' : 'done'), sec);
-    sentDone = true;
     total += sec;
-    window.psPing('8biblesearch-dwlast', Math.min(total, 1800)); // 最近一次=本 session 累計讀經時間
+    // 一發搞定:段秒數 t(平均停留)+ 本 session 累計 last(最近一次)——手機只保證送第一發也不漏
+    window.psPing('8biblesearch-' + (sentDone ? 'tadd' : 'done'), sec, Math.min(total, 1800));
+    sentDone = true;
   }
   window.addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') flush();
     else if (!visStart) visStart = Date.now(); // 回前景:重開下一段計時
   });
+  // 心跳(07-25):讀經途中每 25 秒把「目前累計停留」更新到最近一次(複用 -dwlast,只動 dl:、不動平均)。
+  //   頁面活著時送=可靠;即使最後鎖屏那發被手機丟,最近一次也已是 25 秒內的準值,不必等離開才更新。
+  setInterval(function () {
+    if (!visStart) return; // 隱藏中不送
+    var live = Math.min(total + Math.round((Date.now() - visStart) / 1000), 1800);
+    if (live >= 3) window.psPing('8biblesearch-dwlast', live);
+  }, 25000);
 })();
 </script>
 </body>
