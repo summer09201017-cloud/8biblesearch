@@ -1,5 +1,5 @@
 /* 多譯本聖經查詢 — Service Worker：離線殼層 + 本地譯本 JSON 快取 */
-const CACHE_NAME = 'bible-multi-v74';   /* v74(0802):複製鈕改名「複製」+ 章節/註釋/筆記/複製/勾選收成同一行 */
+const CACHE_NAME = 'bible-multi-v75';   /* v75(0802):經文左右內距縮小、往螢幕邊界靠(每行多顯示字數);v74=複製鈕改名+標題列單行 */
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/vendor/diff_match_patch.js'];
 
 self.addEventListener('install', (event) => {

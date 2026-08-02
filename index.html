@@ -190,7 +190,7 @@ body {
 }
 .tab:hover { color:#f0e0c0; background:rgba(255,255,255,0.05); }
 .tab.active { color:#f0d890; border-bottom-color:var(--accent2); background:rgba(255,255,255,0.08); }
-.container { max-width:1200px; margin:0 auto; padding:16px; }
+.container { max-width:1200px; margin:0 auto; padding:16px 8px; }   /* 0802:左右 16→8,配合經文貼邊 */
 .panel { display:none; }
 .panel.active { display:block; }
 
@@ -308,7 +308,7 @@ body {
 }
 .verse-translations { display:grid; gap:0; }
 .verse-translation {
-  padding:12px 16px; border-bottom:1px solid #f0ebe0;
+  padding:12px 8px; border-bottom:1px solid #f0ebe0;   /* 0802 使用者點名:左右 16→8,經文往螢幕邊界靠、每行多顯示字數 */
   display:flex; gap:10px; align-items:baseline;
 }
 .verse-translation:last-child { border-bottom:none; }
@@ -487,14 +487,14 @@ body {
 .share-btn-group { display:inline-flex; gap:8px; flex-wrap:nowrap; }
 .search-result-item {
   display:flex; gap:0; align-items:flex-start;
-  padding:10px 10px; background:var(--card); border-radius:10px;
+  padding:10px 6px; background:var(--card); border-radius:10px;   /* 0802:左右 10→6,經文貼邊 */
   border:1px solid var(--border); margin-bottom:10px; transition:all 0.2s;
 }
-.search-result-item .verse-translation { padding:8px 8px; gap:8px; }
+.search-result-item .verse-translation { padding:8px 4px; gap:8px; }
 .search-result-item .version-badge { min-width:36px; padding:2px 6px; font-size:0.68rem; }
 @media (max-width:600px) {
-  .search-result-item { padding:8px 8px; }
-  .search-result-item .verse-translation { padding:8px 6px; }
+  .search-result-item { padding:8px 4px; }
+  .search-result-item .verse-translation { padding:8px 2px; }
 }
 .search-result-item:hover { border-color:var(--accent); box-shadow:0 2px 12px var(--shadow); }
 .search-result-check {
@@ -1163,7 +1163,7 @@ body {
   .btn { padding:7px 14px; font-size:0.85rem; }
   .version-toggles { gap:6px; padding:10px; }
   .version-toggle { padding:5px 10px; font-size:0.8rem; }
-  .verse-translation { padding:10px 10px; flex-direction:column; gap:4px; }
+  .verse-translation { padding:10px 4px; flex-direction:column; gap:4px; }   /* 0802:手機左右 10→4,經文貼邊多顯示字數 */
   .verse-header { padding:8px 10px; gap:6px; }
   .verse-ref-title { font-size:0.88rem; }
   .verse-read-pick { gap:4px; }
