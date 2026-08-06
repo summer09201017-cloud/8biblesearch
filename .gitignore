@@ -13,3 +13,6 @@ data/NIV/
 
 # Claude Code 本地設定／快取
 .claude/
+
+# Netlify 本機產物：內含這台機的絕對路徑，換機即失真，不可進版控
+.netlify/
