@@ -1461,6 +1461,23 @@ body {
 }
 .track-stat-num { font-size:1.7rem; font-weight:700; color:var(--accent); line-height:1.2; }
 .track-stat-label { font-size:0.85rem; color:var(--text2); margin-top:3px; }
+/* 🔍 搜尋結果上下文預覽(0809 讀5) */
+.btn-ctx {
+  border:1px solid var(--border); background:var(--bg2); color:var(--accent);
+  border-radius:6px; padding:3px 8px; font-size:0.8rem; font-weight:700;
+  cursor:pointer; font-family:inherit; white-space:nowrap;
+}
+.btn-ctx:hover { background:var(--tag-bg); }
+.ctx-box {
+  margin:8px 0 2px; padding:10px 12px; border:1px dashed var(--border);
+  border-radius:10px; background:var(--bg2);
+}
+.ctx-box[hidden] { display:none !important; }
+.ctx-head { font-size:0.82rem; color:var(--text2); font-weight:700; margin-bottom:6px; }
+.ctx-row { display:flex; gap:8px; padding:4px 2px; line-height:1.7; color:var(--text2); }
+.ctx-row.ctx-hit { color:var(--text); background:var(--highlight); border-radius:6px; font-weight:600; }
+.ctx-num { flex:0 0 auto; min-width:1.6em; text-align:right; color:var(--accent); font-weight:700; }
+
 /* 📅 讀經計畫(0809 讀1) */
 .plan-chips { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
 .plan-chip {
@@ -2827,6 +2844,33 @@ function fhlLinksHtml(bid, chap, sec, opts) {
          'title="查看信望愛經文註釋（彈窗開啟，可獨立調整字體）">📖 註釋</a>';
 }
 
+// ====== 🔍 搜尋結果上下文預覽(0809 讀5:點結果不跳頁,原地展開前後 2 節) ======
+function toggleSearchContext(btn, bid, chap, sec) {
+  const item = btn.closest('.search-result-item');
+  const box = item ? item.querySelector('.ctx-box') : null;
+  if (!box) return;
+  if (!box.hidden) { box.hidden = true; btn.textContent = '⊕ 前後文'; return; }
+  const vers = sortedVers(activeVersions.length ? activeVersions : ['unv']);
+  const ver = vers.find(v => bibleData[v]) || 'unv';
+  const vInfo = VERSIONS.find(v => v.code === ver);
+  const vc = VERSE_COUNTS[bid] || [];
+  const maxSec = vc[chap - 1] || sec;
+  const from = Math.max(1, sec - 2), to = Math.min(maxSec, sec + 2);
+  let rows = '';
+  for (let s = from; s <= to; s++) {
+    const t = getLocalVerse(ver, bid, chap, s);
+    if (t === null) continue;
+    rows += `<div class="ctx-row ${s === sec ? 'ctx-hit' : ''}"><span class="ctx-num">${s}</span>${escapeHtmlForNotes(t)}</div>`;
+  }
+  const book = BOOKS.find(b => b.bid === bid);
+  box.innerHTML = rows
+    ? `<div class="ctx-head">📖 ${book ? book.chinesef : ''} ${chap} 章・前後文（${vInfo ? vInfo.name : ver}）</div>${rows}
+       <button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="goToVerse(${bid},${chap},${sec})">開啟整章 →</button>`
+    : `<div class="ctx-head">此譯本資料尚未載入，無法預覽（點「開啟此章」可直接閱讀）</div>`;
+  box.hidden = false;
+  btn.textContent = '⊖ 收合';
+}
+
 // ====== 信望愛註釋彈窗（JSON API 原生排版；iframe 僅為備援） ======
 // 0809 iPhone 使用者回饋：com.php 的 <pre> 長行在手機上右半被截掉、且 iframe 的
 // CSS zoom 在 iOS 無效（字級滑桿沒反應）。改走信望愛開放的 JSON API（sc.php，
@@ -3992,7 +4036,7 @@ function doSearch() {
       
       return `<div class="search-result-item" data-idx="${idx}">
         <div class="search-result-main">
-        <div class="search-ref"><span class="search-ref-link" onclick="goToVerse(${v.bid},${v.chap},${v.sec})" title="開啟此章閱讀此節">${refStr}</span>${srLinks}<a class="fhl-com-link" href="#" onclick="event.preventDefault();event.stopPropagation();openNoteModal(${v.bid},${v.chap},${v.sec},'${refStr}')" title="筆記與標記" aria-label="筆記與標記">📝</a><button type="button" class="btn-copy-inline" data-copy-mode="search" onclick="event.preventDefault();event.stopPropagation();copyPickedSearchVerses()" title="複製目前所有勾選的經文">複製</button><label class="search-result-check" onclick="event.stopPropagation()" title="勾選此節（用於批次複製/分享）"><input type="checkbox" class="search-pick-cb" aria-label="選取此節"></label></div>${trs}${noteHtml}</div></div>`;
+        <div class="search-ref"><span class="search-ref-link" onclick="goToVerse(${v.bid},${v.chap},${v.sec})" title="開啟此章閱讀此節">${refStr}</span>${srLinks}<a class="fhl-com-link" href="#" onclick="event.preventDefault();event.stopPropagation();openNoteModal(${v.bid},${v.chap},${v.sec},'${refStr}')" title="筆記與標記" aria-label="筆記與標記">📝</a><button type="button" class="btn-ctx" onclick="event.preventDefault();event.stopPropagation();toggleSearchContext(this,${v.bid},${v.chap},${v.sec})" title="不跳頁,在這裡展開這節的前後幾節">⊕ 前後文</button><button type="button" class="btn-copy-inline" data-copy-mode="search" onclick="event.preventDefault();event.stopPropagation();copyPickedSearchVerses()" title="複製目前所有勾選的經文">複製</button><label class="search-result-check" onclick="event.stopPropagation()" title="勾選此節（用於批次複製/分享）"><input type="checkbox" class="search-pick-cb" aria-label="選取此節"></label></div>${trs}${noteHtml}<div class="ctx-box" hidden onclick="event.stopPropagation()"></div></div></div>`;
     }).join('');
 
     div.innerHTML = statsHtml + html + searchActionsFooterHtml();
