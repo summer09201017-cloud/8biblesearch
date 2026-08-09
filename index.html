@@ -1419,8 +1419,21 @@ body {
 .comment-fs-ctrl .fs-btn:hover { background:var(--tag-bg); }
 .comment-fs-ctrl .fs-value { font-size:0.78rem; color:var(--accent); font-weight:700; min-width:44px; text-align:center; }
 .comment-modal-actions { display:flex; gap:6px; }
-.comment-modal-body { flex:1; position:relative; overflow:hidden; background:#fff; }
-.comment-modal-body iframe { width:100%; height:100%; border:0; display:block; }
+.comment-modal-body { flex:1; position:relative; overflow:hidden; background:#fff; display:flex; flex-direction:column; }
+.comment-modal-body iframe { width:100%; height:100%; border:0; display:block; flex:1; }
+/* 原生排版模式（0809 iPhone 回饋修正）：pre-wrap 讓長行換行、字級直接生效（iframe 的 zoom 在 iOS 無效） */
+#comment-native {
+  flex:1; overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
+  padding:14px 16px 30px; white-space:pre-wrap; word-break:break-word;
+  line-height:1.75; color:#2c2418; background:#fff; font-size:16px;
+}
+#comment-native a { color:#1a56b0; text-decoration:underline; }
+#comment-native .cm-title { font-weight:700; color:#7a5c1e; margin-bottom:10px; white-space:normal; }
+#comment-native .cm-loading, #comment-native .cm-empty { color:#6b5d4d; padding:20px 0; white-space:normal; }
+#comment-native .cm-source { margin-top:16px; padding-top:10px; border-top:1px solid #e8dfc8; font-size:0.8em; color:#6b5d4d; white-space:normal; }
+.comment-nav { display:flex; gap:8px; padding:8px 10px; border-top:1px solid var(--border); background:var(--bg2); justify-content:space-between; }
+.comment-nav button { min-height:42px; }
+#comment-native[hidden], .comment-modal-body iframe[hidden], .comment-nav[hidden] { display:none !important; }
 .comment-modal-hint {
   position:absolute; left:0; right:0; bottom:0;
   background:#fffbe6; border-top:1px solid #f0dfa8;
@@ -2142,8 +2155,13 @@ body {
       </div>
     </div>
     <div class="comment-modal-body">
-      <iframe id="comment-iframe" src="about:blank" title="信望愛註釋" referrerpolicy="no-referrer"></iframe>
+      <div id="comment-native" tabindex="0" aria-label="註釋內容"></div>
+      <iframe id="comment-iframe" src="about:blank" title="信望愛註釋" referrerpolicy="no-referrer" hidden></iframe>
       <div id="comment-modal-hint" class="comment-modal-hint" hidden>若下方空白，信望愛可能不允許嵌入，請點「新分頁開啟」以原站閱讀。</div>
+    </div>
+    <div id="comment-nav" class="comment-nav" hidden>
+      <button type="button" class="btn btn-sm btn-secondary" id="cm-prev" hidden>← 上一段</button>
+      <button type="button" class="btn btn-sm btn-secondary" id="cm-next" hidden>下一段 →</button>
     </div>
   </div>
 </div>
@@ -2756,29 +2774,29 @@ function fhlLinksHtml(bid, chap, sec, opts) {
   const cLink = buildFhlCommentUrl(bid, chap, sec);
   const extraOnclick = (opts && opts.stopPropagation) ? 'event.stopPropagation();' : '';
   return '<a class="verse-comment-link" href="' + cLink + '" ' +
-         'onclick="' + extraOnclick + 'event.preventDefault();openCommentModal(\'' + cLink + '\')" ' +
+         'onclick="' + extraOnclick + 'event.preventDefault();openCommentModal(' + bid + ',' + chap + ',' + sec + ')" ' +
          'title="查看信望愛經文註釋（彈窗開啟，可獨立調整字體）">📖 註釋</a>';
 }
 
-// ====== 信望愛註釋彈窗（iframe + 獨立字體大小） ======
+// ====== 信望愛註釋彈窗（JSON API 原生排版；iframe 僅為備援） ======
+// 0809 iPhone 使用者回饋：com.php 的 <pre> 長行在手機上右半被截掉、且 iframe 的
+// CSS zoom 在 iOS 無效（字級滑桿沒反應）。改走信望愛開放的 JSON API（sc.php，
+// 有 CORS）抓 com_text 自己排版：pre-wrap 換行、字級直接設在自家 div 上全平台有效。
 let _commentUrl = '';
 let _commentLoadTimer = null;
+let _commentAbort = null;
 const CM_KEY = 'bible-comment-fs';
+const FHL_COM_API = 'https://bible.fhl.net/json/sc.php';
 
-function openCommentModal(url) {
-  _commentUrl = url;
+function fhlComUrlByEngs(engs, chap, sec) {
+  return 'https://bible.fhl.net/new/com.php?book=3&engs=' +
+    encodeURIComponent(engs) + '&chap=' + chap + '&sec=' + sec + '&m=0';
+}
+
+function openCommentModal(bid, chap, sec) {
+  const book = BOOKS.find(b => b.bid === bid);
+  if (!book) return;
   const modal = document.getElementById('comment-modal');
-  const iframe = document.getElementById('comment-iframe');
-  const hint = document.getElementById('comment-modal-hint');
-  if (hint) hint.hidden = true;
-  iframe.onload = function () {
-    clearTimeout(_commentLoadTimer);
-  };
-  clearTimeout(_commentLoadTimer);
-  _commentLoadTimer = setTimeout(function () {
-    if (hint) hint.hidden = false;
-  }, 6000);
-  iframe.src = url;
   modal.hidden = false;
   document.body.style.overflow = 'hidden';
   let saved = 16;
@@ -2787,22 +2805,149 @@ function openCommentModal(url) {
     if (v >= FS_MIN && v <= FS_MAX) saved = v;
   } catch(e) {}
   setCommentFs(saved);
+  loadCommentNative(book.engs, chap, sec);
 }
+
+async function loadCommentNative(engs, chap, sec) {
+  chap = parseInt(chap, 10) || 0; sec = parseInt(sec, 10) || 0;
+  _commentUrl = fhlComUrlByEngs(engs, chap, sec);
+  const nat = document.getElementById('comment-native');
+  const nav = document.getElementById('comment-nav');
+  const iframe = document.getElementById('comment-iframe');
+  const hint = document.getElementById('comment-modal-hint');
+  if (hint) hint.hidden = true;
+  clearTimeout(_commentLoadTimer);
+  nat.hidden = false;
+  if (nav) nav.hidden = true;
+  iframe.hidden = true; iframe.src = 'about:blank';
+  nat.innerHTML = '<div class="cm-loading">註釋載入中…（需要連線）</div>';
+  if (_commentAbort) { try { _commentAbort.abort(); } catch(e) {} }
+  const ac = new AbortController(); _commentAbort = ac;
+  try {
+    const u = FHL_COM_API + '?book=3&engs=' + encodeURIComponent(engs) + '&chap=' + chap + '&sec=' + sec;
+    const resp = await fetch(u, { signal: ac.signal });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (ac.signal.aborted) return;
+    if (!data || data.status !== 'success') throw new Error('API 回應異常');
+    renderCommentNative(data, engs);
+  } catch (e) {
+    if (ac.signal.aborted) return;
+    commentFallbackIframe();
+  }
+}
+
+function renderCommentNative(data, engs) {
+  const nat = document.getElementById('comment-native');
+  const book = BOOKS.find(b => b.engs === engs);
+  const chineses = book ? book.chineses : '';
+  const esc = escapeHtmlForNotes;
+  let html = '';
+  const records = Array.isArray(data.record) ? data.record : [];
+  if (records.length === 0) {
+    html += '<div class="cm-empty">這一段沒有註釋資料，可用下方「上一段 / 下一段」換段閱讀。</div>';
+  }
+  records.forEach(function (rec) {
+    html += '<div class="cm-title">' + esc(rec.title || '') + '（' + esc(rec.book_name || '信望愛站註釋') + '）</div>';
+    html += formatComText(rec.com_text || '', chineses);
+  });
+  html += '<div class="cm-source">資料來源：<a href="' + esc(_commentUrl) + '" target="_blank" rel="noopener">信望愛聖經網站（CBOL 計畫）</a>，版權屬原站所有；點「新分頁開啟」可在原站閱讀。</div>';
+  nat.innerHTML = html;
+  nat.scrollTop = 0;
+  const nav = document.getElementById('comment-nav');
+  const prevBtn = document.getElementById('cm-prev');
+  const nextBtn = document.getElementById('cm-next');
+  if (!nav || !prevBtn || !nextBtn) return;
+  const wire = function (btn, info, arrow) {
+    if (info && info.engs) {
+      btn.hidden = false;
+      const isBg = (parseInt(info.chap, 10) === 0);
+      btn.textContent = arrow === 'prev' ? ('← ' + (isBg ? '背景資料' : '上一段')) : ((isBg ? '背景資料' : '下一段') + ' →');
+      btn.onclick = function () { loadCommentNative(info.engs, info.chap, info.sec); };
+    } else {
+      btn.hidden = true; btn.onclick = null;
+    }
+  };
+  wire(prevBtn, data.prev, 'prev');
+  wire(nextBtn, data.next, 'next');
+  nav.hidden = prevBtn.hidden && nextBtn.hidden;
+}
+
+// com_text 標記轉連結：#參照| → 信望愛 read.php；SNH/SNG 原文編號 → 信望愛 s.php
+function formatComText(txt, curChineses) {
+  const esc = escapeHtmlForNotes;
+  const re = /#([^#|\r\n]{1,50})\||SN([GH])(\d{1,6})/g;
+  let out = '', i = 0, m;
+  while ((m = re.exec(txt)) !== null) {
+    out += esc(txt.slice(i, m.index));
+    if (m[1] !== undefined) {
+      out += comRefLink(m[1].trim(), curChineses);
+    } else {
+      const isGreek = m[2] === 'G';
+      const num = parseInt(m[3], 10);
+      out += '<a href="https://bible.fhl.net/new/s.php?N=' + (isGreek ? 0 : 1) + '&k=' + num +
+             '" target="_blank" rel="noopener">' + (isGreek ? 'SG ' : 'SH ') + num + '</a>';
+    }
+    i = re.lastIndex;
+  }
+  out += esc(txt.slice(i));
+  return out;
+}
+
+function comRefLink(refRaw, curChineses) {
+  const esc = escapeHtmlForNotes;
+  const m = refRaw.match(/^([^\d]{0,8}?)\s*(\d+)(?::(\d+))?(?:-(?:(\d+):)?(\d+))?$/);
+  if (!m) return esc(refRaw);
+  const chineses = (m[1] || '').trim() || curChineses;
+  const book = BOOKS.find(b => b.chineses === chineses);
+  if (!book) return esc(refRaw);
+  let url = 'https://bible.fhl.net/new/read.php?chineses=' + encodeURIComponent(book.chineses) + '&chap=' + m[2];
+  if (!m[3] && !m[4] && m[5]) {
+    url += '&chap2=' + m[5]; // 「5-7」＝章範圍
+  } else {
+    if (m[3]) url += '&sec=' + m[3];
+    if (m[5]) url += '&chap2=' + (m[4] || m[2]) + '&sec2=' + m[5];
+  }
+  return '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(refRaw) + '</a>';
+}
+
+// 備援：API 失敗（離線／服務異常）時退回舊 iframe 直嵌
+function commentFallbackIframe() {
+  const nat = document.getElementById('comment-native');
+  const nav = document.getElementById('comment-nav');
+  const iframe = document.getElementById('comment-iframe');
+  const hint = document.getElementById('comment-modal-hint');
+  nat.hidden = true;
+  if (nav) nav.hidden = true;
+  iframe.hidden = false;
+  iframe.onload = function () { clearTimeout(_commentLoadTimer); };
+  clearTimeout(_commentLoadTimer);
+  _commentLoadTimer = setTimeout(function () {
+    if (hint) hint.hidden = false;
+  }, 6000);
+  iframe.src = _commentUrl;
+  const slider = document.getElementById('cm-slider');
+  if (slider) setCommentFs(slider.value);
+}
+
 function closeCommentModal() {
   const modal = document.getElementById('comment-modal');
   const iframe = document.getElementById('comment-iframe');
   clearTimeout(_commentLoadTimer);
+  if (_commentAbort) { try { _commentAbort.abort(); } catch(e) {} }
   iframe.src = 'about:blank';
   modal.hidden = true;
   document.body.style.overflow = '';
 }
 function setCommentFs(px) {
   px = Math.max(FS_MIN, Math.min(FS_MAX, parseInt(px, 10) || 16));
+  const nat = document.getElementById('comment-native');
   const iframe = document.getElementById('comment-iframe');
   const slider = document.getElementById('cm-slider');
   const label = document.getElementById('cm-fs-label');
-  if (iframe) {
-    /* 以 CSS zoom 縮放 iframe 內容（Chrome/Safari/Edge 支援，Firefox 近版本亦可） */
+  if (nat) nat.style.fontSize = px + 'px';
+  if (iframe && !iframe.hidden) {
+    /* 備援 iframe 模式才用 zoom（iOS 無效是已知限制，原生模式不受影響） */
     iframe.style.zoom = (px / 16).toFixed(3);
   }
   if (slider) slider.value = px;
