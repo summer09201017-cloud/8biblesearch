@@ -1527,6 +1527,14 @@ body {
   .tabs::-webkit-scrollbar { display:none; }
   .tab { flex:1 0 auto; white-space:nowrap; }
 }
+
+/* 🧓 簡易模式(0809 B1):只留 經文閱讀+設定 兩分頁;其餘先收起,設定裡隨時可關 */
+body.simple-mode .tab[data-tab="search"],
+body.simple-mode .tab[data-tab="track"],
+body.simple-mode .tab[data-tab="quick"],
+body.simple-mode .tab[data-tab="notes"],
+body.simple-mode .tab[data-tab="diff"] { display:none; }
+body.simple-mode .tab { font-size:1.05rem; padding-top:12px; padding-bottom:12px; } /* 兩顆分頁時放大好按 */
 /* ⬆ 回頂鈕(0802 使用者點名:一章 60 幾節 × 5 譯本,滑到底想換書卷/查關鍵字要滑很久)
    捲超過約兩個螢幕才出現;半透明不搶經文;z-index 800=蓋過內容、壓在所有彈窗(1000/9000+)之下 */
 #backToTop {
@@ -1816,6 +1824,19 @@ body {
   </div>
 
   <div id="panel-settings" class="panel">
+
+    <!-- 0. 🧓 簡易模式(0809 B1:治功能密度;放最上面讓長輩找得到) -->
+    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
+      <h3>🧓 簡易模式</h3>
+      <p style="font-size:0.9rem;color:var(--text2);margin-bottom:10px;">
+        給「只想讀經」的人：打開後畫面只留<b>「經文閱讀」</b>與<b>「設定/資料」</b>兩個分頁，
+        其他功能（搜尋／足跡／快速查詢／筆記／對讀）先收起來——資料都還在，隨時回到這裡關掉就全部回來。
+      </p>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:1rem;">
+        <input type="checkbox" id="simple-mode-toggle" onchange="setSimpleMode(this.checked)">
+        <b>開啟簡易模式</b>
+      </label>
+    </div>
 
     <!-- 1. 譯本顯示順序 -->
     <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
@@ -4155,6 +4176,27 @@ function refreshStatsToggle() {
   const st = document.getElementById('stats-toggle');
   if (st) st.checked = statsEnabled();
 }
+
+// 🧓 簡易模式(0809 B1:治功能密度)。裝置層偏好,刻意不進備份鏈。
+function simpleModeEnabled() {
+  try { return localStorage.getItem('bible-simple-mode') === '1'; } catch(e) { return false; }
+}
+function setSimpleMode(on) {
+  try { localStorage.setItem('bible-simple-mode', on ? '1' : '0'); } catch(e) {}
+  applySimpleMode();
+  toast(on ? '🧓 簡易模式已開啟:只留「經文閱讀」與「設定/資料」' : '已回到完整模式,七個分頁都回來了');
+}
+function applySimpleMode() {
+  const on = simpleModeEnabled();
+  document.body.classList.toggle('simple-mode', on);
+  const st = document.getElementById('simple-mode-toggle');
+  if (st) st.checked = on;
+  if (on) {
+    const active = document.querySelector('.tab.active');
+    const name = active && active.getAttribute('data-tab');
+    if (name && name !== 'read' && name !== 'settings') switchTab('read');
+  }
+}
 // (0809 使用者拍板拿掉「清除全部足跡」鈕與函式:足跡珍貴,要的是備份與移交不是刪除;不想記就停用)
 function loadReadingLog() {
   try {
@@ -4581,6 +4623,7 @@ function switchTab(name) {
     refreshLastExportHint();
     refreshTrackToggle();
     refreshStatsToggle();
+    applySimpleMode();
   }
   else if (name === 'diff') initDiffSelectors();
   else if (name === 'track') renderTrackPanel();
@@ -7235,6 +7278,7 @@ async function autoCheckCloudOnLaunch(opts) {
 loadVersionOrder();
 loadActiveVersions();
 normalizeActiveVersionOrder();
+applySimpleMode();
 initBookSelector();
 initVersionToggles();
 renderVersionOrderList();
