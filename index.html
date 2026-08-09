@@ -1894,11 +1894,11 @@ body {
         開啟後，在「經文閱讀」打開一章停留 15 秒、或「快速查詢」查整章，就自動記下足跡（同一章 30 分鐘內重複開只算一次；關鍵字搜尋不計）。
         <b>記錄只存在這台裝置</b>，每個人的進度各自獨立；「📤 匯出資料」的備份檔會一併帶著足跡。
       </p>
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:12px;font-size:0.95rem;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.95rem;">
         <input type="checkbox" id="track-toggle" onchange="setReadingTrack(this.checked)">
         <b>啟用讀經足跡</b>（停用後不再記錄，既有記錄保留）
       </label>
-      <button class="btn btn-secondary btn-sm" onclick="clearReadingLog()">🗑 清除全部足跡記錄</button>
+      <!-- 0809 使用者拍板:清除鈕拿掉——足跡珍貴,需要的是備份與移交,不是刪除;不想記就停用 -->
     </div>
 
     <!-- 3.6 匿名使用統計（誠信揭露＋可關；0809 審查 A0） -->
@@ -4122,17 +4122,7 @@ function refreshStatsToggle() {
   const st = document.getElementById('stats-toggle');
   if (st) st.checked = statsEnabled();
 }
-function clearReadingLog() {
-  if (!confirm('確定要清除全部讀經足跡記錄嗎？此動作無法復原。\n（若只是不想再記錄，取消勾選「啟用讀經足跡」即可，記錄會保留）')) return;
-  try {
-    localStorage.removeItem(TRACK_LOG_KEY);
-    localStorage.removeItem(TRACK_LAST_KEY);
-    localStorage.removeItem(MILESTONE_KEY); // 記錄沒了,慶祝記號也歸零(重讀完可再慶祝)
-  } catch(e) {}
-  toast('讀經足跡已清除');
-  const p = document.getElementById('panel-track');
-  if (p && p.classList.contains('active')) renderTrackPanel();
-}
+// (0809 使用者拍板拿掉「清除全部足跡」鈕與函式:足跡珍貴,要的是備份與移交不是刪除;不想記就停用)
 function loadReadingLog() {
   try {
     const o = JSON.parse(localStorage.getItem(TRACK_LOG_KEY) || '{}');
@@ -4538,7 +4528,7 @@ function renderTrackPanel() {
     return `<div class="track-book-row"><div class="track-book-name${done ? ' done' : ''}" title="${b.chinesef}${done ? '：全卷讀完 🏆' : ''}">${done ? '🏆' : ''}${b.chineses}</div><div class="track-cells">${cells}</div></div>`;
   }).join('');
   html += `<div class="track-legend">少 <div class="track-cell"></div><div class="track-cell t1"></div><div class="track-cell t2"></div><div class="track-cell t3"></div><div class="track-cell t4"></div> 多（1 / 2 / 5 / 10 次以上）</div>`;
-  html += `<p class="track-note">📌 打開一章停留 15 秒就自動記錄（同一章 30 分鐘內只算一次；搜尋不計）。記錄只存在這台裝置，每個人的進度各自獨立；可在「設定/資料」停用或清除。</p>`;
+  html += `<p class="track-note">📌 打開一章停留 15 秒就自動記錄（同一章 30 分鐘內只算一次；搜尋不計）。記錄只存在這台裝置，每個人的進度各自獨立；可在「設定/資料」停用（記錄保留）。</p>`;
   html += `</div>`;
 
   div.innerHTML = html;
