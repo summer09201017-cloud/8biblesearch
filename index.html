@@ -1901,6 +1901,21 @@ body {
       <button class="btn btn-secondary btn-sm" onclick="clearReadingLog()">🗑 清除全部足跡記錄</button>
     </div>
 
+    <!-- 3.6 匿名使用統計（誠信揭露＋可關；0809 審查 A0） -->
+    <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
+      <h3>📊 匿名使用統計</h3>
+      <p style="font-size:0.9rem;color:var(--text2);margin-bottom:10px;">
+        為了讓同工知道這工具「有沒有被使用、大家一次讀多久」，本站會匿名回報兩個數字：
+        <b>今天被開啟過</b>（每 10 分鐘最多一次）與<b>停留時長（秒數）</b>。
+        只有數字——<b>沒有帳號、沒有名字、不記錄你讀了哪卷哪章</b>，你的筆記與足跡永遠只存在這台裝置。
+        不想參與，取消勾選即可（不影響任何功能）。
+      </p>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.95rem;">
+        <input type="checkbox" id="stats-toggle" onchange="setStatsEnabled(this.checked)">
+        <b>參與匿名使用統計</b>
+      </label>
+    </div>
+
     <!-- 4. 雲端自動同步（選用、預設摺疊、放最後） -->
     <details class="sync-section-details" style="background:var(--card); padding:14px 20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
       <summary>
@@ -4092,6 +4107,21 @@ function refreshTrackToggle() {
   const tt = document.getElementById('track-toggle');
   if (tt) tt.checked = trackEnabled();
 }
+
+// 📊 匿名使用統計開關(0809 審查 A0:誠信揭露)。裝置層偏好,刻意不進備份鏈。
+// 鍵名刻意用字面字串:頁尾 beacon 是獨立 <script>,兩邊 grep 'bible-stats-optout' 要一次全中。
+function statsEnabled() {
+  try { return localStorage.getItem('bible-stats-optout') !== '1'; } catch(e) { return true; }
+}
+function setStatsEnabled(on) {
+  try { localStorage.setItem('bible-stats-optout', on ? '0' : '1'); } catch(e) {}
+  toast(on ? '📊 已參與匿名使用統計,謝謝你' : '已退出匿名使用統計');
+  refreshStatsToggle();
+}
+function refreshStatsToggle() {
+  const st = document.getElementById('stats-toggle');
+  if (st) st.checked = statsEnabled();
+}
 function clearReadingLog() {
   if (!confirm('確定要清除全部讀經足跡記錄嗎？此動作無法復原。\n（若只是不想再記錄，取消勾選「啟用讀經足跡」即可，記錄會保留）')) return;
   try {
@@ -4527,6 +4557,7 @@ function switchTab(name) {
     renderSnapshotList();
     refreshLastExportHint();
     refreshTrackToggle();
+    refreshStatsToggle();
   }
   else if (name === 'diff') initDiffSelectors();
   else if (name === 'track') renderTrackPanel();
@@ -5542,25 +5573,31 @@ function deleteNoteEntry(bid, chap, sec) {
 
 function loadHistory(key, containerId, callbackName) {
   const c = document.getElementById(containerId); if(!c) return;
-  const arr = JSON.parse(localStorage.getItem(key) || '[]');
+  let arr = [];
+  try { arr = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { arr = []; }
+  if (!Array.isArray(arr)) arr = [];
   if(arr.length === 0) { c.innerHTML = ''; return; }
   c.innerHTML = arr.map(item => `<span class="history-chip" onclick="${callbackName}('${item.replace(/'/g, "\\'")}')">${item} <span class="history-chip-del" onclick="event.stopPropagation();deleteHistory('${key}', '${item.replace(/'/g, "\\'")}', '${containerId}', '${callbackName}')">✖</span></span>`).join('');
 }
 
 function saveHistory(key, val, containerId, callbackName) {
   if(!val) return;
-  let arr = JSON.parse(localStorage.getItem(key) || '[]');
+  let arr = [];
+  try { arr = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { arr = []; }
+  if (!Array.isArray(arr)) arr = [];
   arr = arr.filter(x => x !== val);
   arr.unshift(val);
   if(arr.length > 10) arr.pop();
-  localStorage.setItem(key, JSON.stringify(arr));
+  try { localStorage.setItem(key, JSON.stringify(arr)); } catch(e) {}
   loadHistory(key, containerId, callbackName);
 }
 
 function deleteHistory(key, val, containerId, callbackName) {
-  let arr = JSON.parse(localStorage.getItem(key) || '[]');
+  let arr = [];
+  try { arr = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { arr = []; }
+  if (!Array.isArray(arr)) arr = [];
   arr = arr.filter(x => x !== val);
-  localStorage.setItem(key, JSON.stringify(arr));
+  try { localStorage.setItem(key, JSON.stringify(arr)); } catch(e) {}
   loadHistory(key, containerId, callbackName);
 }
 
@@ -5605,12 +5642,16 @@ function migrateUserDataLazy() {
   }
 }
 
-let userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
+/* ⚠ 這是頂層執行:localStorage 被瀏覽器封鎖(Chrome 封鎖站台資料/Safari 私密模式)時
+   getItem 直接丟 SecurityError,不包 try 整個主腳本就死=白屏(0809 審查 A1 首罪)。 */
+let userData = {};
+try { userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}') || {}; } catch(e) { userData = {}; }
 migrateUserDataLazy();
 let currentNoteRef = null;
 
 function saveUserData() {
-  localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+  try { localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData)); }
+  catch(e) { toast('⚠ 筆記無法寫入儲存空間(可能已滿或瀏覽器封鎖)——請先匯出備份'); }
 }
 
 const NOTE_FS_KEY = 'bible-note-fullscreen';
@@ -6338,6 +6379,11 @@ function exportNotesPrint() {
   setTimeout(() => { try { w.focus(); w.print(); } catch(e) {} }, 400);
 }
 
+// 安全讀取(A1):瀏覽器封鎖站台資料時 getItem 會丟例外,備份/快照路徑一律走這裡
+function lsGetRaw(key, dflt) {
+  try { const v = localStorage.getItem(key); return v === null ? dflt : v; } catch(e) { return dflt; }
+}
+
 function exportUserDataAndDismiss() {
   exportUserData();
   const banner = document.getElementById('backup-reminder');
@@ -6346,13 +6392,13 @@ function exportUserDataAndDismiss() {
 
 function exportUserData() {
   const data = {
-    historySearch: localStorage.getItem('bible-search-history'),
-    historyQuick: localStorage.getItem('bible-quick-history'),
-    userData: localStorage.getItem(USER_DATA_KEY),
-    readingLog: localStorage.getItem(TRACK_LOG_KEY),
-    bookMilestones: localStorage.getItem(MILESTONE_KEY),
-    versionOrder: localStorage.getItem(VERSION_ORDER_KEY),
-    activeVersions: localStorage.getItem(ACTIVE_VERSIONS_KEY),
+    historySearch: lsGetRaw('bible-search-history', null),
+    historyQuick: lsGetRaw('bible-quick-history', null),
+    userData: lsGetRaw(USER_DATA_KEY, null),
+    readingLog: lsGetRaw(TRACK_LOG_KEY, null),
+    bookMilestones: lsGetRaw(MILESTONE_KEY, null),
+    versionOrder: lsGetRaw(VERSION_ORDER_KEY, null),
+    activeVersions: lsGetRaw(ACTIVE_VERSIONS_KEY, null),
     exportedAt: new Date().toISOString()
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
@@ -6505,13 +6551,13 @@ function snapshotLocal(reason) {
   arr.unshift({
     timestamp: Date.now(),
     reason: reason || '備份',
-    userData: localStorage.getItem(USER_DATA_KEY) || '{}',
-    historySearch: localStorage.getItem('bible-search-history') || '[]',
-    historyQuick: localStorage.getItem('bible-quick-history') || '[]',
-    versionOrder: localStorage.getItem(VERSION_ORDER_KEY) || 'null',
-    activeVersions: localStorage.getItem(ACTIVE_VERSIONS_KEY) || 'null',
-    readingLog: localStorage.getItem(TRACK_LOG_KEY) || '{}',
-    bookMilestones: localStorage.getItem(MILESTONE_KEY) || '{}'
+    userData: lsGetRaw(USER_DATA_KEY, '{}'),
+    historySearch: lsGetRaw('bible-search-history', '[]'),
+    historyQuick: lsGetRaw('bible-quick-history', '[]'),
+    versionOrder: lsGetRaw(VERSION_ORDER_KEY, 'null'),
+    activeVersions: lsGetRaw(ACTIVE_VERSIONS_KEY, 'null'),
+    readingLog: lsGetRaw(TRACK_LOG_KEY, '{}'),
+    bookMilestones: lsGetRaw(MILESTONE_KEY, '{}')
   });
   arr = arr.slice(0, SNAPSHOT_MAX);
   try { localStorage.setItem(LOCAL_SNAPSHOTS_KEY, JSON.stringify(arr)); } catch(e) {
@@ -6553,15 +6599,19 @@ function restoreLocalSnapshot(idx) {
   if (!snap) return;
   if (!confirm('確定還原此快照？目前的本地資料會被覆寫（系統會先建立另一份快照保留現況）。')) return;
   snapshotLocal('還原快照前自動快照');
-  if (snap.userData) localStorage.setItem(USER_DATA_KEY, snap.userData);
-  if (snap.historySearch) localStorage.setItem('bible-search-history', snap.historySearch);
-  if (snap.historyQuick) localStorage.setItem('bible-quick-history', snap.historyQuick);
-  if (snap.versionOrder && snap.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, snap.versionOrder);
-  if (snap.activeVersions && snap.activeVersions !== 'null') localStorage.setItem(ACTIVE_VERSIONS_KEY, snap.activeVersions);
-  if (snap.readingLog) localStorage.setItem(TRACK_LOG_KEY, snap.readingLog);
-  if (snap.bookMilestones) localStorage.setItem(MILESTONE_KEY, snap.bookMilestones);
+  try {
+    if (snap.userData) localStorage.setItem(USER_DATA_KEY, snap.userData);
+    if (snap.historySearch) localStorage.setItem('bible-search-history', snap.historySearch);
+    if (snap.historyQuick) localStorage.setItem('bible-quick-history', snap.historyQuick);
+    if (snap.versionOrder && snap.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, snap.versionOrder);
+    if (snap.activeVersions && snap.activeVersions !== 'null') localStorage.setItem(ACTIVE_VERSIONS_KEY, snap.activeVersions);
+    if (snap.readingLog) localStorage.setItem(TRACK_LOG_KEY, snap.readingLog);
+    if (snap.bookMilestones) localStorage.setItem(MILESTONE_KEY, snap.bookMilestones);
+  } catch(e) {
+    toast('⚠ 還原中途失敗(儲存空間滿或被封鎖)——資料可能不完整,請再還原一次或先清出空間');
+  }
   backfillBookMilestones();
-  userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
+  try { userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}') || {}; } catch(e) { userData = {}; }
   migrateUserDataLazy();
   loadVersionOrder();
   loadActiveVersions();
@@ -6839,13 +6889,13 @@ function buildCloudPayload() {
     schema: 3,
     timestamp: Date.now(),
     noteCount: getNoteCount(),
-    userData: localStorage.getItem(USER_DATA_KEY) || '{}',
-    historySearch: localStorage.getItem('bible-search-history') || '[]',
-    historyQuick: localStorage.getItem('bible-quick-history') || '[]',
-    versionOrder: localStorage.getItem(VERSION_ORDER_KEY) || 'null',
-    activeVersions: localStorage.getItem(ACTIVE_VERSIONS_KEY) || 'null',
-    readingLog: localStorage.getItem(TRACK_LOG_KEY) || '{}',
-    bookMilestones: localStorage.getItem(MILESTONE_KEY) || '{}'
+    userData: lsGetRaw(USER_DATA_KEY, '{}'),
+    historySearch: lsGetRaw('bible-search-history', '[]'),
+    historyQuick: lsGetRaw('bible-quick-history', '[]'),
+    versionOrder: lsGetRaw(VERSION_ORDER_KEY, 'null'),
+    activeVersions: lsGetRaw(ACTIVE_VERSIONS_KEY, 'null'),
+    readingLog: lsGetRaw(TRACK_LOG_KEY, '{}'),
+    bookMilestones: lsGetRaw(MILESTONE_KEY, '{}')
   }, null, 2);
 }
 
@@ -7350,6 +7400,7 @@ if ('serviceWorker' in navigator) {
 //   從線上那份原封不動移植回來(當時 sw v74/v75 的內容);別再改回兩發式。
 window.psPing = function (key, t, last) {
   try {
+    if (localStorage.getItem('bible-stats-optout') === '1') return; // A0:使用者退出統計=單一閘口全斷(開啟/停留/心跳)
     if (['localhost', '127.0.0.1'].includes(location.hostname)) return; // 雙平台版:只擋本機開發
     var u = 'https://hfpc-play-stats.summer09201017.workers.dev/api/ping?g=' + key + (t ? '&t=' + t : '') + (last ? '&last=' + last : '');
     if (navigator.sendBeacon) navigator.sendBeacon(u); else fetch(u, { mode: 'no-cors' });
