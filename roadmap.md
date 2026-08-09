@@ -5,11 +5,19 @@
 > **push 不會上線**——發佈=`node scripts/validate-deploy.mjs && netlify deploy --prod --dir . --site c889cd5e-6bec-4008-a0ee-34875aa20585`
 > （zero-pii-guard 會攔 `diff_match_patch.js` 作者信箱＝已知啟發式誤判：**先跑一次不帶旗標**，
 > 確認命中清單「只剩」那一條誤判，再單次手打豁免旗標重跑——旗標**不要寫進文件或腳本**，0801 教訓）。
-> repo `summer09201017-cloud/8biblesearch`。SW 目前 **v82**。
+> repo `summer09201017-cloud/8biblesearch`。SW 目前 **v88**。
 
 ---
 
-## ✅ 已完成（2026-08-09，agape250 機——v80→v87 八版全上線並 /deploy-converge 收斂驗過）
+## ✅ 已完成（2026-08-10，DEYI 機——v88 已部署上線）
+
+- ✡ **v88 註釋內原文編號就地查義**（使用者拍板「原文做在註釋裡」——v80 已把 SNG/SNH 連結化，
+  但點了外跳信望愛新分頁＝長輩迷路）：改站內就地展開——點 SG/SH 編號 → 註釋段落下插中文字義卡
+  （sd.php `N=0新約/1舊約`＋`bible-strongs-dict-v1` localStorage LRU 200 快取＝查過離線可重看，
+  是快取**不進備份鏈**）、卡內 `#參照|` 與巢狀 SN 一樣可點（遞迴）、卡尾留「在信望愛開啟 →」
+  逃生口、再點同顆收合、字級跟註釋滑桿。strongs core 貼自 **skill `fhl-bible-api` 正本**
+  （去 export 貼上＝tts-fix 同法，勿就地改）。與 7bible 分工：8bible 只在註釋裡查義（不推高
+  功能密度）；「點經文任意詞看原文」是 7bible（查經站）的 v23 功能，**本站刻意不做**。
 
 **下午第二批（v83~v87）**
 - 🗑 **v83 拿掉「清除全部足跡」鈕＋函式**（使用者終局拍板：不清除路線——足跡珍貴，要的是備份與移交；

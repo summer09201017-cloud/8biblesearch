@@ -1433,6 +1433,10 @@ body {
 #comment-native .cm-title { font-weight:700; color:#7a5c1e; margin-bottom:10px; white-space:normal; }
 #comment-native .cm-loading, #comment-native .cm-empty { color:#6b5d4d; padding:20px 0; white-space:normal; }
 #comment-native .cm-source { margin-top:16px; padding-top:10px; border-top:1px solid #e8dfc8; font-size:0.8em; color:#6b5d4d; white-space:normal; }
+#comment-native .cm-sn { white-space:nowrap; }
+#comment-native .cm-sn-card { margin:6px 0 10px; padding:8px 10px; border:1px solid #e2d8bd; border-radius:8px; background:#faf6ea; white-space:normal; }
+#comment-native .cm-sn-card .cm-sn-head { font-weight:700; color:#7a5c1e; margin-bottom:4px; white-space:normal; }
+#comment-native .cm-sn-card .cm-sn-body { white-space:pre-wrap; max-height:40vh; overflow-y:auto; color:#3d3529; }
 .comment-nav { display:flex; gap:8px; padding:8px 10px; border-top:1px solid var(--border); background:var(--bg2); justify-content:space-between; }
 .comment-nav button { min-height:42px; }
 #comment-native[hidden], .comment-modal-body iframe[hidden], .comment-nav[hidden] { display:none !important; }
@@ -2871,6 +2875,118 @@ function toggleSearchContext(btn, bid, chap, sec) {
   btn.textContent = '⊖ 收合';
 }
 
+// ── Strong's 原文編號 core（正本在 skill fhl-bible-api/assets/strongs-core.js,勿就地改;
+//    貼上時去掉 export 關鍵字=tts-fix 同法。v88:註釋內 SNG/SNH 點了就地展開中文字義)──
+const SN_QB_URL = 'https://bible.fhl.net/json/qb.php';
+const SN_SD_URL = 'https://bible.fhl.net/json/sd.php';
+const SN_DICT_CAP = 200;
+const SN_FETCH_TIMEOUT_MS = 10000;
+let SN_DICT_LS_KEY = 'strongs-dict-v1';
+function configureStrongs(opts) {
+  if (opts && typeof opts.dictKey === 'string' && opts.dictKey) SN_DICT_LS_KEY = opts.dictKey;
+}
+const _snVerseCache = new Map();
+const _snMemDict = new Map();
+let _snDictStore = null; // 模組級單一 store:並發查多編號詞時共用同一物件,避免讀改寫互蓋
+async function _snFetchJson(url) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), SN_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+function parseStrongsText(raw) {
+  const segs = [];
+  let lastTextSeg = null;
+  let added = false;
+  const re = /<W([A-Z]*)([GH])0*(\d+)>|\{|\}|([^<{}]+)/g;
+  let m;
+  while ((m = re.exec(String(raw || ''))) !== null) {
+    if (m[4] !== undefined) {
+      const pieces = m[4].split(/([\s\u3000,\uFF0C.\u3002\uFF0E;\uFF1B:\uFF1A?\uFF1F!\uFF01\u3001\u300C\u300D\u300E\u300F\u201C\u201D\u2018\u2019()\uFF08\uFF09\u2014\u2026\u00B7-]+)/).filter(Boolean);
+      pieces.forEach((piece) => {
+        const isPunct = /^[\s\u3000,\uFF0C.\u3002\uFF0E;\uFF1B:\uFF1A?\uFF1F!\uFF01\u3001\u300C\u300D\u300E\u300F\u201C\u201D\u2018\u2019()\uFF08\uFF09\u2014\u2026\u00B7-]+$/.test(piece);
+        const seg = { t: piece, nums: [], added };
+        segs.push(seg);
+        if (!isPunct) lastTextSeg = seg;
+      });
+    } else if (m[0] === '{') {
+      added = true;
+      lastTextSeg = null;
+    } else if (m[0] === '}') {
+      added = false;
+      lastTextSeg = null;
+    } else {
+      const num = { lang: m[2], n: m[3], parsing: m[1].includes('T') };
+      if (lastTextSeg) {
+        lastTextSeg.nums.push(num);
+      } else {
+        lastTextSeg = { t: '', nums: [num], added };
+        segs.push(lastTextSeg);
+      }
+    }
+  }
+  return segs;
+}
+async function fetchStrongsVerse(chineses, chap, sec) {
+  const key = chineses + ':' + chap + ':' + sec;
+  if (_snVerseCache.has(key)) return _snVerseCache.get(key);
+  const url = SN_QB_URL + '?chineses=' + encodeURIComponent(chineses) + '&chap=' + chap + '&sec=' + sec + '&version=unv&strong=1&gb=0';
+  const data = await _snFetchJson(url);
+  const text = data && data.record && data.record[0] && data.record[0].bible_text;
+  if (!data || data.status !== 'success' || !text) throw new Error('FHL 查無此節原文資料');
+  const segs = parseStrongsText(text);
+  _snVerseCache.set(key, segs);
+  return segs;
+}
+function _snReadDictStore() {
+  if (_snDictStore) return _snDictStore;
+  try {
+    const raw = localStorage.getItem(SN_DICT_LS_KEY);
+    const obj = raw ? JSON.parse(raw) : null;
+    _snDictStore = obj && typeof obj === 'object' ? obj : {};
+  } catch(e) {
+    _snDictStore = {};
+  }
+  return _snDictStore;
+}
+function _snWriteDictStore(store) {
+  try {
+    const keys = Object.keys(store);
+    if (keys.length > SN_DICT_CAP) {
+      keys.sort((a, b) => (store[a].at || 0) - (store[b].at || 0))
+        .slice(0, keys.length - SN_DICT_CAP)
+        .forEach((k) => delete store[k]);
+    }
+    localStorage.setItem(SN_DICT_LS_KEY, JSON.stringify(store));
+  } catch(e) { /* 容量滿或私密模式:略過,純線上照常可用 */ }
+}
+async function lookupStrongs(lang, n) {
+  const key = lang + n;
+  if (_snMemDict.has(key)) return _snMemDict.get(key);
+  const store = _snReadDictStore();
+  if (store[key] && store[key].t) {
+    store[key].at = Date.now();
+    _snWriteDictStore(store);
+    _snMemDict.set(key, store[key].t);
+    return store[key].t;
+  }
+  const url = SN_SD_URL + '?k=' + n + '&N=' + (lang === 'G' ? 0 : 1) + '&gb=0';
+  const data = await _snFetchJson(url);
+  const records = Array.isArray(data && data.record) ? data.record : [];
+  const text = records.map((r) => String(r.dic_text || '').trim()).filter(Boolean).join('\n──\n');
+  if (!data || data.status !== 'success' || !text) throw new Error('查無字典條目');
+  _snMemDict.set(key, text);
+  store[key] = { t: text, at: Date.now() };
+  _snWriteDictStore(store);
+  return text;
+}
+configureStrongs({ dictKey: 'bible-strongs-dict-v1' }); // 字典快取鍵(是快取不進備份鏈)
+
 // ====== 信望愛註釋彈窗（JSON API 原生排版；iframe 僅為備援） ======
 // 0809 iPhone 使用者回饋：com.php 的 <pre> 長行在手機上右半被截掉、且 iframe 的
 // CSS zoom 在 iOS 無效（字級滑桿沒反應）。改走信望愛開放的 JSON API（sc.php，
@@ -2969,6 +3085,33 @@ function renderCommentNative(data, engs) {
   nav.hidden = prevBtn.hidden && nextBtn.hidden;
 }
 
+// v88:註釋內原文編號點了就地展開中文字義(sd.php+快取);再點同一顆收合。委派一次註冊,
+// 換段(loadCommentNative 重設 innerHTML)時卡片自然消失。字典內文再過 formatComText=
+// 內含的 #參照| 與 SNG/SNH 一樣可點(遞迴展開)。
+document.getElementById('comment-native').addEventListener('click', async function (e) {
+  const a = e.target.closest('.cm-sn');
+  if (!a) return;
+  e.preventDefault();
+  if (a._snCard && a._snCard.parentNode) { a._snCard.remove(); a._snCard = null; return; }
+  const isGreek = a.dataset.lang === 'G';
+  const card = document.createElement('div');
+  card.className = 'cm-sn-card';
+  card.innerHTML = '<div class="cm-sn-head">' + escapeHtmlForNotes(a.textContent) +
+    '（' + (isGreek ? '希臘文' : '希伯來文') + '原文）</div>' +
+    '<div class="cm-sn-body">查字典中…（需要連線）</div>';
+  (a.closest('.cm-blk') || a).insertAdjacentElement('afterend', card);
+  a._snCard = card;
+  try {
+    const text = await lookupStrongs(a.dataset.lang, a.dataset.n);
+    if (!card.parentNode) return;
+    card.querySelector('.cm-sn-body').innerHTML = formatComText(text, '') +
+      '<div style="margin-top:6px"><a href="https://bible.fhl.net/new/s.php?N=' + (isGreek ? 0 : 1) +
+      '&k=' + a.dataset.n + '" target="_blank" rel="noopener">在信望愛開啟 →</a></div>';
+  } catch (err) {
+    if (card.parentNode) card.querySelector('.cm-sn-body').textContent = '查無字典條目，或網路中斷——請連線後再點一次。';
+  }
+});
+
 // 0809 二修：FHL com_text 是「固定寬度硬換行＋深縮排」的 <pre> 排版（每行 ~40 字），
 // 直接 pre-wrap 會把句子在手機上硬切、縮排變成大片空白（使用者四張截圖回饋）。
 // 重排規則：大綱標記行（壹、/一、/（一）/1./(1)/●/◎…）＝新段落，其餘行＝接續行併回上一段；
@@ -3007,10 +3150,11 @@ function formatComText(txt, curChineses) {
     if (m[1] !== undefined) {
       out += comRefLink(m[1].trim(), curChineses);
     } else {
+      // v88:原文編號改站內就地展開中文字義(點了插 .cm-sn-card;外開信望愛連結移進卡尾)
       const isGreek = m[2] === 'G';
       const num = parseInt(m[3], 10);
-      out += '<a href="https://bible.fhl.net/new/s.php?N=' + (isGreek ? 0 : 1) + '&k=' + num +
-             '" target="_blank" rel="noopener">' + (isGreek ? 'SG ' : 'SH ') + num + '</a>';
+      out += '<a href="#" class="cm-sn" data-lang="' + (isGreek ? 'G' : 'H') + '" data-n="' + num +
+             '">' + (isGreek ? 'SG ' : 'SH ') + num + '</a>';
     }
     i = re.lastIndex;
   }
