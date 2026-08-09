@@ -1437,6 +1437,11 @@ body {
 #comment-native .cm-sn { white-space:nowrap; display:inline-block; padding:0 7px; margin:0 2px; border:1px solid #c9b98a; border-radius:999px; background:#f3ecd7; color:#7a5c1e !important; text-decoration:none !important; font-weight:700; }
 #comment-native .cm-sn::after { content:'字義'; font-size:0.78em; margin-left:3px; opacity:0.75; }
 #comment-native .cm-hint { font-size:0.85em; color:#6b5d4d; background:#fbf7ec; border:1px dashed #d8c9a0; border-radius:8px; padding:6px 9px; margin-bottom:10px; white-space:normal; }
+/* v91:彈窗頂固定「本節原文」(qb.php 帶標和合本=全 66 卷每節都有;註釋本文沒編號的卷也保證有原文可查) */
+#comment-native .cm-vsn-title { font-weight:700; color:#7a5c1e; margin:2px 0 6px; white-space:normal; }
+#comment-native .cm-vsn-text { white-space:normal; line-height:2; margin-bottom:10px; padding:8px 10px; border:1px solid #e2d8bd; border-radius:8px; background:#fbf7ec; }
+#comment-native .cm-word { text-decoration:none !important; border-bottom:2px dotted #b08d3e; color:#3d3529 !important; margin:0 1px; padding:0 1px; }
+#comment-native .cm-vsn-plain { color:#8a7a5e; }
 #comment-native .cm-sn-card { margin:6px 0 10px; padding:8px 10px; border:1px solid #e2d8bd; border-radius:8px; background:#faf6ea; white-space:normal; }
 #comment-native .cm-sn-card .cm-sn-head { font-weight:700; color:#7a5c1e; margin-bottom:4px; white-space:normal; }
 #comment-native .cm-sn-card .cm-sn-body { white-space:pre-wrap; max-height:40vh; overflow-y:auto; color:#3d3529; }
@@ -3042,14 +3047,14 @@ async function loadCommentNative(engs, chap, sec) {
     const data = await resp.json();
     if (ac.signal.aborted) return;
     if (!data || data.status !== 'success') throw new Error('API 回應異常');
-    renderCommentNative(data, engs);
+    renderCommentNative(data, engs, chap, sec);
   } catch (e) {
     if (ac.signal.aborted) return;
     commentFallbackIframe();
   }
 }
 
-function renderCommentNative(data, engs) {
+function renderCommentNative(data, engs, chap, sec) {
   const nat = document.getElementById('comment-native');
   const book = BOOKS.find(b => b.engs === engs);
   const chineses = book ? book.chineses : '';
@@ -3072,7 +3077,11 @@ function renderCommentNative(data, engs) {
   if (html.indexOf('cm-sn') !== -1) {
     html = '<div class="cm-hint">💡 淡黃色「SG/SH 編號 字義」＝希臘文/希伯來文原文字，點一下就地展開中文字義。</div>' + html;
   }
+  // v91:彈窗頂固定「本節原文」——很多卷的註釋本文沒放編號(FHL 資料現實),
+  // 但 qb.php 帶標和合本全 66 卷每節都有 ⇒ 兩個資料源並用,每一節都保證有原文可查。
+  html = '<div id="cm-verse-sn"></div>' + html;
   nat.innerHTML = html;
+  renderCommentVerseSn(engs, chap, sec);
   nat.scrollTop = 0;
   const nav = document.getElementById('comment-nav');
   const prevBtn = document.getElementById('cm-prev');
@@ -3097,6 +3106,35 @@ function renderCommentNative(data, engs) {
 // 換段(loadCommentNative 重設 innerHTML)時卡片自然消失。字典內文再過 formatComText=
 // 內含的 #參照| 與 SNG/SNH 一樣可點(遞迴展開)。
 document.getElementById('comment-native').addEventListener('click', async function (e) {
+  // v91:本節原文的詞塊(一詞可掛多個編號,含文法碼)
+  const w = e.target.closest('.cm-word');
+  if (w) {
+    e.preventDefault();
+    if (w._snCard && w._snCard.parentNode) { w._snCard.remove(); w._snCard = null; return; }
+    const nums = String(w.dataset.nums || '').split(',').filter(Boolean);
+    if (!nums.length) return;
+    const card = document.createElement('div');
+    card.className = 'cm-sn-card';
+    card.innerHTML = '<div class="cm-sn-head">「' + escapeHtmlForNotes(w.textContent) + '」</div>' +
+      '<div class="cm-sn-body">查字典中…（需要連線）</div>';
+    (w.closest('.cm-vsn-text') || w).insertAdjacentElement('afterend', card);
+    w._snCard = card;
+    const parts = [];
+    for (const tok of nums) {
+      const m = tok.match(/^(T?)([GH])(\d+)$/);
+      if (!m) continue;
+      const label = (m[2] === 'G' ? 'SG ' : 'SH ') + m[3] + (m[1] ? '（文法）' : '');
+      try {
+        const text = await lookupStrongs(m[2], m[3]);
+        parts.push('<div class="cm-sn-head" style="margin-top:6px">' + label +
+          '（' + (m[2] === 'G' ? '希臘文' : '希伯來文') + '）</div>' + formatComText(text, '', m[2]));
+      } catch (err) {
+        parts.push('<div class="cm-sn-head" style="margin-top:6px">' + label + '</div>查無字典條目，或網路中斷。');
+      }
+    }
+    if (card.parentNode) card.querySelector('.cm-sn-body').innerHTML = parts.join('') || '查無字典條目。';
+    return;
+  }
   const a = e.target.closest('.cm-sn');
   if (!a) return;
   e.preventDefault();
@@ -3119,6 +3157,32 @@ document.getElementById('comment-native').addEventListener('click', async functi
     if (card.parentNode) card.querySelector('.cm-sn-body').textContent = '查無字典條目，或網路中斷——請連線後再點一次。';
   }
 });
+
+// v91:彈窗頂「本節原文」——qb.php 帶標和合本(全 66 卷每節都有),點詞看字義。
+// 換段時 comment-native 整個重設,舊的 async 回填用 isConnected 擋掉。
+async function renderCommentVerseSn(engs, chap, sec) {
+  const box = document.getElementById('cm-verse-sn');
+  if (!box) return;
+  const book = BOOKS.find(function (b) { return b.engs === engs; });
+  if (!book || !(chap >= 1) || !(sec >= 1)) { box.remove(); return; }
+  box.innerHTML = '<div class="cm-loading" style="padding:4px 0">本節原文載入中…</div>';
+  try {
+    const segs = await fetchStrongsVerse(book.chineses, chap, sec);
+    if (!box.isConnected) return;
+    const esc = escapeHtmlForNotes;
+    let h = '<div class="cm-vsn-title">🔤 ' + esc(book.chineses) + ' ' + chap + ':' + sec +
+      ' 本節原文（和合本，點詞就地看字義）</div><div class="cm-vsn-text">';
+    segs.forEach(function (seg) {
+      if (!seg.nums.length) { h += '<span class="cm-vsn-plain">' + esc(seg.t) + '</span>'; return; }
+      const nums = seg.nums.map(function (n) { return (n.parsing ? 'T' : '') + n.lang + n.n; }).join(',');
+      h += '<a href="#" class="cm-word" data-nums="' + nums + '">' + (seg.t ? esc(seg.t) : '◦') + '</a>';
+    });
+    h += '</div>';
+    box.innerHTML = h;
+  } catch (err) {
+    if (box.isConnected) box.innerHTML = '<div class="cm-empty" style="padding:4px 0">本節原文讀不到（需要連線）。</div>';
+  }
+}
 
 // 0809 二修：FHL com_text 是「固定寬度硬換行＋深縮排」的 <pre> 排版（每行 ~40 字），
 // 直接 pre-wrap 會把句子在手機上硬切、縮排變成大片空白（使用者四張截圖回饋）。

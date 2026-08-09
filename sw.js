@@ -1,5 +1,5 @@
 /* 多譯本聖經查詢 — Service Worker：離線殼層 + 本地譯本 JSON 快取 */
-const CACHE_NAME = 'bible-multi-v90';   /* v90(0810):原文編號變體修(SNH␣57 空格式/裸 SN=書卷推語言);v89=膠囊鈕+提示;v88=註釋內原文就地查義 */
+const CACHE_NAME = 'bible-multi-v91';   /* v91(0810):彈窗頂固定本節原文(qb.php 每節都有,點詞看字義);v90=變體修(SNH␣57 空格式/裸 SN=書卷推語言);v89=膠囊鈕+提示;v88=註釋內原文就地查義 */
 /* ⚠ 版號史:git 曾停在 v73,但線上 07-24 已部署過(未 push 的)v74/v75 ⇒ 0802 我在 git 又發了同名 v74/v75=同名不同內容。
    v76 起兩線合一;以後懷疑「線上比 git 新」先跑 netlify api listSiteDeploys 比對部署時間 vs git log。 */
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/vendor/diff_match_patch.js'];
