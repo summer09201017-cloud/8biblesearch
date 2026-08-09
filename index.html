@@ -1433,7 +1433,10 @@ body {
 #comment-native .cm-title { font-weight:700; color:#7a5c1e; margin-bottom:10px; white-space:normal; }
 #comment-native .cm-loading, #comment-native .cm-empty { color:#6b5d4d; padding:20px 0; white-space:normal; }
 #comment-native .cm-source { margin-top:16px; padding-top:10px; border-top:1px solid #e8dfc8; font-size:0.8em; color:#6b5d4d; white-space:normal; }
-#comment-native .cm-sn { white-space:nowrap; }
+/* v89:SG/SH 編號長得跟一般連結一樣,使用者「找不到原文」——改膠囊鈕+「字義」後綴+頂部提示 */
+#comment-native .cm-sn { white-space:nowrap; display:inline-block; padding:0 7px; margin:0 2px; border:1px solid #c9b98a; border-radius:999px; background:#f3ecd7; color:#7a5c1e !important; text-decoration:none !important; font-weight:700; }
+#comment-native .cm-sn::after { content:'字義'; font-size:0.78em; margin-left:3px; opacity:0.75; }
+#comment-native .cm-hint { font-size:0.85em; color:#6b5d4d; background:#fbf7ec; border:1px dashed #d8c9a0; border-radius:8px; padding:6px 9px; margin-bottom:10px; white-space:normal; }
 #comment-native .cm-sn-card { margin:6px 0 10px; padding:8px 10px; border:1px solid #e2d8bd; border-radius:8px; background:#faf6ea; white-space:normal; }
 #comment-native .cm-sn-card .cm-sn-head { font-weight:700; color:#7a5c1e; margin-bottom:4px; white-space:normal; }
 #comment-native .cm-sn-card .cm-sn-body { white-space:pre-wrap; max-height:40vh; overflow-y:auto; color:#3d3529; }
@@ -3064,6 +3067,10 @@ function renderCommentNative(data, engs) {
     });
   });
   html += '<div class="cm-source">資料來源：<a href="' + esc(_commentUrl) + '" target="_blank" rel="noopener">信望愛聖經網站（CBOL 計畫）</a>，版權屬原站所有；點「新分頁開啟」可在原站閱讀。</div>';
+  // v89:這段註釋有原文編號才顯示提示(使用者回饋「找不到原文」——編號原本長得跟一般連結一樣)
+  if (html.indexOf('cm-sn') !== -1) {
+    html = '<div class="cm-hint">💡 淡黃色「SG/SH 編號 字義」＝希臘文/希伯來文原文字，點一下就地展開中文字義。</div>' + html;
+  }
   nat.innerHTML = html;
   nat.scrollTop = 0;
   const nav = document.getElementById('comment-nav');
