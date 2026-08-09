@@ -1424,9 +1424,11 @@ body {
 /* 原生排版模式（0809 iPhone 回饋修正）：pre-wrap 讓長行換行、字級直接生效（iframe 的 zoom 在 iOS 無效） */
 #comment-native {
   flex:1; overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
-  padding:14px 16px 30px; white-space:pre-wrap; word-break:break-word;
+  padding:14px 16px 30px; word-break:break-word;
   line-height:1.75; color:#2c2418; background:#fff; font-size:16px;
 }
+/* 0809 二修:改段落重排(reflow),句子由瀏覽器自然換行,縮排=padding-left 不再是空白字元 */
+#comment-native .cm-blk { margin:0 0 7px; }
 #comment-native a { color:#1a56b0; text-decoration:underline; }
 #comment-native .cm-title { font-weight:700; color:#7a5c1e; margin-bottom:10px; white-space:normal; }
 #comment-native .cm-loading, #comment-native .cm-empty { color:#6b5d4d; padding:20px 0; white-space:normal; }
@@ -2865,7 +2867,10 @@ function renderCommentNative(data, engs) {
   }
   records.forEach(function (rec) {
     html += '<div class="cm-title">' + esc(rec.title || '') + '（' + esc(rec.book_name || '信望愛站註釋') + '）</div>';
-    html += formatComText(rec.com_text || '', chineses);
+    reflowComText(rec.com_text || '').forEach(function (blk) {
+      const pad = Math.min(5, blk.indent * 0.35).toFixed(1);
+      html += '<div class="cm-blk" style="padding-left:' + pad + 'em">' + formatComText(blk.text, chineses) + '</div>';
+    });
   });
   html += '<div class="cm-source">資料來源：<a href="' + esc(_commentUrl) + '" target="_blank" rel="noopener">信望愛聖經網站（CBOL 計畫）</a>，版權屬原站所有；點「新分頁開啟」可在原站閱讀。</div>';
   nat.innerHTML = html;
@@ -2887,6 +2892,34 @@ function renderCommentNative(data, engs) {
   wire(prevBtn, data.prev, 'prev');
   wire(nextBtn, data.next, 'next');
   nav.hidden = prevBtn.hidden && nextBtn.hidden;
+}
+
+// 0809 二修：FHL com_text 是「固定寬度硬換行＋深縮排」的 <pre> 排版（每行 ~40 字），
+// 直接 pre-wrap 會把句子在手機上硬切、縮排變成大片空白（使用者四張截圖回饋）。
+// 重排規則：大綱標記行（壹、/一、/（一）/1./(1)/●/◎…）＝新段落，其餘行＝接續行併回上一段；
+// 縮排層級轉成 padding-left，段內由瀏覽器自然換行。
+function reflowComText(txt) {
+  const lines = String(txt || '').split(/\r?\n/);
+  const BLOCK_START = /^(?:[●◎○■□★☆◆※]|[壹貳參肆伍陸柒捌玖拾]+、|[一二三四五六七八九十]+、|[（(][一二三四五六七八九十\d]+[）)]|\d{1,2}\.|[①-⑳])/;
+  const blocks = [];
+  let cur = null;
+  for (const raw of lines) {
+    const t = raw.replace(/[\s　]+$/, '');
+    const trimmed = t.replace(/^[\s　]+/, '');
+    if (!trimmed) { if (cur) { blocks.push(cur); cur = null; } continue; }
+    const indent = t.length - trimmed.length;
+    if (!cur || BLOCK_START.test(trimmed)) {
+      if (cur) blocks.push(cur);
+      cur = { indent: indent, text: trimmed };
+    } else {
+      // 中文接中文直接黏；英數接英數補一個空格（Strong 清單/英文句）
+      const a = cur.text.slice(-1), b = trimmed[0];
+      const needSpace = /[A-Za-z0-9,.;:)\]]/.test(a) && /[A-Za-z0-9(\[]/.test(b);
+      cur.text += (needSpace ? ' ' : '') + trimmed;
+    }
+  }
+  if (cur) blocks.push(cur);
+  return blocks;
 }
 
 // com_text 標記轉連結：#參照| → 信望愛 read.php；SNH/SNG 原文編號 → 信望愛 s.php
