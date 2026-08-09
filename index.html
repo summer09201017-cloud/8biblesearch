@@ -1461,6 +1461,16 @@ body {
 }
 .track-stat-num { font-size:1.7rem; font-weight:700; color:var(--accent); line-height:1.2; }
 .track-stat-label { font-size:0.85rem; color:var(--text2); margin-top:3px; }
+/* 📅 讀經計畫(0809 讀1) */
+.plan-chips { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+.plan-chip {
+  border:1px solid var(--border); background:var(--bg2); color:var(--text);
+  border-radius:10px; padding:10px 14px; font-family:inherit; font-size:1rem; cursor:pointer;
+}
+.plan-chip.read { background:var(--highlight); border-color:var(--accent2); }
+.plan-bar { height:12px; background:var(--border); border-radius:999px; overflow:hidden; }
+.plan-bar-fill { height:100%; border-radius:999px; transition:width .3s; }
+
 .track-range-chips { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 12px; }
 .track-range-chip {
   border:1px solid var(--border); background:var(--card); color:var(--text2);
@@ -4145,7 +4155,7 @@ function parseQuickRef(raw) {
 const TRACK_ON_KEY = 'bible-reading-track';   // '1'(預設)/'0'
 const TRACK_LOG_KEY = 'bible-reading-log';    // { m:{ 'YYYY-MM':{ 'bid:chap':次數 } }, d:{ 'YYYY-MM-DD':章次 } }
 const TRACK_LAST_KEY = 'bible-reading-log-last'; // { 'bid:chap': ts } 30 分鐘防重
-let _trackRange = '1'; // '1' | '3' | '6' | '12' | 'all'
+let _trackRange = 'all'; // '1' | '3' | '6' | '12' | 'all'(0809 使用者點名:預設歷年)
 
 function trackEnabled() {
   try { return localStorage.getItem(TRACK_ON_KEY) !== '0'; } catch(e) { return true; }
@@ -4511,6 +4521,123 @@ function shareMonthCard() {
 const TRACK_RANGE_LABELS = { '1': '本月', '3': '近 3 個月', '6': '近 6 個月', '12': '近 12 個月', 'all': '歷年' };
 const TOTAL_CHAPTERS = BOOKS.reduce((n, b) => n + b.chapters, 0); // 66 卷合計 1189 章
 
+// ====== 📅 讀經計畫(0809 讀1:1/2/3 年+自訂年數,使用者拍板★★★★★) ======
+// 設計:計畫=「從開始日起,N 年內把全聖經 TOTAL_CHAPTERS 章讀完」;每天該讀哪幾章由
+// 線性章序(創1=1…啟22=1189)平均分配;「讀過」判定接讀經足跡現算(不另存進度,
+// 同 0719 里程碑鐵則:完成判定永遠從 log 現算)。PLAN_KEY 是資料級 → 接備份鏈七站。
+const PLAN_KEY = 'bible-reading-plan'; // { years: 數字, start: 'YYYY-MM-DD' }
+function loadReadingPlan() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null');
+    if (p && Number(p.years) > 0 && /^\d{4}-\d{2}-\d{2}$/.test(p.start || '')) {
+      return { years: Number(p.years), start: p.start };
+    }
+  } catch(e) {}
+  return null;
+}
+function saveReadingPlan(p) {
+  try {
+    if (p) localStorage.setItem(PLAN_KEY, JSON.stringify(p));
+    else localStorage.removeItem(PLAN_KEY);
+  } catch(e) {}
+}
+function startReadingPlan(years) {
+  years = Math.round(Number(years) * 2) / 2; // 以半年為單位
+  if (!(years >= 0.5 && years <= 20)) { toast('請輸入 0.5 ~ 20 之間的年數'); return; }
+  saveReadingPlan({ years: years, start: _trackYmd(new Date()) });
+  toast('📅 讀經計畫開始:' + planYearsLabel(years) + '讀完整本聖經!');
+  renderTrackPanel();
+}
+function startReadingPlanCustom() {
+  const inp = document.getElementById('plan-custom-years');
+  if (inp) startReadingPlan(inp.value);
+}
+function stopReadingPlan() {
+  if (!confirm('確定停止讀經計畫?\n(只移除計畫設定,讀經足跡完全不受影響;之後隨時可以重新開始)')) return;
+  saveReadingPlan(null);
+  toast('讀經計畫已停止(足跡都還在)');
+  renderTrackPanel();
+}
+function planYearsLabel(y) { return (y === Math.floor(y) ? y : y.toFixed(1)) + ' 年'; }
+
+// 全卷線性章序:創1=1 … 啟22=TOTAL_CHAPTERS
+let _chapCumTable = null;
+function chapCumTable() {
+  if (_chapCumTable) return _chapCumTable;
+  let cum = 0;
+  _chapCumTable = BOOKS.map(b => { const row = { bid: b.bid, chapters: b.chapters, cum0: cum }; cum += b.chapters; return row; });
+  return _chapCumTable;
+}
+function linearToChap(i) {
+  const t = chapCumTable();
+  for (let k = 0; k < t.length; k++) {
+    if (i <= t[k].cum0 + t[k].chapters) return { bid: t[k].bid, chap: i - t[k].cum0 };
+  }
+  return null;
+}
+// 計畫起始「月」以來的已讀章(log 的 m 桶按月分桶=精度到月;開始那個月開始日前讀的
+// 也會被算進去——刻意接受,對使用者是寬待、幅度最多一個月)
+function sumTrackSince(log, startYm) {
+  const out = {};
+  for (const ym of Object.keys(log.m || {})) {
+    if (ym < startYm) continue;
+    const bucket = log.m[ym] || {};
+    for (const k of Object.keys(bucket)) out[k] = (out[k] || 0) + bucket[k];
+  }
+  return out;
+}
+function renderPlanSection(log) {
+  const plan = loadReadingPlan();
+  if (!plan) {
+    return `<div class="track-section" id="plan-section"><h3>📅 讀經計畫</h3>
+      <p style="color:var(--text2);font-size:0.92rem;margin-bottom:10px;">
+        定一個目標,按部就班把整本聖經(${TOTAL_CHAPTERS} 章)讀完——每天該讀哪幾章這裡會告訴你,
+        讀過的自動打勾(接讀經足跡,不用手動記)。</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn" onclick="startReadingPlan(1)">1 年讀完</button>
+        <button class="btn" onclick="startReadingPlan(2)">2 年讀完</button>
+        <button class="btn" onclick="startReadingPlan(3)">3 年讀完</button>
+        <span style="display:inline-flex;align-items:center;gap:6px;">
+          <input id="plan-custom-years" type="number" min="0.5" max="20" step="0.5" placeholder="自訂"
+                 style="width:74px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-family:inherit;" aria-label="自訂年數"> 年
+          <button class="btn btn-secondary" onclick="startReadingPlanCustom()">開始</button>
+        </span>
+      </div></div>`;
+  }
+  const totalDays = Math.max(1, Math.round(plan.years * 365));
+  const startMs = new Date(plan.start + 'T00:00:00').getTime();
+  const dayIdx = Math.min(totalDays, Math.max(1, Math.floor((Date.now() - startMs) / 864e5) + 1));
+  const endIdx = function (d) { return Math.round(d * TOTAL_CHAPTERS / totalDays); };
+  const todayFrom = endIdx(dayIdx - 1) + 1, todayTo = endIdx(dayIdx);
+  const since = sumTrackSince(log, plan.start.slice(0, 7));
+  const readCount = Object.keys(since).length;
+  const expected = endIdx(dayIdx);
+  const behind = Math.max(0, expected - readCount);
+  const pctPlan = Math.min(100, Math.round(readCount / TOTAL_CHAPTERS * 1000) / 10);
+  const done = readCount >= TOTAL_CHAPTERS;
+  let chips = '';
+  for (let i = todayFrom; i <= todayTo; i++) {
+    const c = linearToChap(i); if (!c) continue;
+    const b = BOOKS.find(x => x.bid === c.bid);
+    const read = !!since[c.bid + ':' + c.chap];
+    chips += `<button type="button" class="plan-chip ${read ? 'read' : ''}" onclick="goReadChapter(${c.bid},${c.chap})" title="點一下就翻開這章">${read ? '✅' : '📖'} ${b ? b.chineses : c.bid} ${c.chap}</button>`;
+  }
+  if (!chips) chips = `<span style="color:var(--text2);">今天不用讀新的章——可以複習之前的,或休息一天 😊</span>`;
+  return `<div class="track-section" id="plan-section">
+    <h3>📅 讀經計畫:${planYearsLabel(plan.years)}讀完整本聖經</h3>
+    <p style="color:var(--text2);font-size:0.88rem;margin-bottom:8px;">第 ${dayIdx} 天(${plan.start} 開始)・進度線走到第 ${expected} 章</p>
+    <div style="margin-bottom:8px;"><b>今天該讀:</b></div>
+    <div class="plan-chips">${chips}</div>
+    <div class="plan-bar"><div class="plan-bar-fill" style="width:${Math.min(100, readCount / TOTAL_CHAPTERS * 100)}%;background:${behind > 0 ? 'var(--accent2)' : 'var(--accent)'};"></div></div>
+    <p style="font-size:0.9rem;margin-top:6px;">
+      ${done ? '🎉 <b>整本聖經讀完了!恭喜!</b>' :
+        (behind === 0 ? `👍 進度正好,計畫期間已讀 <b>${readCount}</b> 章(全卷 ${pctPlan}%)` :
+          `計畫期間已讀 <b>${readCount}</b> 章(全卷 ${pctPlan}%),比進度線少 <b>${behind}</b> 章——慢慢來,每天多讀一章就追回來了`)}
+    </p>
+    <button class="btn btn-secondary btn-sm" onclick="stopReadingPlan()" style="margin-top:6px;">停止計畫</button>
+  </div>`;
+}
+
 function renderTrackPanel() {
   const div = document.getElementById('track-content');
   if (!div) return;
@@ -4542,6 +4669,9 @@ function renderTrackPanel() {
     <div class="track-stat-card"><div class="track-stat-num">${pct}%</div><div class="track-stat-label">全卷足跡</div></div>
     <div class="track-stat-card"><div class="track-stat-num">🏆 ${completedBooks.length}</div><div class="track-stat-label">讀完卷數（66 卷）</div></div>
   </div>`;
+
+  // 📅 讀經計畫(0809 讀1)
+  html += renderPlanSection(log);
 
   // 📤 月報分享卡按鈕
   html += `<div style="text-align:center;margin:4px 0 12px;">
@@ -6465,6 +6595,7 @@ function exportUserData() {
     bookMilestones: lsGetRaw(MILESTONE_KEY, null),
     versionOrder: lsGetRaw(VERSION_ORDER_KEY, null),
     activeVersions: lsGetRaw(ACTIVE_VERSIONS_KEY, null),
+    readingPlan: lsGetRaw(PLAN_KEY, null),
     exportedAt: new Date().toISOString()
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
@@ -6511,6 +6642,7 @@ function importUserData(e) {
       if(data.bookMilestones) localStorage.setItem(MILESTONE_KEY, data.bookMilestones);
       if(data.versionOrder && data.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, data.versionOrder);
       if(data.activeVersions && data.activeVersions !== 'null') localStorage.setItem(ACTIVE_VERSIONS_KEY, data.activeVersions);
+      if(data.readingPlan && data.readingPlan !== 'null') localStorage.setItem(PLAN_KEY, data.readingPlan);
       loadVersionOrder();
       loadActiveVersions();
       normalizeActiveVersionOrder();
@@ -6622,6 +6754,7 @@ function snapshotLocal(reason) {
     historyQuick: lsGetRaw('bible-quick-history', '[]'),
     versionOrder: lsGetRaw(VERSION_ORDER_KEY, 'null'),
     activeVersions: lsGetRaw(ACTIVE_VERSIONS_KEY, 'null'),
+    readingPlan: lsGetRaw(PLAN_KEY, 'null'),
     readingLog: lsGetRaw(TRACK_LOG_KEY, '{}'),
     bookMilestones: lsGetRaw(MILESTONE_KEY, '{}')
   });
@@ -6671,6 +6804,7 @@ function restoreLocalSnapshot(idx) {
     if (snap.historyQuick) localStorage.setItem('bible-quick-history', snap.historyQuick);
     if (snap.versionOrder && snap.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, snap.versionOrder);
     if (snap.activeVersions && snap.activeVersions !== 'null') localStorage.setItem(ACTIVE_VERSIONS_KEY, snap.activeVersions);
+    if (snap.readingPlan && snap.readingPlan !== 'null') localStorage.setItem(PLAN_KEY, snap.readingPlan);
     if (snap.readingLog) localStorage.setItem(TRACK_LOG_KEY, snap.readingLog);
     if (snap.bookMilestones) localStorage.setItem(MILESTONE_KEY, snap.bookMilestones);
   } catch(e) {
@@ -6960,6 +7094,7 @@ function buildCloudPayload() {
     historyQuick: lsGetRaw('bible-quick-history', '[]'),
     versionOrder: lsGetRaw(VERSION_ORDER_KEY, 'null'),
     activeVersions: lsGetRaw(ACTIVE_VERSIONS_KEY, 'null'),
+    readingPlan: lsGetRaw(PLAN_KEY, 'null'),
     readingLog: lsGetRaw(TRACK_LOG_KEY, '{}'),
     bookMilestones: lsGetRaw(MILESTONE_KEY, '{}')
   }, null, 2);
@@ -7062,6 +7197,7 @@ async function cloudRestore() {
     if (payload.historyQuick) localStorage.setItem('bible-quick-history', payload.historyQuick);
     if (payload.versionOrder && payload.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, payload.versionOrder);
     if (payload.activeVersions && payload.activeVersions !== 'null') localStorage.setItem(ACTIVE_VERSIONS_KEY, payload.activeVersions);
+    if (payload.readingPlan && payload.readingPlan !== 'null') localStorage.setItem(PLAN_KEY, payload.readingPlan);
     if (payload.readingLog) localStorage.setItem(TRACK_LOG_KEY, payload.readingLog);
     if (payload.bookMilestones) localStorage.setItem(MILESTONE_KEY, payload.bookMilestones);
     backfillBookMilestones();
@@ -7244,6 +7380,7 @@ async function autoCheckCloudOnLaunch(opts) {
     if (payload.historyQuick) localStorage.setItem('bible-quick-history', payload.historyQuick);
     if (payload.versionOrder && payload.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, payload.versionOrder);
     if (payload.activeVersions && payload.activeVersions !== 'null') localStorage.setItem(ACTIVE_VERSIONS_KEY, payload.activeVersions);
+    if (payload.readingPlan && payload.readingPlan !== 'null') localStorage.setItem(PLAN_KEY, payload.readingPlan);
     if (payload.readingLog) localStorage.setItem(TRACK_LOG_KEY, payload.readingLog);
     if (payload.bookMilestones) localStorage.setItem(MILESTONE_KEY, payload.bookMilestones);
     backfillBookMilestones();
