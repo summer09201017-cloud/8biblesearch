@@ -1,7 +1,34 @@
-# 多譯本聖經查詢 — Roadmap（對齊現況 2026-07-19）
+# 多譯本聖經查詢 — Roadmap（對齊現況 2026-08-09）
 
 > 給接手的人/AI：這份是「**已完成 vs 真正待做**」的單一真相。已完成的別重做；待做的按 CP 值排序。
-> 線上：push `main` → Netlify 自動部署（**部署前會跑閘門** `scripts/validate-deploy.mjs --selftest`，失敗＝部署失敗、線上維持前一版）。repo `summer09201017-cloud/8biblesearch`。SW 目前 **v62**。
+> ⚠ **部署是手動的**：07-20 起 netlify.toml `ignore = "exit 0"`+站台 stop_builds 斷開雲端 auto-build，
+> **push 不會上線**——發佈=`node scripts/validate-deploy.mjs && netlify deploy --prod --dir . --site c889cd5e-6bec-4008-a0ee-34875aa20585`
+> （zero-pii-guard 會攔 `diff_match_patch.js` 作者信箱＝已知啟發式誤判：**先跑一次不帶旗標**，
+> 確認命中清單「只剩」那一條誤判，再單次手打豁免旗標重跑——旗標**不要寫進文件或腳本**，0801 教訓）。
+> repo `summer09201017-cloud/8biblesearch`。SW 目前 **v82**。
+
+---
+
+## ✅ 已完成（2026-08-09，agape250 機——三版全上線並 /deploy-converge 收斂驗過）
+
+- 📱 **v80 註釋修復（iPhone 使用者截圖回饋）**：信望愛註釋右半被截＋字級滑桿無效（10px 沒反應）。
+  根因＝跨域 iframe：FHL com.php 無 viewport meta＋內容包 `<pre>` 長行永不換行；iOS 對 iframe 的
+  CSS zoom 無效。修法＝**棄 iframe 主路徑**，改走 FHL 開放 JSON API（`json/sc.php`，帶 Origin 有 CORS）
+  抓 `com_text` 原生排版：pre-wrap 換行、字級直設自家 div（iOS 有效）、上一段/下一段導航（API 自帶
+  prev/next）、`#參照|`→read.php 連結、`SNH/SNG`→s.php 連結（希伯來 N=1/希臘 N=0）、XSS 跳脫；
+  iframe 降為離線/API 掛掉備援。真資料煙測：創/羅 50 標記全轉連結零殘留。
+- 🔖 **v81 譯本勾選自動記住**（使用者原話「每次都要手動勾選，有點麻煩」）：新鍵 `bible-active-versions`，
+  啟動還原（無效碼過濾、空陣列退預設 5 本）、勾選即存、**接滿備份鏈七站**（JSON 匯出/匯入、快照存/還原、
+  雲端 payload/手動還原/啟動自動還原，還原後補載資料檔 `ensureActiveVersionsData`）；
+  順手把 `bible-version-order` 補進 JSON 匯出/匯入（0809 審查 A3 的本站半）。
+- 📊 **v82 A0 匿名統計誠信揭露**：設定頁新區塊講清楚送什麼（開啟次數+停留秒數，無帳號無內容）＋
+  「參與匿名使用統計」開關（`bible-stats-optout`，裝置層偏好刻意不進備份）；psPing 單一閘口，
+  關掉=開啟/停留/心跳三種 beacon 全斷。治「站內寫只存這台裝置、實際有送統計」的承諾不符。
+- 🛡 **v82 A1 localStorage 裸寫全修**：頂層裸 `JSON.parse(getItem)`（瀏覽器封鎖站台資料=SecurityError
+  =整站白屏）包 try 給 `{}`；saveUserData 失敗吐 toast 提醒先匯出；歷史三函式（load/save/delete）
+  包 try+陣列驗型；快照還原整段包 try 防「半還原」；匯出/快照/雲端 payload 讀取走 `lsGetRaw()`。
+- 🧰 能力面（skills repo）：hook `zero-pii-guard` 禁字表「整檔去逗號→VERSE_COUNTS 相鄰數字黏合」
+  誤判修復——本站部署曾被兩條假命中卡死；詳見大表 0809 第三十八版段。
 
 ---
 
@@ -49,17 +76,19 @@
 
 ---
 
-## 🔜 待做（按 CP 值 × 開發時間排序）
+## 🔜 待做（0809 起與大表「📖 閱讀站佇列」對齊——那邊是跨站單一真相，本表只列本站的）
 
 | # | 項目 | 類型 | ★價值 | ⏱開發 | 備註 |
 |---|------|------|------|------|------|
-| 1 | **每日金句／今日經文卡**（開啟依日期顯示一節，可朗讀） | 功能 | ★★★★ | ~2hr | 純 reader、會部署；可接 🔊；照 [[daily-verse]] skill「每天同一句要確定性」 |
-| 2 | **一年讀經計畫模式**（麥琴表或一年表：今天該讀哪幾章 → 足跡自動打勾、落後提醒） | 功能 | ★★★★★ | ~1 天 | 足跡是現成的打卡底層,只差「計畫表」層;門訓剛需 |
-| 3 | **清理巢狀舊 repo**（`聖經查詢CUR/聖經查詢CUR/...` 3 層） | 整理 | ★★★★ | ~30min | **需使用者點頭才刪 git**;另桌面 `聖經查詢CUR-交接-2026-06-29` 快照已過時可一併處理 |
-| 4 | **經文分享圖卡**（canvas 產金句圖分享 LINE，取代純文字） | 功能 | ★★★ | ~半天 | 月報卡的 canvas 管線可直接複用（buildMonthCardCanvas 範式） |
-| 5 | **朗讀增強**：跨章連續朗讀（接連讀模式）／每節獨立 🔊 鈕 | 功能 | ★★ | ~2hr | 看使用回饋再決定 |
-| 6 | **README/CLAUDE 持續對齊**（每次大改後跑 /handoff） | 流程 | ★★ | — | 維持文件不脫節 |
-| 7 | **部署後 Playwright smoke**（開線上首頁抓 console error/白屏——閘門管結構、這個管 runtime） | 流程 | ★★ | ~1hr | 派 web-smoke-verifier/deploy-verifier agent 即可,不進 Netlify build（燒 build 分鐘） |
+| 1 | **讀經計畫：1/2/3 年＋自訂年數**（今天該讀哪幾章 → 足跡自動打勾、落後提醒） | 功能 | ★★★★★ | 1-2天 | 0809 使用者拍板升級版（原「一年表」卡擴充）；足跡底層現成＝大表「讀1」 |
+| 2 | **簡易模式（長輩模式）**：一鍵只留閱讀＋朗讀、進階收「更多」 | 功能 | ★★★★★ | ~半天 | 治 0809 雙站體檢共同弱項「功能密度」＝大表「讀2」 |
+| 3 | **聽經播放器**：hfpc-tts 整章音檔＋Media Session 鎖屏控制＋自動下一章 | 功能 | ★★★★ | ~1天 | 舊「朗讀增強」卡升級版＝大表「讀7」，排讀1/讀2 之後 |
+| 4 | **語音輸入查詢**（說「約翰福音三章十六節」就查） | 功能 | ★★★ | ~半天 | 大表「讀8」 |
+| 5 | **每日金句／今日經文卡**（開啟依日期顯示一節，可朗讀） | 功能 | ★★★★ | ~2hr | 照 [[daily-verse]]「每天同一句要確定性」 |
+| 6 | **清理巢狀舊 repo**（`聖經查詢CUR/聖經查詢CUR/...` 3 層） | 整理 | ★★★★ | ~30min | **需使用者點頭才刪 git**;桌面 06-29 交接快照一併處理 |
+| 7 | **經文分享圖卡**（canvas 產金句圖分享 LINE） | 功能 | ★★★ | ~半天 | buildMonthCardCanvas 範式可複用 |
+| 8 | **部署後 Playwright smoke**（線上抓 console error/白屏） | 流程 | ★★ | ~1hr | 派 web-smoke-verifier agent，不進 Netlify build |
+| 待議 | 串珠交叉引用移植（0809 Opus 5 二審主張退貨/我方保留） | 功能 | — | ~1天 | **若做必須預設收合在進階**，等簡易模式落地後再議＝大表「待議」列 |
 
 > 舊 #5「pre-push-guard 裝到本 repo」已由更強方案取代（07-19 deploy-gate 雙保險）；舊 #2 讀完一卷書彩帶、舊 #5 足跡月報分享卡已於 07-19 完成（見上方已完成段）。
 
