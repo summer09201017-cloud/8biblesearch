@@ -3053,6 +3053,7 @@ function renderCommentNative(data, engs) {
   const nat = document.getElementById('comment-native');
   const book = BOOKS.find(b => b.engs === engs);
   const chineses = book ? book.chineses : '';
+  const bookLang = book && book.bid <= 39 ? 'H' : 'G'; // 裸 SN 編號用書卷新舊約推語言
   const esc = escapeHtmlForNotes;
   let html = '';
   const records = Array.isArray(data.record) ? data.record : [];
@@ -3063,7 +3064,7 @@ function renderCommentNative(data, engs) {
     html += '<div class="cm-title">' + esc(rec.title || '') + '（' + esc(rec.book_name || '信望愛站註釋') + '）</div>';
     reflowComText(rec.com_text || '').forEach(function (blk) {
       const pad = Math.min(5, blk.indent * 0.35).toFixed(1);
-      html += '<div class="cm-blk" style="padding-left:' + pad + 'em">' + formatComText(blk.text, chineses) + '</div>';
+      html += '<div class="cm-blk" style="padding-left:' + pad + 'em">' + formatComText(blk.text, chineses, bookLang) + '</div>';
     });
   });
   html += '<div class="cm-source">資料來源：<a href="' + esc(_commentUrl) + '" target="_blank" rel="noopener">信望愛聖經網站（CBOL 計畫）</a>，版權屬原站所有；點「新分頁開啟」可在原站閱讀。</div>';
@@ -3111,7 +3112,7 @@ document.getElementById('comment-native').addEventListener('click', async functi
   try {
     const text = await lookupStrongs(a.dataset.lang, a.dataset.n);
     if (!card.parentNode) return;
-    card.querySelector('.cm-sn-body').innerHTML = formatComText(text, '') +
+    card.querySelector('.cm-sn-body').innerHTML = formatComText(text, '', a.dataset.lang) +
       '<div style="margin-top:6px"><a href="https://bible.fhl.net/new/s.php?N=' + (isGreek ? 0 : 1) +
       '&k=' + a.dataset.n + '" target="_blank" rel="noopener">在信望愛開啟 →</a></div>';
   } catch (err) {
@@ -3148,9 +3149,11 @@ function reflowComText(txt) {
 }
 
 // com_text 標記轉連結：#參照| → 信望愛 read.php；SNH/SNG 原文編號 → 信望愛 s.php
-function formatComText(txt, curChineses) {
+function formatComText(txt, curChineses, defaultLang) {
   const esc = escapeHtmlForNotes;
-  const re = /#([^#|\r\n]{1,50})\||SN([GH])(\d{1,6})/g;
+  // v90:0810 全書掃描發現兩種變體(哀歌 `SNH 57` 帶空格、羅馬書裸 `SN00846` 不帶字母)——
+  // 字母可省(用 defaultLang=書卷新舊約推)、字母與數字間容許空白;原 regex 只認 SNG/SNH 緊貼數字=整段漏掉。
+  const re = /#([^#|\r\n]{1,50})\||SN([GH])?[ \t　]*0*(\d{1,6})/g;
   let out = '', i = 0, m;
   while ((m = re.exec(txt)) !== null) {
     out += esc(txt.slice(i, m.index));
@@ -3158,7 +3161,7 @@ function formatComText(txt, curChineses) {
       out += comRefLink(m[1].trim(), curChineses);
     } else {
       // v88:原文編號改站內就地展開中文字義(點了插 .cm-sn-card;外開信望愛連結移進卡尾)
-      const isGreek = m[2] === 'G';
+      const isGreek = (m[2] || defaultLang || 'G') === 'G';
       const num = parseInt(m[3], 10);
       out += '<a href="#" class="cm-sn" data-lang="' + (isGreek ? 'G' : 'H') + '" data-n="' + num +
              '">' + (isGreek ? 'SG ' : 'SH ') + num + '</a>';
