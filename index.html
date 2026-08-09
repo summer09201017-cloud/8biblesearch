@@ -2184,7 +2184,8 @@ const VERSIONS = [
   { code:'kjv', name:'KJV',   badge:'badge-kjv', local:true },
   { code:'web', name:'WEB', badge:'badge-web', local:true },
 ];
-let activeVersions = ['unv','esv','niv','ncv','lcc'];
+const DEFAULT_ACTIVE_VERSIONS = ['unv','esv','niv','ncv','lcc'];
+let activeVersions = [...DEFAULT_ACTIVE_VERSIONS];   // 啟動時由 loadActiveVersions() 還原使用者上次勾的組合
 
 const BOOKS = [
   {bid:1,chineses:'創',chinesef:'創世記',engs:'Gen',chapters:50},
@@ -3265,7 +3266,31 @@ function toggleAllReadPicks(checked) {
 
 // ====== 使用者譯本排序 ======
 const VERSION_ORDER_KEY = 'bible-version-order';
+// 0809 使用者回饋:每次打開都要重勾譯本很麻煩 → 勾了哪些也要記住(排序早就有記)
+const ACTIVE_VERSIONS_KEY = 'bible-active-versions';
 let userVersionOrder = null;
+
+function loadActiveVersions() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ACTIVE_VERSIONS_KEY) || 'null');
+    if (Array.isArray(saved)) {
+      const valid = saved.filter(c => VERSIONS.some(v => v.code === c && !v.hideInUi));
+      if (valid.length > 0) { activeVersions = valid; return; }
+    }
+  } catch(e) {}
+  activeVersions = [...DEFAULT_ACTIVE_VERSIONS];
+}
+
+function saveActiveVersions() {
+  try { localStorage.setItem(ACTIVE_VERSIONS_KEY, JSON.stringify(activeVersions)); } catch(e) {}
+}
+
+// 備份還原後補載新勾譯本的資料檔(勾選當下的載入走 setVersionChecked,這裡補「整包還原」路徑)
+async function ensureActiveVersionsData() {
+  const missing = activeVersions.filter(v => LOCAL_VERSIONS.includes(v) && !bibleData[v]);
+  for (const code of missing) { try { await loadVersionData(code); } catch(e) {} }
+  if (missing.length) refreshActivePanelByOrder();
+}
 
 function getDefaultVersionOrder() {
   return VERSIONS.filter(v => !v.hideInUi).map(v => v.code);
@@ -3307,6 +3332,7 @@ async function setVersionChecked(code, checked) {
     if (i >= 0) activeVersions.splice(i, 1);
   }
   normalizeActiveVersionOrder();
+  saveActiveVersions();
   document.querySelectorAll(`input.version-cb[data-version="${code}"]`).forEach(inp => { inp.checked = checked; });
   document.querySelectorAll(`.version-toggle[data-version="${code}"]`).forEach(el => {
     el.classList.toggle('active', checked);
@@ -3335,7 +3361,7 @@ function initVersionToggles() {
     c.innerHTML = '';
     const title = document.createElement('span');
     title.className = 'version-toggles-title';
-    title.textContent = '顯示譯本（可勾選）';
+    title.textContent = '顯示譯本（勾選會自動記住）';
     c.appendChild(title);
     orderedVisibleVersions.forEach(v => {
       const on = activeVersions.includes(v.code);
@@ -6325,6 +6351,8 @@ function exportUserData() {
     userData: localStorage.getItem(USER_DATA_KEY),
     readingLog: localStorage.getItem(TRACK_LOG_KEY),
     bookMilestones: localStorage.getItem(MILESTONE_KEY),
+    versionOrder: localStorage.getItem(VERSION_ORDER_KEY),
+    activeVersions: localStorage.getItem(ACTIVE_VERSIONS_KEY),
     exportedAt: new Date().toISOString()
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
@@ -6369,6 +6397,14 @@ function importUserData(e) {
       if(data.historyQuick) localStorage.setItem('bible-quick-history', data.historyQuick);
       if(data.readingLog) localStorage.setItem(TRACK_LOG_KEY, data.readingLog);
       if(data.bookMilestones) localStorage.setItem(MILESTONE_KEY, data.bookMilestones);
+      if(data.versionOrder && data.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, data.versionOrder);
+      if(data.activeVersions && data.activeVersions !== 'null') localStorage.setItem(ACTIVE_VERSIONS_KEY, data.activeVersions);
+      loadVersionOrder();
+      loadActiveVersions();
+      normalizeActiveVersionOrder();
+      initVersionToggles();
+      renderVersionOrderList();
+      ensureActiveVersionsData();
       backfillBookMilestones(); // 匯入的記錄可能有「已讀完但沒慶祝記號」的卷,靜默補上
       if(data.userData) {
         localStorage.setItem(USER_DATA_KEY, data.userData);
@@ -6473,6 +6509,7 @@ function snapshotLocal(reason) {
     historySearch: localStorage.getItem('bible-search-history') || '[]',
     historyQuick: localStorage.getItem('bible-quick-history') || '[]',
     versionOrder: localStorage.getItem(VERSION_ORDER_KEY) || 'null',
+    activeVersions: localStorage.getItem(ACTIVE_VERSIONS_KEY) || 'null',
     readingLog: localStorage.getItem(TRACK_LOG_KEY) || '{}',
     bookMilestones: localStorage.getItem(MILESTONE_KEY) || '{}'
   });
@@ -6520,14 +6557,18 @@ function restoreLocalSnapshot(idx) {
   if (snap.historySearch) localStorage.setItem('bible-search-history', snap.historySearch);
   if (snap.historyQuick) localStorage.setItem('bible-quick-history', snap.historyQuick);
   if (snap.versionOrder && snap.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, snap.versionOrder);
+  if (snap.activeVersions && snap.activeVersions !== 'null') localStorage.setItem(ACTIVE_VERSIONS_KEY, snap.activeVersions);
   if (snap.readingLog) localStorage.setItem(TRACK_LOG_KEY, snap.readingLog);
   if (snap.bookMilestones) localStorage.setItem(MILESTONE_KEY, snap.bookMilestones);
   backfillBookMilestones();
   userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
   migrateUserDataLazy();
   loadVersionOrder();
+  loadActiveVersions();
+  normalizeActiveVersionOrder();
   initVersionToggles();
   renderVersionOrderList();
+  ensureActiveVersionsData();
   loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
   loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
   refreshActivePanelByOrder();
@@ -6802,6 +6843,7 @@ function buildCloudPayload() {
     historySearch: localStorage.getItem('bible-search-history') || '[]',
     historyQuick: localStorage.getItem('bible-quick-history') || '[]',
     versionOrder: localStorage.getItem(VERSION_ORDER_KEY) || 'null',
+    activeVersions: localStorage.getItem(ACTIVE_VERSIONS_KEY) || 'null',
     readingLog: localStorage.getItem(TRACK_LOG_KEY) || '{}',
     bookMilestones: localStorage.getItem(MILESTONE_KEY) || '{}'
   }, null, 2);
@@ -6903,6 +6945,7 @@ async function cloudRestore() {
     if (payload.historySearch) localStorage.setItem('bible-search-history', payload.historySearch);
     if (payload.historyQuick) localStorage.setItem('bible-quick-history', payload.historyQuick);
     if (payload.versionOrder && payload.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, payload.versionOrder);
+    if (payload.activeVersions && payload.activeVersions !== 'null') localStorage.setItem(ACTIVE_VERSIONS_KEY, payload.activeVersions);
     if (payload.readingLog) localStorage.setItem(TRACK_LOG_KEY, payload.readingLog);
     if (payload.bookMilestones) localStorage.setItem(MILESTONE_KEY, payload.bookMilestones);
     backfillBookMilestones();
@@ -6910,8 +6953,11 @@ async function cloudRestore() {
     userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
     migrateUserDataLazy();
     loadVersionOrder();
+    loadActiveVersions();
+    normalizeActiveVersionOrder();
     initVersionToggles();
     renderVersionOrderList();
+    ensureActiveVersionsData();
     loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
     loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
     refreshActivePanelByOrder();
@@ -7081,14 +7127,18 @@ async function autoCheckCloudOnLaunch(opts) {
     if (payload.historySearch) localStorage.setItem('bible-search-history', payload.historySearch);
     if (payload.historyQuick) localStorage.setItem('bible-quick-history', payload.historyQuick);
     if (payload.versionOrder && payload.versionOrder !== 'null') localStorage.setItem(VERSION_ORDER_KEY, payload.versionOrder);
+    if (payload.activeVersions && payload.activeVersions !== 'null') localStorage.setItem(ACTIVE_VERSIONS_KEY, payload.activeVersions);
     if (payload.readingLog) localStorage.setItem(TRACK_LOG_KEY, payload.readingLog);
     if (payload.bookMilestones) localStorage.setItem(MILESTONE_KEY, payload.bookMilestones);
     backfillBookMilestones();
     userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
     migrateUserDataLazy();
     loadVersionOrder();
+    loadActiveVersions();
+    normalizeActiveVersionOrder();
     initVersionToggles();
     renderVersionOrderList();
+    ensureActiveVersionsData();
     loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
     loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
     refreshActivePanelByOrder();
@@ -7110,6 +7160,7 @@ async function autoCheckCloudOnLaunch(opts) {
 
 // ========== Init ==========
 loadVersionOrder();
+loadActiveVersions();
 normalizeActiveVersionOrder();
 initBookSelector();
 initVersionToggles();
