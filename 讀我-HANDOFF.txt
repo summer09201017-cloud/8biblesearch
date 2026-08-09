@@ -1,6 +1,6 @@
 ============================================================
 讀我 — HANDOFF（多譯本聖經查詢 PWA）
-交接日期：2026-07-19
+交接日期：2026-08-09（agape250 機；前次 2026-07-19）
 給：另一台 PC 的 AI / 接手的人
 ============================================================
 
@@ -10,7 +10,14 @@
   另有選用的 Google Drive 同步（drive.appdata，五道安全保險）。
   受眾＝教會非技術長輩（低視力多），介面全繁中。牧者本人+幾位朋友天天在用。
 
-■ 現在到哪（2026-07-19 已完成的重點）
+■ 現在到哪（2026-08-09：SW **v87**；當日 v80→v87 八版全上線收斂，細節見 roadmap.md 已完成段）
+  - 一句話：📱 註釋改 FHL JSON API 原生排版（不再 iframe 被截）＋🔖 譯本勾選自動記住＋
+    📊 統計誠信揭露開關＋🛡 localStorage 裸寫全修＋🧓 簡易模式＋📅 讀經計畫（1/2/3 年＋自訂，
+    讀過自動 ✅ 接足跡）＋🔍 搜尋上下文預覽＋足跡預設歷年＋拿掉清除足跡鈕（使用者拍板不清除路線）。
+  - ⚠ **部署自 07-20 起是手動的**（詳見下方部署段與 roadmap 頭部），push 不會上線。
+  - 待做單一真相＝skills repo 大表「📖 閱讀站佇列」；本 repo roadmap 只列本站卡。
+
+■ 之前到哪（2026-07-19 已完成的重點）
   - 9 譯本：unv 和合本 / ncv 新譯本 / lcc 呂振中 / esv / niv / kjv / asv / web / bbe
   - 分頁順序：經文閱讀 / 關鍵字搜尋 / 📖 足跡 / 快速查詢 / 我的筆記 / 📊 對讀比較 / 設定/資料
   - 本輪新增（2026-07-19，agape250 機）——白屏事故閉環＋部署閘門：
@@ -47,9 +54,13 @@
   區塊，別再用只驗第一塊的老 one-liner）：
       node scripts/validate-deploy.mjs --selftest
   一鍵上線前檢查：在本 repo 打 /ship（驗 JS + 檢查/bump SW + 資料健檢）
-  部署：push main → Netlify 自動部署（repo summer09201017-cloud/8biblesearch，
-       線上 https://8biblesearch.netlify.app）。Netlify build 會先跑上面那支閘門，
-       失敗＝部署失敗、線上維持前一版（會寄通知信）。
+  部署（⚠ 0809 更正：**手動**，07-20 起 netlify.toml `ignore="exit 0"`＋站台 stop_builds
+       斷開雲端 auto-build，**push 不會上線**）：
+       node scripts/validate-deploy.mjs && netlify deploy --prod --dir . --site c889cd5e-6bec-4008-a0ee-34875aa20585
+       zero-pii-guard 會命中 diff_match_patch.js 作者信箱（已知啟發式誤判）：先跑一次不帶旗標、
+       確認命中清單只剩那一條，再單次手打豁免旗標重跑——旗標不要寫進文件或腳本（0801 教訓）。
+       部署後收斂驗證：node <skills repo>/scripts/deploy-converge.mjs https://8biblesearch.netlify.app --expect bible-multi-vNN
+       repo summer09201017-cloud/8biblesearch，線上 https://8biblesearch.netlify.app。
   驗收：可派 agent bible-reader-reviewer（經文/localStorage/PWA/長輩友善四維）；
        部署後 runtime 抽驗可派 web-smoke-verifier / deploy-verifier。
 
