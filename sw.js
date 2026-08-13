@@ -1,5 +1,9 @@
 /* 多譯本聖經查詢 — Service Worker：離線殼層 + 本地譯本 JSON 快取 */
-const CACHE_NAME = 'bible-multi-v92';   /* v92(0814):+和修本(rcuv)線上譯本=第10本(qb.php 逐章即時查;abv.php 標 candownload=0 故刻意不打包),段落標題外提、註腳做成可點開標記,純淨經文進 bibleData⇒複製/朗讀自動乾淨;全文搜尋不含線上譯本並明示;v91=彈窗頂固定本節原文;v90=變體修;v89=膠囊鈕+提示;v88=註釋內原文就地查義 */
+const CACHE_NAME = 'bible-multi-v93';   /* v93(0814):修 v92 的隱形地雷——註腳佔位符寫成「字面 NUL 位元組」而不是 '\0' 轉義,
+   等於把 2 個 U+0000 直接烤進 index.html。功能正常(線上實測過),但 NUL 在原始碼裡完全看不見,
+   且 git 的 binary 判定只掃前 8000 位元組 ⇒ index.html 的 NUL 在 offset 13 萬處所以躲過了、
+   同一份程式抄進 7bible 的 rcuv-core.js(4KB)就被判成 binary(diff 顯示 - -)才暴露出來。
+   改成 '\0' 轉義,原始碼全 ASCII、零 NUL。行為完全相同。 v92(0814):+和修本(rcuv)線上譯本=第10本(qb.php 逐章即時查;abv.php 標 candownload=0 故刻意不打包),段落標題外提、註腳做成可點開標記,純淨經文進 bibleData⇒複製/朗讀自動乾淨;全文搜尋不含線上譯本並明示;v91=彈窗頂固定本節原文;v90=變體修;v89=膠囊鈕+提示;v88=註釋內原文就地查義 */
 /* ⚠ 和修本走 https://bible.fhl.net(跨來源)。第 26 行的 origin 早退是必要的:
    若讓 SW 攔跨域請求並用 caches.match('/') 當退路,Overpass/FHL 這類 API 會拿到我們自己的首頁 HTML
    而 res.ok 仍是 true ⇒ 壞得像成功(0812 sheepflock3d 實錘)。勿刪那一行。 */

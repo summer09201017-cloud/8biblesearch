@@ -2504,7 +2504,7 @@ function cleanRcuvVerse(raw) {
     return '';
   });
 
-  // 2) 註腳 ( [3.16] … ) / ([1.1]…) 抽出;先用 U+0000 佔位,稍後換算成字元位置
+  // 2) 註腳 ( [3.16] … ) / ([1.1]…) 抽出;先用 \0(NUL)佔位,稍後換算成字元位置
   const bodies = [];
   const NOTE = /\((?:[^()]|\([^()]*\))*?\[\s*\d+[.:]\d+[a-z]?\s*\](?:[^()]|\([^()]*\))*\)/g;
   s = s.replace(NOTE, (m) => {
@@ -2513,7 +2513,7 @@ function cleanRcuvVerse(raw) {
       .replace(/<[^>]+>/g, '').trim();
     if (!body) return '';
     bodies.push(body);
-    return ' ';
+    return '\0';
   });
 
   // 3) 其餘標記:<br/> 併為空白;<u> 專名底線、<b> 等一律脫掉
@@ -2524,7 +2524,7 @@ function cleanRcuvVerse(raw) {
   const notes = [];
   let text = '', bi = 0;
   for (const ch of s) {
-    if (ch === ' ') notes.push({ pos: text.length, body: bodies[bi++] || '' });
+    if (ch === '\0') notes.push({ pos: text.length, body: bodies[bi++] || '' });
     else text += ch;
   }
   return { heading, text, notes };
