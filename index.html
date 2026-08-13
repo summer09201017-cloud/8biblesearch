@@ -325,8 +325,44 @@ body {
 .badge-niv { background:#1a5276; }
 .badge-web { background:#1565c0; }
 .badge-bbe { background:#5d4037; }
+.badge-rcuv { background:#7b1fa2; }
 .verse-text { font-size:var(--verse-font-size, 1rem); line-height:1.85; flex:1; }
 .verse-text .highlight-match { background:#ffe066; padding:1px 2px; border-radius:2px; }
+
+/* ===== 和修本(rcuv)線上譯本專用:段落標題外提 + 註腳可點開 ===== */
+/* 段落小標:和修本經文字串裡內嵌 <h2>…</h2>,不可留在節文中(會在句子中間爆出大標題),外提成這一行 */
+.rcuv-heading {
+  font-size:0.95rem; font-weight:700; color:var(--accent2, #7b1fa2);
+  margin:14px 0 6px; padding-left:2px; letter-spacing:0.02em;
+}
+/* 註腳標記:上標小按鈕,點一下展開該節註腳 */
+.rcuv-note-mark {
+  display:inline; vertical-align:super; font-size:0.68em; font-weight:700;
+  color:#7b1fa2; background:none; border:none; padding:0 1px; margin:0 1px;
+  cursor:pointer; line-height:1; font-family:inherit;
+  min-width:22px; min-height:22px;   /* 觸控目標:孩子/長輩手指點得到 */
+}
+.rcuv-note-mark:hover, .rcuv-note-mark:focus-visible { text-decoration:underline; outline:none; }
+.rcuv-note-mark[aria-expanded="true"] { background:#f3e5f5; border-radius:3px; }
+.rcuv-note-box {
+  margin:6px 0 2px 8px; padding:8px 10px;
+  border-left:3px solid #7b1fa2; background:rgba(123,31,162,0.07);
+  border-radius:0 4px 4px 0; font-size:0.86rem; line-height:1.7; color:var(--text, #333);
+}
+/* ⚠ 註腳框刻意放在 .verse-translations「之外」(當 .verse-group 的子節點)。
+   並排模式的 grid 是 repeat(auto-fit,minmax(220px,1fr)):容器 907px ⇒ 4 條軌,
+   只有 2 個譯本時 auto-fit 會把空軌收掉 ⇒ 兩欄各 ~450。一旦把註腳框塞進 grid 當第 3 個項目,
+   空軌就不再收合 ⇒ 兩個譯本被擠成 226 並在右側留一片空白(0814 截圖實際抓到,
+   加 grid-column:1/-1 只解決跨欄、擠窄依舊)。放到 grid 外面才兩者都對。 */
+.rcuv-note-box .rcuv-note-item { margin:2px 0; }
+.rcuv-note-box .rcuv-note-no { font-weight:700; color:#7b1fa2; margin-right:4px; }
+/* 線上譯本狀態列(載入中/失敗)——失敗一定要看得見,不可靜默降級 */
+.rcuv-status { font-size:0.8rem; padding:6px 10px; margin:6px 0; border-radius:4px; }
+.rcuv-status.loading { background:rgba(123,31,162,0.08); color:#7b1fa2; }
+.rcuv-status.failed  { background:#fdecea; color:#b71c1c; border-left:3px solid #b71c1c; }
+.version-toggle .vt-online-tag {
+  font-size:0.62rem; color:#7b1fa2; font-weight:700; margin-left:3px; vertical-align:super;
+}
 
 .chapter-nav {
   display:flex; justify-content:space-between; align-items:center;
@@ -2244,8 +2280,9 @@ body.simple-mode .tab { font-size:1.05rem; padding-top:12px; padding-bottom:12px
 </div>
 
 <footer class="app-footer">
-  <p>經文僅由本地 <code>data/*.json</code> 讀取，可完全離線使用（下載腳本資料來源可參考<a href="https://bible.fhl.net" target="_blank" rel="noopener">信望愛</a>，網頁執行時不連線查詢）</p>
-  <p style="margin-top:4px;">和合本 · ESV · NIV · 新譯本 · 呂振中 · BBE · ASV · KJV · WEB ｜ <span title="WEB／BBE：node download_bible.js">譯本說明見 DEPLOY.md</span></p>
+  <p>9 個離線譯本由本地 <code>data/*.json</code> 讀取，可完全離線使用（資料來源可參考<a href="https://bible.fhl.net" target="_blank" rel="noopener">信望愛</a>，執行時不連線查詢）。<strong>和修本為線上譯本</strong>，勾選時才逐章向信望愛查詢，不打包、不離線。</p>
+  <p style="margin-top:4px;">和合本 · ESV · NIV · 新譯本 · 呂振中 · BBE · ASV · KJV · WEB ｜ 和修本<span style="font-size:0.7em;vertical-align:super;">線上</span> ｜ <span title="WEB／BBE：node download_bible.js">譯本說明見 DEPLOY.md</span></p>
+  <p style="margin-top:4px;font-size:0.85em;opacity:0.8;">和修本（和合本2010）版權屬香港聖經公會，經<a href="https://bible.fhl.net/json/" target="_blank" rel="noopener">信望愛 JSON API</a> 即時查詢呈現；該站標示此譯本不可下載離線資料庫，故本站不予打包。</p>
 </footer>
 
 <script>
@@ -2260,7 +2297,36 @@ const VERSIONS = [
   { code:'asv', name:'ASV',   badge:'badge-asv', local:true },
   { code:'kjv', name:'KJV',   badge:'badge-kjv', local:true },
   { code:'web', name:'WEB', badge:'badge-web', local:true },
+  // 和修本(和合本2010)= 線上譯本,刻意不打包進 data/*.json:
+  // 信望愛 abv.php 對 rcuv 標 candownload=0(=不可下載離線資料庫),文件並註明
+  // 「有些譯本僅授權給信望愛站使用…請勿任意使用」⇒ 只走 qb.php 即時查詢,不重新散布。
+  { code:'rcuv', name:'和修本', badge:'badge-rcuv', local:false, online:true },
 ];
+/** 線上譯本:不在 data/*.json 裡,逐章向信望愛 qb.php 取。⚠ 不可加進 LOCAL_VERSIONS。 */
+const ONLINE_VERSIONS = ['rcuv'];
+/** 該譯本有沒有任何經文可用(給複製/匯出這種不綁定單一章的路徑) */
+function hasVerseData(ver) {
+  return LOCAL_VERSIONS.includes(ver) || (ONLINE_VERSIONS.includes(ver) && !!bibleData[ver]);
+}
+/** 這一章有沒有經文可渲染。線上譯本要「這一章」真的抓到才算。
+ *  ⚠ 不可只判 bibleData[ver] 存在:抓過約3之後 bibleData.rcuv 就是 truthy,
+ *  再翻到抓失敗的約5 會照樣排出和修本列、每列印「此版本無此節經文」——
+ *  而那句話是騙人的(經文存在,是我們沒取到)。0814 斷網實測抓到 47 列假訊息。 */
+function hasChapterData(ver, bid, chap) {
+  if (LOCAL_VERSIONS.includes(ver)) return true;
+  if (!ONLINE_VERSIONS.includes(ver)) return false;
+  return !!(bibleData[ver] && bibleData[ver][bid] && bibleData[ver][bid][chap]);
+}
+/** 全文搜尋只能在本機資料上做:線上譯本手上只有讀過的章,不是全本。
+ *  ⚠ 這裡一定要「明說被排除」——靜靜少一個譯本,使用者會以為和修本查不到這個詞。 */
+function onlineVersionsExcludedNotice(activeList) {
+  const ex = activeList.filter(v => ONLINE_VERSIONS.includes(v));
+  if (!ex.length) return '';
+  const names = ex.map(c => (VERSIONS.find(v => v.code === c) || {}).name || c).join('、');
+  return `<div class="rcuv-status loading">ℹ️ ${escHtml(names)}是線上譯本，`
+       + `本頁全文搜尋只能搜離線譯本，因此這次結果不含${escHtml(names)}。`
+       + `請改用「閱讀」分頁看該章的${escHtml(names)}。</div>`;
+}
 const DEFAULT_ACTIVE_VERSIONS = ['unv','esv','niv','ncv','lcc'];
 let activeVersions = [...DEFAULT_ACTIVE_VERSIONS];   // 啟動時由 loadActiveVersions() 還原使用者上次勾的組合
 
@@ -2406,6 +2472,185 @@ function getLocalChapter(ver, bid, chap) {
   if (!d) return {};
   const b = d[bid]; if (!b) return {};
   return b[chap] || {};
+}
+
+// ================= 和修本(rcuv)線上譯本 =================
+// 為什麼是線上而不是打包:信望愛 abv.php 對 rcuv 標 candownload=0(不可下載離線資料庫),
+// 且 https://bible.fhl.net/json/ 明載「有些譯本僅授權給信望愛站使用…請勿任意使用,以免違法」。
+// ⇒ 走 qb.php 逐章即時查詢(它自己說明是「提供程式設計師呼叫開發使用」),不重新散布經文。
+//
+// 資料落點刻意分兩處:
+//   bibleData.rcuv[bid][chap][sec] = 純淨經文字串  ← 複製/朗讀/字級對比/getLocalVerse 全部自動吃到乾淨版
+//   rcuvMeta[bid][chap][sec]       = { heading, notes:[{pos,body}] }  ← 只有 renderer 會讀
+// 這樣「朗讀一律唸乾淨版」「複製不帶註腳編號」是結構保證的,不是靠呼叫端記得處理。
+const RCUV_API = 'https://bible.fhl.net/json/qb.php';
+const rcuvMeta = {};                    // bid → chap → sec → {heading, notes}
+const _rcuvInflight = new Map();        // 單飛:同一章同時被要求多次只打一次 API
+const _rcuvFailed = new Map();          // chapKey → 失敗訊息(失敗要看得見,不可靜默降級)
+const RCUV_TIMEOUT_MS = 12000;
+const RCUV_LS_KEY = 'bible-rcuv-cache-v1';   // 逐章快取(刻意不進備份鏈:可重取的衍生資料)
+const RCUV_LS_MAX_CHAPTERS = 60;
+
+/** 把 FHL rcuv 的 bible_text 拆成 { heading, text, notes[] }。
+ *  已對真實資料驗證:16 章 619 節,零殘留註腳編號、零殘留 HTML 標籤、零佔位符外洩。 */
+function cleanRcuvVerse(raw) {
+  let s = String(raw == null ? '' : raw);
+  let heading = '';
+
+  // 1) 段落標題 <h2>…</h2> 外提(留在節文裡會在句子中間爆出大標題)
+  s = s.replace(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi, (_m, inner) => {
+    const t = inner.replace(/<[^>]+>/g, '').trim();
+    if (t) heading = heading ? heading + ' · ' + t : t;
+    return '';
+  });
+
+  // 2) 註腳 ( [3.16] … ) / ([1.1]…) 抽出;先用 U+0000 佔位,稍後換算成字元位置
+  const bodies = [];
+  const NOTE = /\((?:[^()]|\([^()]*\))*?\[\s*\d+[.:]\d+[a-z]?\s*\](?:[^()]|\([^()]*\))*\)/g;
+  s = s.replace(NOTE, (m) => {
+    const body = m.replace(/^\(\s*/, '').replace(/\s*\)$/, '')
+      .replace(/\[\s*(\d+[.:]\d+[a-z]?)\s*\]\s*/, '')
+      .replace(/<[^>]+>/g, '').trim();
+    if (!body) return '';
+    bodies.push(body);
+    return ' ';
+  });
+
+  // 3) 其餘標記:<br/> 併為空白;<u> 專名底線、<b> 等一律脫掉
+  s = s.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '');
+  s = s.replace(/[ \t]{2,}/g, ' ').replace(/^[\s　]+/, '').replace(/[\s　]+$/, '');
+
+  // 4) 佔位符 → 字元位置(clean text 保持純淨)
+  const notes = [];
+  let text = '', bi = 0;
+  for (const ch of s) {
+    if (ch === ' ') notes.push({ pos: text.length, body: bodies[bi++] || '' });
+    else text += ch;
+  }
+  return { heading, text, notes };
+}
+
+function _rcuvLsRead() {
+  try { return JSON.parse(localStorage.getItem(RCUV_LS_KEY) || '{}') || {}; } catch(e) { return {}; }
+}
+function _rcuvLsWrite(store) {
+  try {
+    const keys = Object.keys(store);
+    if (keys.length > RCUV_LS_MAX_CHAPTERS) {
+      keys.sort((a,b) => (store[a]._ts||0) - (store[b]._ts||0))
+          .slice(0, keys.length - RCUV_LS_MAX_CHAPTERS)
+          .forEach(k => { delete store[k]; });
+    }
+    localStorage.setItem(RCUV_LS_KEY, JSON.stringify(store));
+  } catch(e) { /* 配額滿/私密模式:純快取,失敗不影響功能 */ }
+}
+
+function _rcuvStash(bid, chap, verses) {
+  bibleData.rcuv = bibleData.rcuv || {};
+  bibleData.rcuv[bid] = bibleData.rcuv[bid] || {};
+  rcuvMeta[bid] = rcuvMeta[bid] || {};
+  const textMap = {}, metaMap = {};
+  Object.entries(verses).forEach(([sec, o]) => {
+    textMap[sec] = o.text;
+    if (o.heading || (o.notes && o.notes.length)) metaMap[sec] = { heading: o.heading || '', notes: o.notes || [] };
+  });
+  bibleData.rcuv[bid][chap] = textMap;
+  rcuvMeta[bid][chap] = metaMap;
+}
+
+/** 取一章和修本。回傳 true=可渲染。失敗記在 _rcuvFailed,由 UI 明示(不靜默降級)。 */
+async function fetchRcuvChapter(bid, chap) {
+  const key = `${bid}-${chap}`;
+  if (bibleData.rcuv && bibleData.rcuv[bid] && bibleData.rcuv[bid][chap]) return true;
+
+  const ls = _rcuvLsRead();
+  if (ls[key] && ls[key].v) { _rcuvStash(bid, chap, ls[key].v); return true; }
+  if (_rcuvInflight.has(key)) return _rcuvInflight.get(key);
+
+  const book = BOOKS.find(b => b.bid === bid);
+  if (!book) return false;
+
+  const p = (async () => {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), RCUV_TIMEOUT_MS);
+    try {
+      const url = `${RCUV_API}?chineses=${encodeURIComponent(book.chineses)}&chap=${chap}&version=rcuv&gb=0`;
+      const resp = await fetch(url, { signal: ctl.signal });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const j = await resp.json();
+      // ⚠ 信望愛失敗時 status 會是一長串 SQL,不是丟 HTTP 錯 —— 必須查 status 與 record
+      if (j.status !== 'success' || !Array.isArray(j.record) || !j.record.length) {
+        throw new Error('信望愛回應無此章經文');
+      }
+      const verses = {};
+      j.record.forEach(r => { verses[r.sec] = cleanRcuvVerse(r.bible_text); });
+      _rcuvStash(bid, chap, verses);
+      const store = _rcuvLsRead();
+      store[key] = { v: verses, _ts: Date.now() };
+      _rcuvLsWrite(store);
+      _rcuvFailed.delete(key);
+      return true;
+    } catch (e) {
+      const msg = e.name === 'AbortError' ? '連線逾時' : (e.message || '連線失敗');
+      _rcuvFailed.set(key, msg);
+      console.warn(`和修本 ${book.chinesef} ${chap} 取得失敗:`, msg);
+      return false;
+    } finally {
+      clearTimeout(timer);
+      _rcuvInflight.delete(key);
+    }
+  })();
+  _rcuvInflight.set(key, p);
+  return p;
+}
+
+/** 渲染前確保線上譯本這一章已就緒(只在使用者真的勾了才連線) */
+async function ensureOnlineChapter(bid, chap) {
+  const need = activeVersions.filter(v => ONLINE_VERSIONS.includes(v));
+  if (!need.length) return;
+  await Promise.all(need.map(v => v === 'rcuv' ? fetchRcuvChapter(bid, chap) : Promise.resolve()));
+}
+
+function rcuvMetaFor(bid, chap, sec) {
+  return (rcuvMeta[bid] && rcuvMeta[bid][chap] && rcuvMeta[bid][chap][sec]) || null;
+}
+function rcuvChapterFailed(bid, chap) { return _rcuvFailed.get(`${bid}-${chap}`) || ''; }
+
+/** 乾淨經文 + 註腳位置 → 安全 HTML(標記是 button,鍵盤與觸控都可用) */
+function rcuvTextHtml(bid, chap, sec, text) {
+  const meta = rcuvMetaFor(bid, chap, sec);
+  if (!meta || !meta.notes || !meta.notes.length) return escHtml(text);
+  let out = '', last = 0;
+  meta.notes.forEach((n, i) => {
+    out += escHtml(text.slice(last, n.pos));
+    out += `<button type="button" class="rcuv-note-mark" aria-expanded="false" `
+        +  `title="和修本譯註,點開看" aria-label="註腳 ${i+1}" `
+        +  `onclick="event.preventDefault();event.stopPropagation();toggleRcuvNote(this,${bid},${chap},${sec})">[${i+1}]</button>`;
+    last = n.pos;
+  });
+  out += escHtml(text.slice(last));
+  return out;
+}
+
+/** 點註腳標記 → 在該節下方展開/收起註腳(同一節共用一個 box) */
+function toggleRcuvNote(btn, bid, chap, sec) {
+  const row = btn.closest('.verse-translation');
+  const grid = row && row.closest('.verse-translations');
+  if (!grid) return;
+  const meta = rcuvMetaFor(bid, chap, sec);
+  if (!meta || !meta.notes.length) return;
+  const setAria = v => grid.querySelectorAll('.rcuv-note-mark').forEach(b => b.setAttribute('aria-expanded', v));
+  // 註腳框掛在 grid 之外(見 CSS 註解:塞進 grid 會把譯本欄擠窄)
+  const existing = grid.nextElementSibling;
+  if (existing && existing.classList && existing.classList.contains('rcuv-note-box')) {
+    existing.remove();
+    setAria('false');
+    return;
+  }
+  const items = meta.notes.map((n, i) =>
+    `<div class="rcuv-note-item"><span class="rcuv-note-no">[${i+1}]</span>${escHtml(n.body)}</div>`).join('');
+  grid.insertAdjacentHTML('afterend', `<div class="rcuv-note-box">${items}</div>`);
+  setAria('true');
 }
 
 /** 和合本排版常在「神」前加空白；搜尋時略過這些空白以利連續字比對（例：查「與神同行」可命中「與 神同行」） */
@@ -3371,7 +3616,8 @@ function buildReadPlainFromCheckedVerses() {
   items.sort(function (a, b) { return a.bid - b.bid || a.chap - b.chap || a.sec - b.sec; });
   const vers = activeVersions.length ? [...activeVersions] : ['unv'];
   const orderedVers = sortedVers(vers);
-  const localVers = vers.filter(function (v) { return LOCAL_VERSIONS.indexOf(v) >= 0; });
+  // 複製:線上譯本也要納入(bibleData.rcuv 存的是純淨經文,複製不會帶註腳標記)
+  const localVers = vers.filter(function (v) { return hasVerseData(v); });
   if (localVers.length === 0) return '';
   const lines = [];
   items.forEach(function (item) {
@@ -3415,7 +3661,7 @@ function copyReadSelection() {
   if (!book) { toast('請先選擇書卷'); return; }
   const vers = activeVersions.length ? [...activeVersions] : ['unv'];
   const orderedVers = sortedVers(vers);
-  const localVers = vers.filter(v => LOCAL_VERSIONS.includes(v));
+  const localVers = vers.filter(v => hasVerseData(v));   // 含線上譯本(純淨經文)
   if (localVers.length === 0) { toast('請至少勾選一個譯本'); return; }
 
   let secs = [];
@@ -3718,6 +3964,14 @@ function initVersionToggles() {
       inp.addEventListener('change', () => setVersionChecked(v.code, inp.checked));
       l.appendChild(inp);
       l.appendChild(document.createTextNode(v.name));
+      if (v.online) {
+        // 讓使用者一眼看出「這本需要連線」——不然離線時少一個譯本會像壞掉
+        const tag = document.createElement('span');
+        tag.className = 'vt-online-tag';
+        tag.textContent = '線上';
+        tag.title = '和修本為線上譯本,需連線逐章查詢(信望愛授權不可離線打包)';
+        l.appendChild(tag);
+      }
       c.appendChild(l);
     });
   });
@@ -3832,13 +4086,19 @@ function renderVerseGroup(bid, chap, sec, ref, versionsToShow, textsMap, opts) {
   const trs = ordered.map(ver => {
     const info = VERSIONS.find(x => x.code === ver);
     const text = textsMap[ver] || '（此版本無此節經文）';
-    return `<div class="verse-translation" style="${bgColor}"><span class="version-badge ${info.badge}">${info.name}</span><span class="verse-text">${text}</span></div>`;
+    // 和修本:註腳做成可點開的標記(經文本身保持乾淨),其餘譯本行為完全不變
+    const body = (ver === 'rcuv' && textsMap[ver]) ? rcuvTextHtml(bid, chap, sec, text) : text;
+    return `<div class="verse-translation" style="${bgColor}"><span class="version-badge ${info.badge}">${info.name}</span><span class="verse-text">${body}</span></div>`;
   }).join('');
+  // 和修本的段落標題外提到該節之上(留在節文裡會在句子中間爆出大標題)
+  const rmeta = ordered.includes('rcuv') ? rcuvMetaFor(bid, chap, sec) : null;
+  const headingHtml = (rmeta && rmeta.heading)
+    ? `<div class="rcuv-heading">${escHtml(rmeta.heading)}</div>` : '';
   const links = fhlLinksHtml(bid, chap, sec);
   const copyBtn = opts.copyHandler
     ? `<button type="button" class="btn-copy-inline" data-copy-mode="read" onclick="event.preventDefault();event.stopPropagation();${opts.copyHandler}" title="複製目前所有勾選的經文（未勾選則依目前查詢範圍）">複製</button>`
     : '';
-  return `<div class="verse-group" data-bid="${bid}" data-chap="${chap}" data-sec="${sec}"><div class="verse-header"><span class="verse-ref-title">${ref}</span><div class="verse-read-pick" onclick="event.stopPropagation()">${links}<a class="fhl-com-link" href="#" onclick="event.preventDefault();openNoteModal(${bid},${chap},${sec},'${ref}')" title="筆記與標記" aria-label="筆記與標記">📝</a>${copyBtn}<label class="verse-read-check"><span class="verse-read-check-label">勾選複製經文</span><input type="checkbox" class="read-pick-cb" aria-label="勾選複製經文"></label></div></div><div class="verse-translations ${parallelClass}">${trs}</div>${noteHtml}</div>`;
+  return `${headingHtml}<div class="verse-group" data-bid="${bid}" data-chap="${chap}" data-sec="${sec}"><div class="verse-header"><span class="verse-ref-title">${ref}</span><div class="verse-read-pick" onclick="event.stopPropagation()">${links}<a class="fhl-com-link" href="#" onclick="event.preventDefault();openNoteModal(${bid},${chap},${sec},'${ref}')" title="筆記與標記" aria-label="筆記與標記">📝</a>${copyBtn}<label class="verse-read-check"><span class="verse-read-check-label">勾選複製經文</span><input type="checkbox" class="read-pick-cb" aria-label="勾選複製經文"></label></div></div><div class="verse-translations ${parallelClass}">${trs}</div>${noteHtml}</div>`;
 }
 
 const LAST_READ_KEY = 'bible-last-read';
@@ -3984,7 +4244,7 @@ function appendNextChapter() {
   _continuousLoading = false;
 }
 
-function fetchVerses(opts) {
+async function fetchVerses(opts) {
   opts = opts || {};
   const append = !!opts.appendMode;
   const t0 = performance.now();
@@ -4004,7 +4264,9 @@ function fetchVerses(opts) {
 
   try {
     const vers = activeVersions.length > 0 ? [...activeVersions] : ['unv'];
-    const localVers = vers.filter(v => LOCAL_VERSIONS.includes(v));
+    // 線上譯本(和修本)要先把這一章取回來,才有東西可渲染。只有使用者勾了才會連線。
+    await ensureOnlineChapter(bid, chap);
+    const localVers = vers.filter(v => hasChapterData(v, bid, chap));
 
     const verseMap = {};
 
@@ -4045,7 +4307,9 @@ function fetchVerses(opts) {
       const dividerHtml = `<div class="continuous-divider">📖 ${book.chinesef} 第 ${chap} 章</div>`;
       const versesHtml = sorted.map(k => {
         const v = verseMap[k];
-        return renderVerseGroup(bid, v.chap, v.sec, `${book.chinesef} ${v.chap}:${v.sec}`, vers, v.texts, { copyHandler: 'copyReadSelection()' })
+        // ⚠ 傳 localVers 而非 vers:renderVerseGroup 會為清單中每個譯本排一列,
+        // 沒資料就印「此版本無此節經文」——線上譯本這一章沒取到時那句話是騙人的。
+        return renderVerseGroup(bid, v.chap, v.sec, `${book.chinesef} ${v.chap}:${v.sec}`, localVers, v.texts, { copyHandler: 'copyReadSelection()' })
           .replace('<div class="verse-group"', '<div class="verse-group" data-continuous="1"');
       }).join('');
       const footer = div.querySelector('.read-copy-footer');
@@ -4063,13 +4327,21 @@ function fetchVerses(opts) {
       return;
     }
 
+    // 和修本這一章沒取到 → 明說(靜默少一個譯本 = 使用者以為那節和修本沒經文)
+    const rcuvFail = (activeVersions.includes('rcuv') && rcuvChapterFailed(bid, chap))
+      ? `<div class="rcuv-status failed">和修本這一章沒取到（${escHtml(rcuvChapterFailed(bid, chap))}）。`
+        + `和修本是線上譯本，需要連線；其餘譯本為離線資料，不受影響。`
+        + `<button type="button" class="btn-copy-inline" style="margin-left:8px" onclick="retryRcuv(${bid},${chap})">重試</button></div>`
+      : '';
+
     if (sorted.length === 0) {
-      div.innerHTML = '<div class="error-msg">查無經文資料（離線資料可能尚未載入）</div>';
+      div.innerHTML = rcuvFail + '<div class="error-msg">查無經文資料（離線資料可能尚未載入）</div>';
     } else {
       const timeHtml = `<div class="search-stats">共 ${sorted.length} 節，耗時 ${elapsed} ms</div>`;
-      div.innerHTML = timeHtml + sorted.map(k => {
+      div.innerHTML = rcuvFail + timeHtml + sorted.map(k => {
         const v = verseMap[k];
-        return renderVerseGroup(bid, v.chap, v.sec, `${book.chinesef} ${v.chap}:${v.sec}`, vers, v.texts, { copyHandler: 'copyReadSelection()' });
+        // localVers(章層過濾後)而非 vers,理由同 append 分支
+        return renderVerseGroup(bid, v.chap, v.sec, `${book.chinesef} ${v.chap}:${v.sec}`, localVers, v.texts, { copyHandler: 'copyReadSelection()' });
       }).join('') + readCopyFooterHtml();
       scheduleChapterRead(bid, chap); // 讀經足跡:顯示且停留 15 秒 = 算讀過(換卷路過的第 1 章會被下一次查詢取消)
     }
@@ -4199,7 +4471,12 @@ function doSearch() {
 
     if (verseMap.size === 0) {
       if (bar) bar.hidden = true;
-      div.innerHTML = '<div class="error-msg">查無結果</div>';
+      // 若使用者只勾了線上譯本,「查無結果」是騙人的 —— 要說清楚是搜不了、不是查不到
+      const onlyOnline = vers.length > 0 && vers.every(v => ONLINE_VERSIONS.includes(v));
+      div.innerHTML = onlineVersionsExcludedNotice(vers)
+        + (onlyOnline
+            ? '<div class="error-msg">目前只勾了線上譯本，無法做全文搜尋。請至少勾一個離線譯本（如和合本）。</div>'
+            : '<div class="error-msg">查無結果</div>');
       return;
     }
 
@@ -4233,7 +4510,8 @@ function doSearch() {
     const queryLabel = tokens.length > 1
       ? tokens.map(t => `「${escHtml(t)}」`).join(' ') + '（全部都要包含）'
       : `「${escHtml(tokens[0] || q)}」`;
-    const statsHtml = `<div class="search-stats">搜尋 ${queryLabel}，共 ${verseMap.size} 節，耗時 ${elapsed} ms</div>`;
+    const statsHtml = onlineVersionsExcludedNotice(vers)
+      + `<div class="search-stats">搜尋 ${queryLabel}，共 ${verseMap.size} 節，耗時 ${elapsed} ms</div>`;
 
     const orderedVers = sortedVers(vers);
     const html = sorted.map(([k, v], idx) => {
@@ -4265,13 +4543,19 @@ function doSearch() {
   }
 }
 
-function goToVerse(bid, chap, sec) {
+/** 和修本取失敗後重試這一章 */
+async function retryRcuv(bid, chap) {
+  _rcuvFailed.delete(`${bid}-${chap}`);
+  await fetchVerses();
+}
+
+async function goToVerse(bid, chap, sec) {
   switchTab('read');
   document.getElementById('sel-book').value = bid; onBookChange();
   document.getElementById('sel-chap').value = chap; onChapChange();
   document.getElementById('sel-sec-start').value = '';
   document.getElementById('sel-sec-end').value = '';
-  fetchVerses();
+  await fetchVerses();   // 線上譯本要等抓完才有 DOM 可捲動
   if (sec) {
     setTimeout(() => {
       const target = document.querySelector(`#results-read .verse-group[data-bid="${bid}"][data-chap="${chap}"][data-sec="${sec}"]`);
@@ -4296,7 +4580,8 @@ function quickLookupSegment(segRaw, vers) {
   if (!book) return { html:'', count:0, error:`找不到書卷：${escapeHtmlForNotes(segRaw)}` };
 
   const verseMap = {};
-  vers.filter(v => LOCAL_VERSIONS.includes(v)).forEach(ver => {
+  // 含線上譯本;但線上譯本要「這一章」真的抓到才排(否則會印出騙人的「此版本無此節經文」)
+  vers.filter(v => hasChapterData(v, book.bid, parsed.chap)).forEach(ver => {
     if (parsed.secRange) {
       const parts = parsed.secRange.split('-');
       const start = parseInt(parts[0]);
@@ -4337,7 +4622,7 @@ function quickLookupSegment(segRaw, vers) {
   return { html, count:sorted.length, error:null };
 }
 
-function doQuickLookup() {
+async function doQuickLookup() {
   const t0 = performance.now();
   const raw = document.getElementById('quick-ref').value.trim();
   if (!raw) return;
@@ -4360,6 +4645,16 @@ function doQuickLookup() {
     const okSegs = [];
     const errSegs = [];
     const isMulti = segments.length > 1;
+
+    // 線上譯本:先把每一段參照所在的章取回來(單飛+快取,重複章不會重打)
+    if (vers.some(v => ONLINE_VERSIONS.includes(v))) {
+      for (const seg of segments) {
+        const p = parseQuickRef(seg);
+        if (!p) continue;
+        const b = BOOKS.find(x => x.chineses === p.chineses);
+        if (b) await ensureOnlineChapter(b.bid, p.chap);
+      }
+    }
 
     segments.forEach((seg, i) => {
       const r = quickLookupSegment(seg, vers);

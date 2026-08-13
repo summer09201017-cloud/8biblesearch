@@ -1,5 +1,8 @@
 /* 多譯本聖經查詢 — Service Worker：離線殼層 + 本地譯本 JSON 快取 */
-const CACHE_NAME = 'bible-multi-v91';   /* v91(0810):彈窗頂固定本節原文(qb.php 每節都有,點詞看字義);v90=變體修(SNH␣57 空格式/裸 SN=書卷推語言);v89=膠囊鈕+提示;v88=註釋內原文就地查義 */
+const CACHE_NAME = 'bible-multi-v92';   /* v92(0814):+和修本(rcuv)線上譯本=第10本(qb.php 逐章即時查;abv.php 標 candownload=0 故刻意不打包),段落標題外提、註腳做成可點開標記,純淨經文進 bibleData⇒複製/朗讀自動乾淨;全文搜尋不含線上譯本並明示;v91=彈窗頂固定本節原文;v90=變體修;v89=膠囊鈕+提示;v88=註釋內原文就地查義 */
+/* ⚠ 和修本走 https://bible.fhl.net(跨來源)。第 26 行的 origin 早退是必要的:
+   若讓 SW 攔跨域請求並用 caches.match('/') 當退路,Overpass/FHL 這類 API 會拿到我們自己的首頁 HTML
+   而 res.ok 仍是 true ⇒ 壞得像成功(0812 sheepflock3d 實錘)。勿刪那一行。 */
 /* ⚠ 版號史:git 曾停在 v73,但線上 07-24 已部署過(未 push 的)v74/v75 ⇒ 0802 我在 git 又發了同名 v74/v75=同名不同內容。
    v76 起兩線合一;以後懷疑「線上比 git 新」先跑 netlify api listSiteDeploys 比對部署時間 vs git log。 */
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/vendor/diff_match_patch.js'];
