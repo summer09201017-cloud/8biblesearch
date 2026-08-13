@@ -1,16 +1,41 @@
 ============================================================
 讀我 — HANDOFF（多譯本聖經查詢 PWA）
-交接日期：2026-08-09（agape250 機；前次 2026-07-19）
+交接日期：2026-08-14（HFP 機；前次 2026-08-10 DEYI 機）
 給：另一台 PC 的 AI / 接手的人
 ============================================================
 
+■ 現在到哪(2026-08-14:SW **v93**,已手動部署上線並線上驗過)
+  ✅ 已完成(本輪)
+  - 📖 **v92 第 10 本譯本:和修本(和合本2010, rcuv)＝線上譯本**(使用者點名要的)。
+    信望愛 qb.php?version=rcuv 逐章即時查,**刻意不打包**:abv.php 對 rcuv 標 candownload=0
+    (不可下載離線資料庫),/json/ 文件明載「有些譯本僅授權給信望愛站使用…請勿任意使用」。
+    使用者拍板的三件呈現:①段落標題外提到該節之上 ②譯註做成上標 [n] 鈕點開展開
+    ③經文本身保持純淨。
+  - 🩹 **v93** 修 v92 的隱形地雷:註腳佔位符是「字面 NUL 位元組」而非 '\0' 轉義(2 個 U+0000
+    被烤進 index.html 且已上線)。功能一直正常,但原始碼裡看不見。
+  - 兩版都跑過部署閘門、deploy-converge 收斂(各 24 抽全一致)、線上 Playwright 實測。
+
+  ⏩ 進行中:**無**。本輪沒有未完成的工程,也沒有還在跑的子代理。
+
+  📋 待使用者拍板(**別動工**)
+  - abv.php 顯示 `ncv`(新譯本)與 `esv` 也是 candownload=0,而這兩本目前打包在 data/。
+    要不要比照和修本改成線上?**這是取捨(會失去離線能力)不是修 bug**,使用者決定。
+  - roadmap 待做 #7「字級對比接和修本」值得做但沒動(~1hr)。
+
+  ★ 使用者要知道的操作重點(他在 iPhone 上問過):
+    和修本**預設沒有勾選**,而且勾選組合會被記住(bible-active-versions)⇒ 更新到新版後
+    仍要自己去「顯示譯本」把「和修本」打勾才會出現。找不到那個選項才是真的還在舊版。
+    ⚠ 千萬別叫使用者用「設定→Safari→清除網站資料」強制更新——那會清掉 localStorage,
+    筆記/足跡/讀經計畫全沒。要清先匯出 JSON。繞快取用網址加 `?v=2` 最安全。
+
 ■ 這是什麼
-  繁體中文「多譯本聖經查詢」PWA。單一 static HTML（index.html，~6100 行內含 CSS/JS）
-  + 每譯本一個 data/*.json。無後端、無建置步驟。離線優先；使用者資料存 localStorage，
+  繁體中文「多譯本聖經查詢」PWA。單一 static HTML（index.html，~6400 行內含 CSS/JS）
+  + 每譯本一個 data/*.json（9 本離線）＋和修本一本走線上（不打包）。
+  無後端、無建置步驟。離線優先；使用者資料存 localStorage，
   另有選用的 Google Drive 同步（drive.appdata，五道安全保險）。
   受眾＝教會非技術長輩（低視力多），介面全繁中。牧者本人+幾位朋友天天在用。
 
-■ 現在到哪(2026-08-10:SW **v91**,已手動部署上線;細節見 roadmap.md 已完成段)
+■ 前一輪(2026-08-10:SW v91,已手動部署上線;細節見 roadmap.md 已完成段)
   - 👁 v89:原文編號改淡黃膠囊鈕+「字義」後綴+面板頂提示(使用者回饋「找不到原文」——原本長得跟一般連結一樣)。
   - ✡ **v88 註釋內原文編號就地查義**（DEYI 機）：點註釋裡的 SG/SH 編號 → 段落下插中文字義卡
     （sd.php＋`bible-strongs-dict-v1` 快取，不進備份鏈）；卡內參照/巢狀 SN 遞迴可點；
@@ -78,7 +103,16 @@
      改完跑 node scripts/validate-deploy.mjs --selftest。
   0b) VERSE_COUNTS 常數別手改——由 data/*.json 程式化重生成（9 版最大值），閘門會逐格對賬。
   1) 改 index.html / manifest / icons 後，一定要 bump sw.js 的 CACHE_NAME=bible-multi-vN，
-     否則已安裝 PWA 的使用者卡在舊殼層。目前 v62。（repo 有 hook 提醒；/ship 會自動 bump。）
+     否則已安裝 PWA 的使用者卡在舊殼層。**目前 v93**。（repo 有 hook 提醒；/ship 會自動 bump。）
+  1b) ⚠ **這台機 core.autocrlf=true**：用編輯工具改 index.html 會把**整檔翻成 CRLF**，
+     實測 git 沒有在 commit 時正規化回來 → diff 變成「8234 增 / 7936 減」把真實的 3 行改動埋掉。
+     commit 前先把行尾轉回 LF（本輪 v92 第一次 commit 就是這樣，amend 修掉後才是 317/19）。
+  1c) ⚠ **別在原始碼裡寫字面控制字元**（NUL 之類）。v92 把 2 個 U+0000 當佔位符烤進 index.html
+     並上線；功能正常但看不見。要用就寫 '\0' 轉義。git 的 binary 判定只掃前 8000 位元組，
+     所以大檔反而藏得住——**體積本身就是偽裝**。
+  1d) ⚠ **驗收要量「看得見」,不要只讀 innerText**：`innerText` 對 `display:none` 的元素會
+     **退回 textContent** ⇒ 面板隱藏著也讀得到字，「驗過了」其實沒上螢幕（本輪踩過）。
+     用 `getBoundingClientRect()` 寬高 > 0 才算可見。同理 Playwright 要用真 click 不要 evaluate。
   2) HFP 那台的正本 clone 在 C:\Users\HFP\Downloads\hfpc\8biblesearch。
      它 Downloads 下的「聖經查詢CUR-交接-2026-06-29」資料夾是舊快照（比遠端舊），別用；
      裡面還有 2 層同名巢狀舊副本各帶 .git（roadmap 待做 #4 是清掉它們，需牧者點頭）。
@@ -89,9 +123,11 @@
      不然換手機該鍵資料就丟了（讀經足跡 readingLog 是照做的範例）。
 
 ■ 檔案在哪
-  index.html ............ 全部前端（CSS + HTML + JS）
-  sw.js ................. Service Worker（CACHE_NAME 在這，目前 v62）
-  data/*.json ........... 9 譯本經文
+  index.html ............ 全部前端（CSS + HTML + JS；和修本區塊搜 `cleanRcuvVerse` / `rcuvMeta`）
+  sw.js ................. Service Worker（CACHE_NAME 在這，**目前 v93**）
+                          ⚠ 第 26 行的 origin 早退不可刪（否則跨域 API 會拿到我們的首頁 HTML
+                          而 res.ok 仍是 true ＝壞得像成功）
+  data/*.json ........... 9 譯本經文（**和修本不在這裡**，它是線上譯本）
   scripts/validate-deploy.mjs ... 部署閘門（netlify.toml build command 帶 --selftest 跑它）
   tests/fixtures/broken-20260719-whitescreen.html ... 白屏真兇原檔（閘門自測用，別刪）
   CLAUDE.md ............. 給 AI 的完整架構說明（最權威；「讀經足跡」節必讀）
@@ -109,10 +145,16 @@
   - agent bible-reader-reviewer：reader 類 PWA 四維驗收
   - skill static-pwa-ship、daily-verse、share-card、web-speech-scripture：待做清單會用到
 
+■ 跨專案工具(本輪新增)
+  - skill fhl-bible-api **assets/rcuv-core.js**（新）：和修本清洗＋逐章取用的正本。
+    7bible 直接 import；本站是去 export 貼進 index.html 的同一份邏輯。
+    **要改先改 skill 正本再同步兩站**，否則三個月後兩份不一樣。
+
 ■ 下一步最該做的一件事
-  roadmap 待做 #1：每日金句／今日經文卡（~2hr，接 🔊 朗讀）。
-  或 #2 讀完一卷書彩帶里程碑（足跡月桶已能免費偵測「整卷讀完」）。
-  想做大的：#3 一年讀經計畫模式（足跡自動打勾，門訓剛需，~1 天）。
+  roadmap 待做 #3：每日金句／今日經文卡（~2hr，接 🔊 朗讀）。
+  和修本相關最有價值的續作＝待做 #7「字級對比接和修本」（~1hr）——
+  和修本 vs 和合本的用字差異正是對讀最值得看的一組（神/上帝、獨生子/獨一的兒子）。
+  ⚠ 先問使用者「ncv/esv 要不要也改線上」那題（roadmap 待拍板列），別自己決定。
 
 ============================================================
 （這份是純文字快照；最完整、會更新的版本看 roadmap.md 與 CLAUDE.md）

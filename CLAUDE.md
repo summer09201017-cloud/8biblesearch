@@ -6,11 +6,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A multi-translation Bible reader PWA (繁體中文介面). Single static HTML file + per-translation JSON data, no backend, no build step. Deploys to Netlify as-is. Local-first: all user data lives in `localStorage`; optional Google Drive sync writes to the user's own `appDataFolder`.
 
-Production translations: 和合本 (unv) · ESV · NIV · WEB · BBE · 新譯本 (ncv) · 呂振中 (lcc) · ASV · KJV.
+Production translations（**9 本離線** + **1 本線上** = 10）:
+和合本 (unv) · ESV · NIV · WEB · BBE · 新譯本 (ncv) · 呂振中 (lcc) · ASV · KJV
++ **和修本／和合本2010 (rcuv)＝線上譯本**（不在 `data/`，逐章向信望愛 qb.php 取；見下方「和修本」節）。
 
-## 現況 (2026-07-19) — 已完成 vs 待做
+## 現況 (2026-08-14) — 已完成 vs 待做
 
 **完整、會更新的「已完成 vs 真正待做」清單見 `roadmap.md`（單一真相）。** 交接快照見 `讀我-HANDOFF.txt`。
+
+最近一輪 (2026-08-14，HFP 機) 新增——**第 10 本譯本：和修本（線上）**：
+- 📖 **v92 和修本（和合本2010, `rcuv`）**：信望愛 `qb.php?version=rcuv` **逐章即時查**。
+  **刻意不打包**進 `data/`：`abv.php` 對 rcuv 標 `candownload=0`（不可下載離線資料庫），
+  且 `https://bible.fhl.net/json/` 明載「有些譯本僅授權給信望愛站使用…請勿任意使用」
+  ⇒ 走查詢導流，不重新散布經文。（順帶查到 `ncv`/`esv` 也是 `candownload=0` 而目前仍打包在
+  `data/`——**待使用者決定**，別擅自改。`unv`/`lcc`/`kjv`/`asv`/`web`/`bbe` 是 `candownload=1`。）
+- 🧱 **資料落點刻意分兩處**（這是整個功能的關鍵設計，改動前必懂）：
+  `bibleData.rcuv[bid][chap][sec]` = **純淨經文字串**（不含 `[n]` 標記）→ 於是 `getLocalVerse` /
+  `getLocalChapter` / 複製 / 朗讀 / 字級對比**全部自動吃到乾淨版**；
+  `rcuvMeta[bid][chap][sec]` = `{heading, notes:[{pos,body}]}`，**只有 renderer 會讀**。
+  ⇒「朗讀一律唸乾淨版、複製不帶註腳編號」是**結構保證**，不是靠每個呼叫端記得處理。
+- 🔖 **段落標題外提**：rcuv 節文內嵌 `<h2>…</h2>`，留在句子裡會在中間爆出大標題 ⇒ 提到該節之上
+  （`.rcuv-heading`）。**註腳可點開**：`( [3.16] 或譯…)` 抽成上標 `[n]` 按鈕，點開在該節下方展開。
+- 🩹 **v93 修 v92 的隱形地雷**：註腳佔位符原本寫成**字面 NUL 位元組**而非 `'\0'` 轉義，
+  等於把 2 個 U+0000 烤進 `index.html`（功能正常、已上線，但原始碼裡完全看不見）。
+  ★ 抓到它的是「同一份程式抄進 7bible 後 `git diff` 顯示 `- -`（binary）」——
+  **git 的 binary 判定只掃前 8000 位元組**，index.html 的 NUL 在 offset ~133,700 處所以躲過了，
+  4KB 的 `rcuv-core.js` 藏不住。⇒ **大檔比小檔更容易藏住同一個病，體積本身就是偽裝。**
+- ⚠ **界線（畫面上都有明示，別默默拿掉）**：①**全文搜尋不含線上譯本**（手上只有讀過的章，不是全本）；
+  只勾和修本時說「無法做全文搜尋」而**不是**騙人的「查無結果」。②取失敗時該章**不排出和修本列**
+  ＋顯示失敗橫幅＋重試鈕——**不可**讓它退化成每列「（此版本無此節經文）」，那句話是騙人的
+  （經文存在，是我們沒取到）。③**字級對比（`DIFF_VERSIONS`）這輪未接和修本**。
+- 🧰 跨專案沉澱：`rcuv-core.js` 正本進 skill `fhl-bible-api/assets/`（7bible 用 ES module 版，
+  本站是去 `export` 貼進 index.html 的同一份邏輯）。
 
 最近一輪 (2026-07-19，agape250 機) 新增——**白屏事故閉環＋部署閘門**：
 - 🚨 **白屏事故與修復**：play-stats beacon 批次（別台機器 push）把 snippet 插進 `buildNotesPrintHtml()` 模板字串（字串裡含完整 `</body></html>`），未跳脫的 `</script>` 提早關閉主腳本 → 整站 JS 變頁面文字。已移到真正頁尾獨立 `<script>`（`window.psPing`＋`ps-last-8biblesearch` 10 分去重）。**教訓：對本 repo 注入頁尾程式必須錨定「檔案最後一個 `</body>`」＋逐塊驗證。**
@@ -145,7 +172,37 @@ A `flex-wrap:wrap` row: book+chapter ref on the left, then the right-side action
 - `VERSIONS[].hideInUi: true` — never appears as a toggle pill or in the order list, but data is still loadable if some other path activates it. (No version currently uses this; WEB used to be hidden but is now visible at the end of the order.)
 - `VERSIONS` array order = the **default display order** for new users. WEB intentionally sits last (after KJV) because it duplicates the public-domain English niche already covered by ASV/KJV — keep it last unless you have a reason.
 - `loadVersionOrder()` appends new versions to the end of an existing user's saved order via the `missing` patch — adding a new version to `VERSIONS` will not disturb the user's drag-reorder preference.
-- `LOCAL_VERSIONS` — codes that have a `data/<code>.json`. The current code assumes everything is local; there is no remote fetch fallback.
+- `LOCAL_VERSIONS` — codes that have a `data/<code>.json`. **不要把 `rcuv` 加進去**（它沒有本機檔）。
+- `ONLINE_VERSIONS = ['rcuv']` — 線上譯本。三個判斷函式別搞混：
+  - `LOCAL_VERSIONS.includes(v)` — 只用在「載哪些資料檔」（`loadLocalData` / `setVersionChecked` /
+    `ensureActiveVersionsData`）與**全文搜尋**（搜尋只能搜離線譯本）。
+  - `hasVerseData(v)` — 有沒有任何經文可用；給**複製/匯出**這種不綁單一章的路徑。
+  - `hasChapterData(v, bid, chap)` — **這一章**有沒有經文可渲染。渲染路徑一律用這個。
+    ⚠ **不可只判 `bibleData.rcuv` 存在**：抓過約 3 之後它就是 truthy，再翻到抓失敗的約 5 會照樣
+    排出和修本列、每列印「（此版本無此節經文）」——而那句話是騙人的。0814 斷網實測抓到 47 列假訊息。
+  - ⚠⚠ **`renderVerseGroup` 收的清單決定「排幾列」**：`fetchVerses` 必須傳**章層過濾後的
+    `localVers`**，不是 `vers`。`localVers` 只管「收哪些資料」是不夠的——列是從傳進去的清單排的。
+    （這正是上面那 47 列假訊息的真因；第一次修錯地方，改了過濾卻沒改渲染。）
+
+### 和修本（rcuv）線上譯本
+- `cleanRcuvVerse(raw)` → `{heading, text, notes:[{pos,body}]}`。已對真實資料驗證 16 章 619 節，
+  零殘留註腳編號、零殘留 HTML 標籤、零佔位符外洩。**改它之前先對真實資料跑一輪**再看自測。
+- 佔位符用 `'\0'` **轉義**（不是字面 NUL 位元組——v93 修過這個，別改回去）。
+- `fetchRcuvChapter(bid, chap)`：單飛（同章同時被要求只打一次）＋12s timeout ＋
+  `bible-rcuv-cache-v1` 逐章 localStorage 快取（上限 60 章，**刻意不進備份鏈**＝可重取的衍生資料）。
+- ⚠ **信望愛失敗時 `status` 是一長串 SQL，不是丟 HTTP 錯** ⇒ 必須查 `j.status === 'success'`
+  且 `record` 有長度。只看 `resp.ok` 會把失敗當成功。
+- ⚠⚠ **`version=unv,rcuv` 這種逗號串多譯本會回「整本聖經」31,103 節 / 5.8MB，而 `status` 仍是
+  `success`**。一定要一個版本一次呼叫。
+- ⚠ 書卷參數只能用 `chineses=`（`engs=John` 會回**羅馬書**）。全 66 卷已對 rcuv 實測通過。
+- 註腳框**刻意掛在 `.verse-translations` 之外**：並排模式的 grid 是
+  `repeat(auto-fit,minmax(220px,1fr))`，把它塞進 grid 當第 3 個項目會讓空軌不再收合 ⇒
+  兩個譯本從 453px 被擠成 226px 並在右側留一片空白（0814 截圖實際抓到；加 `grid-column:1/-1`
+  只解決跨欄、擠窄依舊）。
+- 和修本只有**上帝版**，信望愛沒有神版代碼 ⇒ 與和合本並排時一邊「神」一邊「上帝」是正常的。
+- SW 第 26 行 `if (url.origin !== self.location.origin) return;` **不可刪**：若讓 SW 攔跨域請求
+  並用 `caches.match('/')` 當退路，FHL 這類 API 會拿到我們自己的首頁 HTML 而 `res.ok` 仍是 true
+  ＝壞得像成功（0812 sheepflock3d 實錘）。
 
 ### 和合本 search quirk
 和合本 prepends an ideographic space before 神. `normalizeUnvSpacesBeforeShen()` strips those spaces before substring matching, and the highlight regex uses a parallel `escQUnvHighlight` so search still highlights the 神 even with the space. Preserve this behavior when touching `searchLocal()` or the search render path.
