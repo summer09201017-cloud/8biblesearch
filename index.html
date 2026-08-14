@@ -2807,33 +2807,29 @@ function rankZhVoices() {
     .sort((a, b) => b.s - a.s).map(x => x.v);
 }
 const SPEAK_VOICE_KEY = 'bible-speak-voice';
-function _pickVoice(lang) {
-  const vs = (_speakVoices && _speakVoices.length) ? _speakVoices
-    : (('speechSynthesis' in window) ? speechSynthesis.getVoices() : []);
-  if (lang === 'zh') {
-    const ranked = rankZhVoices();
-    let saved = '';
-    try { saved = localStorage.getItem(SPEAK_VOICE_KEY) || ''; } catch(e) {}
-    if (saved) { const hit = ranked.find(v => v.name === saved); if (hit) return hit; }
-    return ranked[0] || null;
-  }
-  return vs.find(v => /^en[-_]US/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
-}
 // 設定頁「朗讀聲音」下拉 + 試聽
+// 0814 起改列**神經人聲**(伺服器產生),不再列裝置上的 Web Speech 語音——
+// 裝置語音就是使用者抱怨的「機器聲」,列出來只會讓人選到它。
+const NEURAL_VOICES = [
+  { id: 'xiaochen', label: '曉臻（台灣女聲・經文預設）' },
+  { id: 'yunjhe',   label: '雲哲（台灣男聲）' },
+];
 function refreshVoiceOptions() {
   const sel = document.getElementById('speak-voice-sel');
   if (!sel) return;
-  const ranked = rankZhVoices();
   let saved = '';
   try { saved = localStorage.getItem(SPEAK_VOICE_KEY) || ''; } catch(e) {}
-  let html = '<option value="">自動（推薦）</option>';
-  ranked.forEach(v => {
-    const label = v.name.replace(/Microsoft\s+/i,'').replace(/\s*-\s*Chinese.*$/i,'').replace(/\s*Online\s*/i,' ');
-    const esc = v.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-    html += '<option value="' + esc + '">' + label.replace(/&/g,'&amp;').replace(/</g,'&lt;') + (/natural|neural/i.test(v.name) ? '（自然）' : '') + '</option>';
+  let html = '';
+  NEURAL_VOICES.forEach(v => {
+    html += '<option value="' + v.id + '">' + v.label + '</option>';
   });
   sel.innerHTML = html;
-  sel.value = (saved && ranked.some(v => v.name === saved)) ? saved : '';
+  sel.value = NEURAL_VOICES.some(v => v.id === saved) ? saved : 'xiaochen';
+}
+function getNeuralVoice() {
+  let saved = '';
+  try { saved = localStorage.getItem(SPEAK_VOICE_KEY) || ''; } catch(e) {}
+  return NEURAL_VOICES.some(v => v.id === saved) ? saved : 'xiaochen';
 }
 function saveSpeakVoice() {
   const sel = document.getElementById('speak-voice-sel');
@@ -2857,36 +2853,104 @@ function initSpeakRate() {
 }
 try { window.addEventListener('load', initSpeakRate); } catch(e) {}
 function previewSpeakVoice() {
-  if (!('speechSynthesis' in window)) { toast('此瀏覽器不支援語音朗讀'); return; }
   stopReadAloud();
-  _loadVoices();
-  _speakQueue = chunkClauses(toSpeakable('起初，神創造天地。這是耶和華所定的日子，我們在其中要高興歡喜！'), getSpeakRate(), 1)
-    .map(c => ({ text: c.text, lang: 'zh', pitch: c.pitch, rate: c.rate }));
+  if (navigator.onLine === false) { toast('試聽需要連線（人聲由伺服器產生）'); return; }
+  _clipQueue = [{ text: toSpeakable('起初，神創造天地。這是耶和華所定的日子，我們在其中要高興歡喜！'), lang: 'zh' }];
+  _ttsAbort = ('AbortController' in window) ? new AbortController() : null;
   _speaking = true;
-  _speakNext();
+  _setSpeakBtn(true);
+  _playFrom(0);
 }
 function _detectLang(text) { return /[㐀-鿿]/.test(text) ? 'zh' : 'en'; }
 function _setSpeakBtn(on) {
   const b = document.getElementById('btn-speak');
   if (b) { b.textContent = on ? '⏹ 停止' : '🔊 朗讀'; b.classList.toggle('speaking', on); }
 }
+// ================= 即時朗讀:神經人聲(曉臻)=================
+// 2026-08-14 使用者拍板 A 案:即時朗讀改走 hfpc-tts Worker 的 Edge 神經語音,不再用 Web Speech。
+// 由來=使用者回報 iPhone「機器聲」——那正是 Web Speech;而使用者 0730 已第二次拍板
+// 「任何朗讀一律預烤神經人聲、不可用 Web Speech 機器聲」(守門 scripture-voice-guard #27)。
+// ⚠ 鐵則:**沒有 Web Speech 退路**。拿不到音檔就明說「需要連線」,不要偷偷用機器聲頂替
+//    ——那會讓使用者以為功能好了,實際聽到的還是他抱怨的那個聲音。
+const TTS_ENDPOINT = 'https://hfpc-tts.summer09201017.workers.dev/tts';
+const TTS_MAX_CHARS = 800;          // Worker 上限 900,留邊
+let _clipQueue = [];                // [{text, lang}]
+let _clipIdx = 0;
+let _audioEl = null;
+let _prefetched = null;             // { idx, url } 下一段先抓好
+let _ttsAbort = null;
+
+function _ttsUrl(text, lang) {
+  // 速度交給伺服器做 SSML 真調速(音高不變),比前端 WSOLA 好;英文沿用既有的再放慢比例
+  const sp = lang === 'en' ? Math.max(0.5, getSpeakRate() * 0.72) : getSpeakRate();
+  const voice = lang === 'en' ? 'aria' : getNeuralVoice();
+  return TTS_ENDPOINT + '?lang=' + lang + '&speed=' + sp.toFixed(2)
+       + '&voice=' + voice + '&text=' + encodeURIComponent(text);
+}
+/** 把逐節經文合併成「不超過 TTS_MAX_CHARS 的批次」——一次請求唸一整段,語氣才連貫 */
+function _batchForTts(verses) {
+  const out = [];
+  let cur = '', curLang = null;
+  for (const v of verses) {
+    const t = toSpeakable(String(v || '').trim());
+    if (!t) continue;
+    const lang = _detectLang(t);
+    if (cur && (curLang !== lang || cur.length + t.length + 1 > TTS_MAX_CHARS)) {
+      out.push({ text: cur, lang: curLang }); cur = '';
+    }
+    curLang = lang;
+    cur = cur ? cur + ' ' + t : t;
+    if (cur.length >= TTS_MAX_CHARS) { out.push({ text: cur, lang: curLang }); cur = ''; }
+  }
+  if (cur) out.push({ text: cur, lang: curLang });
+  return out;
+}
+async function _fetchClip(i, signal) {
+  const item = _clipQueue[i];
+  if (!item) return null;
+  const r = await fetch(_ttsUrl(item.text, item.lang), { signal });
+  if (!r.ok) throw new Error('tts ' + r.status);
+  return URL.createObjectURL(await r.blob());
+}
+function _revoke(u) { if (u) { try { URL.revokeObjectURL(u); } catch(e) {} } }
 function stopReadAloud() {
-  _speaking = false; _speakQueue = [];
-  try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch(e) {}
+  _speaking = false;
+  _clipQueue = []; _clipIdx = 0;
+  if (_ttsAbort) { try { _ttsAbort.abort(); } catch(e) {} _ttsAbort = null; }
+  if (_prefetched) { _revoke(_prefetched.url); _prefetched = null; }
+  if (_audioEl) { try { _audioEl.pause(); } catch(e) {} _revoke(_audioEl.src); _audioEl.removeAttribute('src'); }
   _setSpeakBtn(false);
 }
-function _speakNext() {
-  if (!_speaking || !_speakQueue.length) { stopReadAloud(); return; }
-  const item = _speakQueue.shift(); // { text, lang, pitch, rate }
-  let u;
-  try { u = new SpeechSynthesisUtterance(item.text.replace(/\s+/g, '')); } catch(e) { stopReadAloud(); return; }
-  const v = _pickVoice(item.lang);
-  if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = (item.lang === 'zh') ? 'zh-TW' : 'en-US'; }
-  u.rate = item.rate || 0.9; u.pitch = item.pitch || 1;
-  u.onend = () => { if (_speaking) _speakNext(); };
-  u.onerror = () => { if (_speaking) _speakNext(); };
-  try { speechSynthesis.speak(u); } catch(e) { stopReadAloud(); }
+async function _playFrom(i) {
+  if (!_speaking) return;
+  if (i >= _clipQueue.length) { stopReadAloud(); return; }
+  _clipIdx = i;
+  let url = null;
+  try {
+    if (_prefetched && _prefetched.idx === i) { url = _prefetched.url; _prefetched = null; }
+    else url = await _fetchClip(i, _ttsAbort ? _ttsAbort.signal : undefined);
+  } catch (e) {
+    if (!_speaking) return;
+    toast(navigator.onLine === false ? '朗讀需要連線（人聲由伺服器產生）' : '朗讀語音取得失敗，請稍後再試');
+    stopReadAloud(); return;
+  }
+  if (!_speaking) { _revoke(url); return; }
+  if (!_audioEl) { _audioEl = new Audio(); _audioEl.preload = 'auto'; }
+  _revoke(_audioEl.src);
+  _audioEl.src = url;
+  _audioEl.onended = () => { _revoke(url); _playFrom(i + 1); };
+  _audioEl.onerror = () => { _revoke(url); if (_speaking) _playFrom(i + 1); };
+  try { await _audioEl.play(); } catch (e) { toast('請再按一次朗讀（瀏覽器需要一次點擊才允許播放）'); stopReadAloud(); return; }
+  // 邊播邊抓下一段,接得順
+  if (i + 1 < _clipQueue.length && !_prefetched) {
+    _fetchClip(i + 1, _ttsAbort ? _ttsAbort.signal : undefined)
+      .then(u => { if (_speaking) _prefetched = { idx: i + 1, url: u }; else _revoke(u); })
+      .catch(() => {});
+  }
 }
+/* 0814:Web Speech 播放器 _speakNext 已移除 —— 即時朗讀改走神經人聲(見上方 _playFrom)。
+   不要把它加回來當「離線退路」:使用者 0730 第二次拍板機器聲不可用(守門 #27),
+   而且悄悄退回機器聲,會讓人以為修好了、聽到的還是他抱怨的那個聲音。 */
 /** 取 .verse-text 的純文字,但**不要**和修本的譯註標記 [1](它是 DOM 裡的 <button>)。
  *  用 cloneNode 拔掉再讀,不動畫面。朗讀、存語音、複製三條路都該走這支。 */
 function _textWithoutMarks(el) {
@@ -3063,28 +3127,20 @@ async function shareVerseAudio() {
 }
 function toggleReadAloud() {
   if (_speaking) { stopReadAloud(); return; }
-  if (!('speechSynthesis' in window)) { toast('此瀏覽器不支援語音朗讀'); return; }
   const sel = document.getElementById('speak-ver');
   const verName = sel ? sel.value : '';
   const verses = _gatherVisibleVerses(verName);
   if (!verses.length) { toast('目前畫面上沒有可朗讀的經文'); return; }
-  _loadVoices();
-  // 每節依語言展開：中文先過破音字典再斷句抑揚；英文整節一句。
-  const q = [];
-  const capped = verses.slice(0, 300); // 安全上限，避免一次塞太多
-  for (let i = 0; i < capped.length; i++) {
-    const lang = _detectLang(capped[i]);
-    if (lang === 'zh') {
-      chunkClauses(toSpeakable(capped[i]), getSpeakRate(), 1).forEach(c => q.push({ text: c.text, lang: 'zh', pitch: c.pitch, rate: c.rate }));
-    } else {
-      q.push({ text: capped[i], lang: 'en', pitch: 1, rate: Math.max(0.4, getSpeakRate() * 0.72) });
-    }
-    if (q.length > 900) break; // 短句上限
-  }
-  _speakQueue = q;
+  if (navigator.onLine === false) { toast('朗讀需要連線（人聲由伺服器產生，不使用機器聲）'); return; }
+  // 神經人聲:整段送出讓引擎自己處理語氣,**不再自己斷句**
+  // (v58 起的 chunkClauses 是給 Web Speech 用的,它會把句尾的 」 切成獨立一段被唸出來)
+  _clipQueue = _batchForTts(verses.slice(0, 300));
+  if (!_clipQueue.length) { toast('目前畫面上沒有可朗讀的經文'); return; }
+  _ttsAbort = ('AbortController' in window) ? new AbortController() : null;
   _speaking = true;
   _setSpeakBtn(true);
-  _speakNext();
+  toast('正在準備人聲…');
+  _playFrom(0);
 }
 initSpeech();
 refreshSpeakOptions();

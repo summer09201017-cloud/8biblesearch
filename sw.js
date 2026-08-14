@@ -1,5 +1,5 @@
 /* 多譯本聖經查詢 — Service Worker：離線殼層 + 本地譯本 JSON 快取 */
-const CACHE_NAME = 'bible-multi-v94';   /* v94(0814):🔊 朗讀唸標點修(使用者回報 iPhone「連標點符號一起朗讀」)——
+const CACHE_NAME = 'bible-multi-v95';   /* v95(0814):🎙 即時朗讀改神經人聲(曉臻)——使用者拍板 A 案。不再用 Web Speech(那就是他在 iPhone 聽到的機器聲);_speakNext/_pickVoice 已移除,無退路(守門 #27)。走 hfpc-tts Worker,伺服器 SSML 真調速,邊播邊抓下一段;拿不到音檔明說「需要連線」。同修 hfpc-tts 的 Edge 版本字串過期(見該 repo)。 v94(0814):🔊 朗讀唸標點修(使用者回報 iPhone「連標點符號一起朗讀」)——
    根因=v58(0704)加「斷句抑揚」後,切點在 。 之後,句尾的 」 會自成一段送給語音引擎;
    v58 之前是整節一句送出所以沒有這問題 ⇒ 這就是「以前都是好的」的那個以前。
    修法:沒有可唸內容(純標點)的碎片一律併回前一段 + _speakNext 第二道保險絲。
