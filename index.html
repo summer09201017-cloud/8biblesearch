@@ -1826,7 +1826,7 @@ body.simple-mode .tab { font-size:1.05rem; padding-top:12px; padding-bottom:12px
   <div id="panel-diff" class="panel">
     <div class="diff-intro" style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:0.88rem; line-height:1.6;">
       <b>📊 譯本逐字對讀</b><br>
-      自選基準與對比版本（中文選中文、英文選英文）做差異對比。中文逐字、英文逐詞。<span style="color:var(--text2);">推薦組合：ESV ↔ NIV（看英文意動詮釋）｜和合本 ↔ 新譯本（看現代化措辭）｜和合本 ↔ 呂振中（看原文字序）。「結束節」留空＝只比一節；起／訖都留空＝整章；範圍模式會顯示總相似度。</span>
+      自選基準與對比版本（中文選中文、英文選英文）做差異對比。中文逐字、英文逐詞。<span style="color:var(--text2);">推薦組合：<b>和合本 ↔ 和修本（看同一譯本的修訂差異：神／上帝、獨生子／獨一的兒子）</b>｜ESV ↔ NIV（看英文意動詮釋）｜和合本 ↔ 新譯本（看現代化措辭）｜和合本 ↔ 呂振中（看原文字序）。和修本需連線。「結束節」留空＝只比一節；起／訖都留空＝整章；範圍模式會顯示總相似度。</span>
     </div>
     <div class="selector-row">
       <div class="selector-group"><label>書卷</label><select id="diff-sel-book" onchange="onDiffBookChange()"></select></div>
@@ -2755,6 +2755,11 @@ function toSpeakable(text) {
   return s;
 }
 // ② 斷句抑揚：主要標點切短句，問句尾音略升、感嘆稍強、末句放慢收尾（逐句 speak 天然停頓）。
+/** 這一段有沒有「唸得出來的東西」——中日韓文字、英數字母。
+ *  純標點(例如收尾的「」)不算,送給語音引擎只會被唸成「右引號」或整段卡住。 */
+function _hasSpeakableContent(t) {
+  return /[一-鿿㐀-䶿豈-﫿A-Za-z0-9]/.test(String(t || ''));
+}
 function chunkClauses(text, baseRate, basePitch) {
   const s = String(text || '').trim();
   if (!s) return [];
@@ -2763,6 +2768,16 @@ function chunkClauses(text, baseRate, basePitch) {
   for (let i = 0; i < parts.length; i++) {
     const t = parts[i].trim();
     if (!t) continue;
+    // ★★ 0814 修:切完之後可能出現「整段只有標點」的碎片——最常見的是句子收尾的 』」）,
+    // 因為切點在 。 之後,後面那個右引號就自成一段。
+    // 症狀:iPhone 把它唸出來(「右引號」),Android 某些引擎對純標點的 utterance
+    // 既不觸發 onend 也不觸發 onerror ⇒ _speakNext 的鏈子當場斷掉 = 後面全部沒聲音。
+    // 由來:v58(2026-07-04)加「斷句抑揚」時開始;v58 之前是整節一句送出,所以不會有這種碎片。
+    // 修法:沒有可唸內容的碎片一律「併回前一段」(保住標點的視覺完整性,又不會單獨送出)。
+    if (!_hasSpeakableContent(t)) {
+      if (out.length) out[out.length - 1].text += t;
+      continue;
+    }
     const last = (i === parts.length - 1);
     let p = basePitch, r = baseRate;
     if (/[？?]$/.test(t)) p = basePitch + 0.1;
@@ -2872,6 +2887,18 @@ function _speakNext() {
   u.onerror = () => { if (_speaking) _speakNext(); };
   try { speechSynthesis.speak(u); } catch(e) { stopReadAloud(); }
 }
+/** 取 .verse-text 的純文字,但**不要**和修本的譯註標記 [1](它是 DOM 裡的 <button>)。
+ *  用 cloneNode 拔掉再讀,不動畫面。朗讀、存語音、複製三條路都該走這支。 */
+function _textWithoutMarks(el) {
+  if (!el) return '';
+  try {
+    const c = el.cloneNode(true);
+    c.querySelectorAll('.rcuv-note-mark').forEach(n => n.remove());
+    return c.textContent.trim();
+  } catch (e) {
+    return el.textContent.trim();
+  }
+}
 function _gatherVisibleVerses(verName, onlyGroups) {
   const panel = document.querySelector('.panel.active');
   if (!panel) return [];
@@ -2889,7 +2916,9 @@ function _gatherVisibleVerses(verName, onlyGroups) {
         });
       }
       if (!t) t = g.querySelector('.verse-translation .verse-text') || g.querySelector('.verse-text');
-      const s = t ? t.textContent.trim() : '';
+      // ★ 0814:和修本的譯註標記 [1] 是 .verse-text 裡的 <button>,textContent 會把它一起撈進來
+      // ⇒ 朗讀/存語音會唸出「中括號一」。取文字前先把標記剔掉(改動點在 renderVerseGroup 加的那顆鈕)。
+      const s = t ? _textWithoutMarks(t) : '';
       if (s && s !== '（此版本無此節經文）') out.push(s);
     });
     return out;
@@ -5321,6 +5350,9 @@ function switchTab(name) {
 const DIFF_VERSIONS = [
   // 中文（char-level diff）
   { code:'unv', label:'和合本',                       lang:'zh' },
+  // 和修本＝線上譯本:選它時要先把那一章抓回來(runDiff 會 await ensureOnlineChapter)。
+  // 放在和合本正下方,因為「和合本 vs 和修本」正是最值得對讀的一組(神/上帝、獨生子/獨一的兒子)。
+  { code:'rcuv', label:'和修本（和合本2010，需連線）', lang:'zh' },
   { code:'ncv', label:'新譯本',                       lang:'zh' },
   { code:'lcc', label:'呂振中（極直譯，看原文字序）', lang:'zh' },
   // 英文（word-level diff）
@@ -5751,13 +5783,28 @@ async function runDiff() {
   const charLabel = isZh ? '字' : '詞';
 
   div.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text2);">⏳ 載入並比對中...</div>';
-  const okBase = await loadVersionData(baseVer);
-  const okComp = await loadVersionData(compVer);
-  if (!okBase) { div.innerHTML = `<div class="error-msg">${baseVer.toUpperCase()} 資料載入失敗</div>`; return; }
-  if (!okComp) { div.innerHTML = `<div class="error-msg">${compVer.toUpperCase()} 資料載入失敗</div>`; return; }
-  if (isThreeWay) {
-    const okComp2 = await loadVersionData(comp2Ver);
-    if (!okComp2) { div.innerHTML = `<div class="error-msg">${comp2Ver.toUpperCase()} 資料載入失敗</div>`; return; }
+
+  // 線上譯本(和修本)不是 data/*.json,要逐章抓;沒抓到就明說是「連線問題」而不是「沒有此節」。
+  const chosen = [baseVer, compVer].concat(isThreeWay ? [comp2Ver] : []);
+  const onlineChosen = chosen.filter(c => ONLINE_VERSIONS.includes(c));
+  if (onlineChosen.length) {
+    await ensureOnlineChapter(bid, chap);
+    const missing = onlineChosen.filter(c => !hasChapterData(c, bid, chap));
+    if (missing.length) {
+      const names = missing.map(c => diffVersionLabel(c).replace(/（.*$/, '')).join('、');
+      const why = rcuvChapterFailed(bid, chap) || '連線失敗';
+      div.innerHTML = `<div class="error-msg">${escHtml(names)}這一章沒取到（${escHtml(why)}）。`
+        + `它是線上譯本，需要連線；其餘譯本為離線資料，不受影響。`
+        + `<button type="button" class="btn-copy-inline" style="margin-left:8px" onclick="runDiff()">重試</button></div>`;
+      return;
+    }
+  }
+
+  // 本機譯本才需要載資料檔;線上譯本上面已經處理好了
+  for (const c of chosen) {
+    if (ONLINE_VERSIONS.includes(c)) continue;
+    const ok = await loadVersionData(c);
+    if (!ok) { div.innerHTML = `<div class="error-msg">${c.toUpperCase()} 資料載入失敗</div>`; return; }
   }
 
   // 中文模式：先確保 dmp 載入（首次 ~80KB；之後 SW 快取秒回）
