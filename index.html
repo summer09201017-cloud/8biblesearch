@@ -2405,6 +2405,24 @@ const VERSE_COUNTS = {1:[31,25,24,26,32,22,24,22,29,32,32,20,18,24,21,16,27,33,3
 const bibleData = {};
 let dataReady = false;
 
+/* 「a」/「【3】」/空字串=信望愛資料庫的「併節」記號(該節內容放在上一節;0816 實測 FHL API 與
+   cuv 上游都如此,撒上25:31 等中文三譯本共 144 節)。FHL 自家閱讀器顯示【併於上節】,照抄同一慣例。
+   在載入點一次正規化=搜尋/閱讀/前後文/複製/朗讀全部拿到乾淨版,data/*.json 不動(使用者已快取的
+   離線資料不必重抓)。判準:中文譯本的節值「一個中文字都沒有」即為記號(真經文不可能零中文)。 */
+const MERGED_MARK = '【併於上節】';
+const MERGED_MARK_VERSIONS = ['unv', 'ncv', 'lcc'];
+function normalizeMergedMarkers(ver, data) {
+  if (!data || !MERGED_MARK_VERSIONS.includes(ver)) return data;
+  for (const b in data) for (const c in data[b]) {
+    const ch = data[b][c];
+    for (const s in ch) {
+      const v = ch[s];
+      if (typeof v === 'string' && !/[一-鿿]/.test(v)) ch[s] = MERGED_MARK;
+    }
+  }
+  return data;
+}
+
 async function loadVersionData(ver) {
   if (bibleData[ver]) return true;
   const names = { unv:'和合本', ncv:'新譯本', kjv:'KJV', asv:'ASV', lcc:'呂振中', esv:'ESV', niv:'NIV', web:'WEB', bbe:'BBE' };
@@ -2418,7 +2436,7 @@ async function loadVersionData(ver) {
   try {
     const resp = await fetch(`data/${ver}.json`);
     if (!resp.ok) throw new Error(`${resp.status}`);
-    bibleData[ver] = await resp.json();
+    bibleData[ver] = normalizeMergedMarkers(ver, await resp.json());
     barEl.style.width = '100%';
     return true;
   } catch (e) {
@@ -2446,7 +2464,7 @@ async function loadLocalData() {
     try {
       const resp = await fetch(`data/${ver}.json`);
       if (!resp.ok) throw new Error(`${resp.status}`);
-      bibleData[ver] = await resp.json();
+      bibleData[ver] = normalizeMergedMarkers(ver, await resp.json());
     } catch (e) {
       console.warn(`無法載入 ${ver}.json:`, e.message);
       bibleData[ver] = null;
