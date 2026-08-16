@@ -7,12 +7,9 @@ Thumbs.db
 
 # 下載過程暫存，勿提交
 data/_tmp*.json
-
 # NIV 來源分檔（已合併至 data/niv.json）
 data/NIV/
-
 # Claude Code 本地設定／快取
 .claude/
-
 # Netlify 本機產物：內含這台機的絕對路徑，換機即失真，不可進版控
 .netlify/
