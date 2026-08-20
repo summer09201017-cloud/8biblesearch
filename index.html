@@ -8280,11 +8280,24 @@ if ('serviceWorker' in navigator) {
 // play-stats 匿名計數(lobby-play-rank §3):開啟 10 分去重;停留時長 -done(帶 t=秒,<3秒誤觸/>30分掛機一律丟棄)。零個資。
 // ⚠ 0802 收回:下面 psPing(last=)/一發搞定/心跳 三件是 07-24/25 只部署未 push 的線上失散源碼,
 //   從線上那份原封不動移植回來(當時 sw v74/v75 的內容);別再改回兩發式。
+/* 📱🖥 裝置粗分類(0820 使用者拍板「停留分裝置」):m=手機/平板、p=電腦。
+   只有一個位元、不送 UA,零個資不破功。三層判:userAgentData.mobile(Chromium 最準)→
+   UA 行動關鍵字 → iPad「桌面網站」偽裝 Mac 的救回(Mac+多點觸控=iPad,非 100%)。 */
+var PS_DEV = (function () {
+  try {
+    if (navigator.userAgentData && typeof navigator.userAgentData.mobile === 'boolean')
+      return navigator.userAgentData.mobile ? 'm' : 'p';
+    var ua = navigator.userAgent || '';
+    if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) return 'm';
+    if (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) return 'm';
+    return 'p';
+  } catch (_) { return 'p'; }
+})();
 window.psPing = function (key, t, last) {
   try {
     if (localStorage.getItem('bible-stats-optout') === '1') return; // A0:使用者退出統計=單一閘口全斷(開啟/停留/心跳)
     if (['localhost', '127.0.0.1'].includes(location.hostname)) return; // 雙平台版:只擋本機開發
-    var u = 'https://hfpc-play-stats.summer09201017.workers.dev/api/ping?g=' + key + (t ? '&t=' + t : '') + (last ? '&last=' + last : '');
+    var u = 'https://hfpc-play-stats.summer09201017.workers.dev/api/ping?g=' + key + (t ? '&t=' + t : '') + (last ? '&last=' + last : '') + '&dev=' + PS_DEV;
     if (navigator.sendBeacon) navigator.sendBeacon(u); else fetch(u, { mode: 'no-cors' });
   } catch (_) {}
 };
