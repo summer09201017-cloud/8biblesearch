@@ -3911,6 +3911,36 @@ function sharePickedToEmail() {
 }
 
 // ========== UI Logic ==========
+
+/* 📖 書卷下拉的顯示名(0827 使用者回報:「手機版經文閱讀的書卷裡,帖撒羅尼迦後書(2 Thess) 變成 2 行」)
+   ★ 原生 <select> **展開後的清單是作業系統畫的**,CSS / white-space / text-overflow 通通管不到
+     ⇒ 唯一的槓桿是**把字變短**。(收起來那一格其實沒有溢出——量過:最長的
+     「帖撒羅尼迦後書 (2 Thess)」是 158px、選單內容區 208px。折行只發生在展開後的清單裡,
+     所以「看截圖沒事」不代表沒事,別再往 CSS 找。)
+   ★ 手機只留中文全名:中文最長 7 字 ≈ 95px,任何手機、任何字級放大都折不起來;
+     加上「 (2 Thess)」才 158px,那 66% 是英文縮寫吃掉的。
+   ★ 桌機空間夠,維持中英並列(使用者只回報手機)。
+   ★ 姊妹站 7bible 的書卷 option 本來就**只放中文全名**(src/bible_books.js 的 names[1]),
+     這樣兩個閱讀站在手機上也一致——不是我另立規矩。
+   ⚠ b.engs 是 FHL API 的書卷代碼(sc.php / qb.php / 註釋都靠它查),**只能改顯示、絕不能改資料**。 */
+const BOOK_LABEL_MOBILE_MQ = window.matchMedia('(max-width:600px)');   /* 與 CSS 的手機斷點同一個數字 */
+function bookOptionLabel(b) {
+  return BOOK_LABEL_MOBILE_MQ.matches ? b.chinesef : `${b.chinesef} (${b.engs})`;
+}
+/* 轉向/改視窗寬度跨過斷點時要重貼標籤(選到哪一卷要留著,不能把人踢回創世記) */
+function refreshBookOptionLabels() {
+  ['sel-book', 'diff-sel-book'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    Array.from(sel.options).forEach(o => {
+      const b = BOOKS.find(x => String(x.bid) === String(o.value));
+      if (b) o.textContent = bookOptionLabel(b);
+    });
+  });
+}
+if (BOOK_LABEL_MOBILE_MQ.addEventListener) BOOK_LABEL_MOBILE_MQ.addEventListener('change', refreshBookOptionLabels);
+else if (BOOK_LABEL_MOBILE_MQ.addListener) BOOK_LABEL_MOBILE_MQ.addListener(refreshBookOptionLabels);   /* 舊 Safari */
+
 function initBookSelector() {
   const sel = document.getElementById('sel-book');
   sel.innerHTML = '';
@@ -3918,7 +3948,7 @@ function initBookSelector() {
   const ntG = document.createElement('optgroup'); ntG.label = '新約';
   BOOKS.forEach(b => {
     const o = document.createElement('option'); o.value = b.bid;
-    o.textContent = `${b.chinesef} (${b.engs})`;
+    o.textContent = bookOptionLabel(b);
     (b.bid <= 39 ? otG : ntG).appendChild(o);
   });
   sel.appendChild(otG); sel.appendChild(ntG);
@@ -5458,7 +5488,7 @@ function initDiffSelectors() {
   BOOKS.forEach(b => {
     const o = document.createElement('option');
     o.value = b.bid;
-    o.textContent = `${b.chinesef} (${b.engs})`;
+    o.textContent = bookOptionLabel(b);   /* 📖 與閱讀分頁同一支(手機只給中文全名,理由見該函式) */
     (b.bid <= 39 ? otG : ntG).appendChild(o);
   });
   sb.appendChild(otG); sb.appendChild(ntG);
