@@ -138,7 +138,7 @@ Everything user-facing lives in `index.html` — CSS, HTML, and ~2700 lines of i
 新分頁 `#panel-diff`，自選基準與對比版本的 diff，**中文用 dmp（diff-match-patch）+ cleanupSemantic、英文用自寫 word-level LCS**，支援單節或範圍，並支援 **3-way unified diff**。
 - 9 個版本（中文 unv/ncv/lcc + 英文 esv/niv/kjv/web/asv/bbe），`DIFF_VERSIONS` 表帶 `lang:'zh'|'en'`。基準下拉用 `<optgroup>` 分中／英；對比下拉透過 `rebuildDiffCompOptions()` **只列出與基準同語言的選項**（中英不能跨）。
 - 預設：基準=ESV、對比=NIV；切到 unv 為基準時對比預設自動切到 ncv。`DIFF_DEFAULT_COMP_BY_LANG = { zh:'ncv', en:'niv' }`。
-- 範圍輸入：「起始節 / 結束節」沿用閱讀分頁的邏輯（start+end → 範圍；只有 start → 單節；都空 → 整章）。
+- 範圍輸入：「起始節 / 結束節」（start+end → 範圍；只有 start → **單節**（選項標籤=「單節」）；都空 → 整章）。⚠ v100 起與閱讀分頁**不同**：閱讀分頁「只有 start（結束節=末節）」= 讀到本章最後一節（0830 使用者回報修正）；Diff 分頁維持只比一節（畫面說明文字即如此承諾）。
 - 中文路徑：`computeDiffChinese(a, b, baseVer, compVer)` 用 `dmp.diff_main()` + `dmp.diff_cleanupSemantic()`，把零碎 LCS 匹配（譬如「逗號被孤立成綠色」這種視覺噪音）合併成有意義的短語塊。`buildDiffHtmlFromDmp()` 把 `[op, text]` 段落直接轉成 baseHtml / compHtml（已 escHtml 處理）。和合本兩側都套 `normalizeUnvSpacesBeforeShen()` 去除「神」前空白。
 - 英文路徑：保留原 `diffLcsMatch()` word-level LCS（純 LCS 對英文表現已足夠好，沒必要用 dmp 的 char-level）。
 - dmp 懶載入：`loadDiffMatchPatch()` 在第一次中文 diff 時動態 inject `<script src="vendor/diff_match_patch.js">`（~78 KB unmin），之後 SW 預快取接手。dmp 載入失敗時 `computeDiffChinese()` 自動降級回 char-level LCS。

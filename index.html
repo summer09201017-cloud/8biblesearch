@@ -3773,7 +3773,10 @@ function copyReadSelection() {
     const lo = Math.min(a, b); const hi = Math.max(a, b);
     for (let s = lo; s <= hi; s++) secs.push(s);
   } else if (secStart) {
-    secs.push(parseInt(secStart, 10));
+    // 結束節留在「末節」= 複製到本章最後一節(與閱讀顯示同一條規則)
+    const chapData = getLocalChapter(localVers[0], bid, chap);
+    const last = Object.keys(chapData).reduce(function (m, s) { return Math.max(m, parseInt(s, 10)); }, parseInt(secStart, 10));
+    for (let s = parseInt(secStart, 10); s <= last; s++) secs.push(s);
   } else {
     const chapData = getLocalChapter(localVers[0], bid, chap);
     secs = Object.keys(chapData).map(Number).sort((a, b) => a - b);
@@ -4407,7 +4410,9 @@ async function fetchVerses(opts) {
       if (secRange) {
         const parts = secRange.split('-');
         const start = parseInt(parts[0]);
-        const end = parts[1] ? parseInt(parts[1]) : start;
+        // 結束節留在「末節」= 讀到本章最後一節(0830 使用者回報:原本被當成單節,只出現起始節)
+        const end = parts[1] ? parseInt(parts[1])
+          : Object.keys(getLocalChapter(ver, bid, chap)).reduce((m, s) => Math.max(m, parseInt(s, 10)), start);
         for (let s = start; s <= end; s++) {
           const t = getLocalVerse(ver, bid, chap, s);
           if (t !== null) {
@@ -5578,7 +5583,7 @@ function onDiffChapChange() {
   const ss = document.getElementById('diff-sel-sec-start');
   const se = document.getElementById('diff-sel-sec-end');
   ss.innerHTML = '<option value="">全章</option>';
-  se.innerHTML = '<option value="">末節</option>';
+  se.innerHTML = '<option value="">單節</option>'; // Diff 分頁維持「留空=只比一節」(畫面說明也這樣寫);標籤別寫「末節」騙人
   for (let i = 1; i <= mx; i++) {
     ss.innerHTML += `<option value="${i}">${i}</option>`;
     se.innerHTML += `<option value="${i}">${i}</option>`;
