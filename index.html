@@ -2743,6 +2743,19 @@ function adjustFontSize(delta) {
   } catch(e) {}
 })();
 
+// v100(0830):手機字級列固定在底部,窄螢幕會折行變高(390px 實測 109px、320px 124px),
+// CSS 寫死的 body padding 64px 不夠 ⇒ footer 末行(和修本版權說明)被蓋住(使用者回報)。
+// 修法:量字級列「實際高度」動態設 body 底部空間;桌機(非 fixed)清掉讓 CSS 接手。
+function syncFontBarPad() {
+  const bar = document.querySelector('.font-size-bar');
+  if (!bar) return;
+  if (getComputedStyle(bar).position !== 'fixed') { document.body.style.paddingBottom = ''; return; }
+  document.body.style.paddingBottom = Math.ceil(bar.getBoundingClientRect().height + 16) + 'px';
+}
+window.addEventListener('resize', syncFontBarPad);
+window.addEventListener('orientationchange', syncFontBarPad);
+requestAnimationFrame(syncFontBarPad);
+
 // ====== 朗讀經文（Web Speech API：零音檔、可離線、免費；無語音時靜默 fallback） ======
 // 讀「目前分頁畫面上看得到」的經文：一般分頁取每節第一個譯本（多為和合本），
 // 對讀分頁取基準欄。中文用 zh 語音、英文用 en 語音（依文字自動判斷）。
