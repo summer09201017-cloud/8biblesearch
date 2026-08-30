@@ -73,4 +73,14 @@ git push -u origin main
 
 ## 四、更新網站
 
-推送 commit 到 `main` 後，Netlify 會自動重新部署。若 SW 有改版，已註冊 `sw.js` 的訪客會在下次開啟時更新。
+⚠ **push ≠ 上線**（0830 實測：push 後等 5 分鐘線上仍舊版——自動建置已停）。要手動部署：
+
+```
+node scripts/validate-deploy.mjs
+npx netlify deploy --prod --dir . --site c889cd5e-6bec-4008-a0ee-34875aa20585
+```
+
+已知誤咬：zero-pii-guard 會咬 `vendor/diff_match_patch.js` 第 22 行開源作者的公開 email
+（Apache 授權頭，非個資）。碰到時先自己看那行確認還是同一處，再**單次手打**放行旗標重跑——
+不要把旗標寫進文件或腳本（守門每次部署都該真的跑）。
+部署後 curl `sw.js?bust=<時間>` 對版號**連兩輪一致**才算上線。若 SW 有改版，已註冊 `sw.js` 的訪客會在下次開啟時更新。
