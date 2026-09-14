@@ -340,6 +340,7 @@ Where backups actually live: in the linked Google account's `drive.appdata` (a h
 
 ### Service Worker (`sw.js`)
 - `CACHE_NAME = 'bible-multi-vN'` — **bump N when shipping any change to `index.html`, `manifest.webmanifest`, or icons**, otherwise installed PWA users keep the stale shell.
+- `SHELL` **must not list `/index.html`** (0914, v101): fleet-wide fix for "installed app opens to ERR_FAILED" — Cloudflare sites 308 `/index.html`→`/` and a cached redirected response is rejected by the browser on navigation. Netlify has no such 308, but the same rule applies: shell is cached under `/` only (`put('/')` guarded by `ok && !redirected`), fallback `caches.match('/')`, `addAll` → per-item `add().catch()`. Patch: skills repo `static-pwa-ship/patches/patch-sw-index.mjs` (no `--cf` on Netlify).
 - `data/*.json` is cache-first (offline read), `index.html` is network-first with cache fallback.
 - `netlify.toml` sets `Cache-Control: no-cache` on `sw.js` so the SW registration sees updates promptly.
 

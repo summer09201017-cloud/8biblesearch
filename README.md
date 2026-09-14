@@ -49,6 +49,8 @@ py -3 -m http.server 8081      # 然後開 http://localhost:8081/
 node scripts/validate-deploy.mjs && netlify deploy --prod --dir . --site c889cd5e-6bec-4008-a0ee-34875aa20585
 ```
 
+⚠ **`sw.js` 的 `SHELL` 名單不放 `/index.html`**(2026-09-14,v100→v101):全艦隊修「裝成 App 打開就 ERR_FAILED」——Cloudflare 站把 `/index.html` 308 到 `/`,快取存到 redirected 回應就會被瀏覽器拒絕;本站在 Netlify 沒有那個 308,但同套鐵則一起套(殼層只以 `/` 為鍵存、退路 `caches.match('/')`、addAll → 逐一 add+catch)。補丁來源:skills repo `static-pwa-ship/patches/patch-sw-index.mjs`(Netlify 站**不加** `--cf`)。
+
 **改動 `index.html`／manifest／icons 後，務必把 `sw.js` 的 `CACHE_NAME` 版本號 +1**，否則已安裝的使用者會看到舊版。可在本 repo 用 `/ship` 指令一鍵檢查。完整步驟見 **`DEPLOY.md`**。
 
 **部署閘門（2026-07-19 起）**：每次部署 Netlify 會先跑 `node scripts/validate-deploy.mjs --selftest`——任何檢查失敗（內嵌 JS 壞掉、資料檔損毀、章節數常數與資料不符…）部署直接失敗、**線上維持前一版**，並寄失敗通知信。本機 push 前全域 hook 也會跑同一支腳本。手動驗證：
