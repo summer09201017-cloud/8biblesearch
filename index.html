@@ -2279,7 +2279,10 @@ body.simple-mode .tab { font-size:1.05rem; padding-top:12px; padding-bottom:12px
   </div>
 </div>
 
-<footer class="app-footer">
+<p class="ver-note-row" style="margin:.7rem 0 0;text-align:center">
+            <button type="button" id="appVerOpen" style="font:inherit;font-size:.82rem;line-height:1.2;padding:.5rem 1rem;min-height:40px;color:inherit;background:transparent;border:1px solid currentColor;border-radius:999px;opacity:.65;cursor:pointer">🏷️ 改版簡歷・看看前幾版做了什麼</button>
+          </p>
+          <footer class="app-footer">
   <p>9 個離線譯本由本地 <code>data/*.json</code> 讀取，可完全離線使用（資料來源可參考<a href="https://bible.fhl.net" target="_blank" rel="noopener">信望愛</a>，執行時不連線查詢）。<strong>和修本為線上譯本</strong>，勾選時才逐章向信望愛查詢，不打包、不離線。</p>
   <p style="margin-top:4px;">和合本 · ESV · NIV · 新譯本 · 呂振中 · BBE · ASV · KJV · WEB ｜ 和修本<span style="font-size:0.7em;vertical-align:super;">線上</span> ｜ <span title="WEB／BBE：node download_bible.js">譯本說明見 DEPLOY.md</span></p>
   <p style="margin-top:4px;font-size:0.85em;opacity:0.8;">和修本（和合本2010）版權屬香港聖經公會，經<a href="https://bible.fhl.net/json/" target="_blank" rel="noopener">信望愛 JSON API</a> 即時查詢呈現；該站標示此譯本不可下載離線資料庫，故本站不予打包。</p>
@@ -8409,6 +8412,107 @@ try {
 })();
 </script>
 <div id="appVerBadge" style="position:fixed;right:6px;bottom:4px;font-size:11px;line-height:1;opacity:.55;z-index:2147483000;pointer-events:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);font-family:system-ui,sans-serif"></div>
+<!-- 🏷 改版簡歷(VT2 2026-09-16 補齊 game-must-haves ⑦ 的下半件)。
+     徽章只回答「我開到哪一版」,這一份回答「每一版做了什麼」——寫給家長與老師看。
+     ★ 徽章維持 pointer-events:none(標籤不是按鈕);簡歷從選單那顆鈕開。
+     ★ 改版時在 APP_VERSIONS 最前面插一筆就好。 -->
+<style>#appVerSheet[hidden]{display:none!important}</style>
+<div id="appVerSheet" hidden style="position:fixed;inset:0;z-index:2147483001;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;font-family:system-ui,'Noto Sans TC',sans-serif">
+  <div style="max-width:460px;width:100%;max-height:72vh;overflow-y:auto;background:var(--card, #fffdf8);border:1px solid var(--border, #d9cfc0);border-radius:12px;padding:16px 18px;color:var(--text, #2c2419);box-shadow:0 18px 50px rgba(0,0,0,.45)">
+    <h3 style="margin:0 0 4px;font-size:16px">🏷️ 改版簡歷</h3>
+    <p style="margin:0 0 10px;font-size:12px;line-height:1.6;color:var(--text2, #6b5d4d)">每一版新增了什麼,白話寫給家長與老師看。前幾版都列在下面,最新的在最上面。</p>
+    <ol id="appVerList" style="margin:0;padding-left:18px;font-size:13px;line-height:1.85"></ol>
+    <button type="button" id="appVerClose" style="margin-top:14px;width:100%;min-height:44px;font:inherit;color:var(--text, #2c2419);background:var(--tag-bg, #f0e8d8);border:1px solid var(--border, #d9cfc0);border-radius:8px;cursor:pointer">關閉</button>
+  </div>
+</div>
+<script>
+(function () {
+  // 最新的放最前面。改版只要在這裡插一筆。
+  var APP_VERSIONS = [
+    {
+      "v": "v102",
+      "d": "2026-09-16",
+      "t": "頁尾多一顆「🏷️ 改版簡歷」鈕,點開就看得到每一版做了什麼。以前畫面右下角只看得到版本號,卻看不到那一版改了什麼。"
+    },
+    {
+      "v": "v101",
+      "d": "2026-09-14",
+      "t": "修好一個「把網站裝成 App 之後打開是錯誤畫面」的毛病(離線存檔的首頁存錯了鍵)。這是整個系列一起修的同一種病。"
+    },
+    {
+      "v": "v100",
+      "d": "2026-08-30",
+      "t": "閱讀時「結束節」選「末節」真的會讀到那一章的最後一節。在這之前選了末節卻只出現起始節那一節(使用者回報);複製經文也一起修好。另外手機上頁尾的和修本版權說明被字級調整列蓋住,現在會照實際高度讓開。"
+    },
+    {
+      "v": "v99",
+      "d": "2026-08-27",
+      "t": "手機上的書卷下拉選單裡,「帖撒羅尼迦後書」不會再折成兩行(手機版只顯示中文全名,電腦版維持中英並列)。順帶一個好處:手機上「書卷/章/起始節/結束節」四個選單現在排得進同一行。"
+    },
+    {
+      "v": "v98",
+      "d": "2026-08-20",
+      "t": "畫面右下角開始顯示版本號,回報問題時對得上是哪一版。"
+    },
+    {
+      "v": "v96",
+      "d": "2026-08-16",
+      "t": "查詢結果不會再莫名其妙冒出一個「a」。那其實是聖經資料庫的「併節」記號(內容併在上一節),中文三個譯本共 144 節有這種情形;現在照信望愛自家閱讀器的慣例顯示【併於上節】。"
+    },
+    {
+      "v": "v94 到 v95",
+      "d": "2026-08-14",
+      "t": "即時朗讀改成真人般的神經人聲(曉臻),不再是 iPhone 上那種機械聲;唸的時候也不會再把標點符號一起唸出來。"
+    },
+    {
+      "v": "v88 到 v93",
+      "d": "2026-08-10",
+      "t": "新增第 10 本譯本「和修本(和合本 2010)」;註釋裡的原文編號可以就地展開中文字義卡,不用跳出去信望愛;彈窗最上面固定顯示本節原文,點一個詞就插入中文字義,全 66 卷每一節都查得到。"
+    },
+    {
+      "v": "v85 到 v87",
+      "d": "2026-08-09",
+      "t": "新增「讀經計畫」:一年、兩年、三年一鍵設定,也可以自訂半年到二十年;首頁會告訴你今天該讀哪幾章,點下去直接翻開,讀過自動打勾,落後了會溫和提醒。同一輪也加了「簡易模式」——打開之後畫面只留「經文閱讀」和「設定/資料」兩個分頁,字也放大,給只想讀經的長輩用,隨時可以關掉、資料都在。搜尋結果每一筆也多了「⊕ 前後文」,不跳頁就能看前後兩節。"
+    },
+    {
+      "v": "v81 到 v84",
+      "d": "2026-08-09",
+      "t": "勾選過的譯本會自己記住,不用每次重勾;註釋排版重做,句子不再被切斷、也不再一大片空白。另外依使用者拍板,拿掉「清除全部足跡記錄」那顆鈕——讀經足跡很珍貴,要的是備份與移交,不是刪除;不想記錄可以停用,已記的保留。"
+    },
+    {
+      "v": "v82",
+      "d": "2026-08-09",
+      "t": "統計說明寫清楚了,而且可以自己關掉:本站只記匿名的開啟與停留次數,不記身分;在設定裡一個開關就能全部停掉。"
+    }
+  ];
+  var sheet = document.getElementById('appVerSheet');
+  var list = document.getElementById('appVerList');
+  var closeBtn = document.getElementById('appVerClose');
+  if (!sheet || !list || !closeBtn) return;
+  var esc = function (x) {
+    return String(x).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; });
+  };
+  list.innerHTML = APP_VERSIONS.map(function (r) {
+    return '<li style="margin-bottom:.5em"><b>' + esc(r.v) + '</b>(' + esc(r.d) + '):' + esc(r.t) + '</li>';
+  }).join('');
+  function openSheet() { sheet.hidden = false; }
+  function shutSheet() { sheet.hidden = true; }
+  window.__openVersionSheet = openSheet;
+  window.__appVersion = APP_VERSIONS[0].v + '(' + APP_VERSIONS[0].d + ')';
+  // ★ 開簡歷那顆鈕**不一定在本段程式之前**就被解析完(--trigger=fixed 的 anchor 常在徽章後面)。
+  //   直接 getElementById 會拿到 null,鈕就變成按了沒反應——而且靜態檢查全綠、截圖也看不出來。
+  //   ⇒ 還在解析中就等 DOMContentLoaded 再綁。
+  function bindOpener() {
+    var b = document.getElementById('appVerOpen');
+    if (b) b.addEventListener('click', openSheet);
+  }
+  if (document.readyState === 'loading') addEventListener('DOMContentLoaded', bindOpener);
+  else bindOpener();
+  closeBtn.addEventListener('click', shutSheet);
+  sheet.addEventListener('click', function (e) { if (e.target === sheet) shutSheet(); });
+  addEventListener('keydown', function (e) { if (e.key === 'Escape' && !sheet.hidden) shutSheet(); });
+})();
+</script>
     <script>
       /* 🏷️ appVerBadgeFade（0828）：版號徽章是 position:fixed 在右下角，實測會蓋住大廳卡片、
          遊戲的「難度 / 開始比賽」按鈕——pointer-events:none 只讓「點擊」穿過去，字還是被蓋著。
