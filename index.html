@@ -619,6 +619,17 @@ body {
 .history-chip-del { margin-left:4px; opacity:0.6; cursor:pointer; }
 .history-chip-del:hover { opacity:1; color:red; }
 
+/* v104(0927):查無結果 → 「你是不是要找」相近詞提示(使用者拍板:最多 6 個、顯示節數、點了就換詞重搜) */
+.near-words { margin:-4px 0 12px; padding:12px 14px; background:var(--card, #fffdf8); border:1px solid rgba(139,105,20,0.25); border-radius:10px; font-size:0.95rem; line-height:1.7; }
+.near-words p { margin:0 0 6px; color:var(--text2); }
+.near-words p b { color:var(--text); }
+.near-chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+.near-chips:last-child { margin-bottom:0; }
+.near-chip { font:inherit; font-size:1rem; padding:8px 14px; min-height:44px; background:rgba(139,105,20,0.1); color:var(--accent); border:1px solid rgba(139,105,20,0.35); border-radius:14px; cursor:pointer; }
+.near-chip:hover { background:rgba(139,105,20,0.2); }
+.near-chip small { opacity:.75; margin-left:5px; font-size:0.8em; }
+.near-chip.is-homophone { border-width:2px; }
+
 .empty-state { text-align:center; padding:60px 20px; color:var(--text2); }
 .empty-state .icon { font-size:3rem; margin-bottom:16px; opacity:0.3; }
 .empty-state p { font-size:0.95rem; margin-bottom:6px; }
@@ -2718,6 +2729,182 @@ function searchLocal(ver, keyword, range) {
   return results;
 }
 
+// ====== NEAR-WORDS BEGIN ======
+// v104(0927):查無結果時提示相近詞(使用者拍板:最多 6 個、顯示節數、點了就換詞重搜)。
+// 候選=「同長度、只差一個字」的字串,掃已載入的離線譯本(不連線、不動 data/*.json 譯本檔)。
+// ★ 0927 實測:純「節數」排序會失敗——「拿巴」前 10 沒有拿八(19 節,輸給拿單 154/拿西 142/拿著 96),
+//   「察出」前 10 沒有查出(輸給趕出/發出/們出)。所以排序用四個訊號,順序就是優先序:
+//   ① 同音替換且 ≥2 節的排最前(察→查、巴→八、模→摩;只有 1 節的同音多半是跨詞巧合,降回普通排序)
+//      ——讀音表 data/readings.json 由 pinyin-pro(MIT)建置時產生,
+//      只在查無結果時才延遲載入;離線又沒快取到就退回「不看同音」,功能不會壞。
+//   ② 丟掉「的是了們人到就」這類虛字、以及「王子城地民家族」這類黏在名字前後的稱謂字拼出來的假詞
+//      (到巴/是巴/們出/人出/王西←亞摩利王西宏/子西←兒子西緬);同音且 ≥2 節者例外。
+//   ③ 丟掉永遠黏在長詞裡的碎片(拿西←瑪拿西、黎巴←黎巴嫩、拿尼←哈拿尼雅/亞拿尼亞、王西←西底家/西拿基立):
+//      前字或後字「最常見的一個 ≥85%」或「最常見的兩個合計 ≥90%」(後者抓黏在兩個長詞裡的);同音且 ≥2 節者例外。
+//   ④ 最後才按節數(跨勾選譯本去重,與搜尋結果的「共 N 節」同一種計法)。
+const NEAR_WORD_MAX = 6;
+const NEAR_WORD_CHAR = /^[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaffA-Za-z0-9]+$/;
+const NEAR_STOP_CHARS = new Set('的是了在到就人們我你他她牠它與和又也不有來去說對所把將被都要著着之其上下中裡這那為於以而因如卻但並才只從向給使叫必得能可已曾未沒無或若每各此何誰甚麼個些王子城地民家族'.split(''));
+const NEAR_FRAGMENT_RATIO = 0.85;       // 前(後)字最常見的一個佔比
+const NEAR_FRAGMENT_TOP2_RATIO = 0.9;   // 前(後)字最常見的兩個合計佔比
+const NEAR_FRAGMENT_MIN = 5;            // 出現不到這麼多次的不判碎片(樣本太少)
+let _readingsMap = null;      // char → Set(讀音);null=還沒載到
+let _readingsPromise = null;
+let _nearWordsSeq = 0;        // 每次 doSearch 加一;非同步畫提示前對一下,免得舊提示疊到新結果上
+const _nearWordCache = new Map();
+
+/** 延遲載入讀音表(只在查無結果時)。SW 對 /data/*.json 是快取優先,載過一次就離線可用。 */
+function loadReadings() {
+  if (_readingsMap) return Promise.resolve(_readingsMap);
+  if (!_readingsPromise) {
+    _readingsPromise = fetch('data/readings.json').then(r => (r.ok ? r.json() : null)).then(j => {
+      if (!j) return null;
+      const m = new Map();
+      for (const syl of Object.keys(j)) for (const ch of j[syl]) { if (!m.has(ch)) m.set(ch, new Set()); m.get(ch).add(syl); }
+      _readingsMap = m;
+      return m;
+    }).catch(() => null);
+  }
+  return _readingsPromise;
+}
+function sameSound(a, b, readings) {
+  if (!readings) return false;
+  const ra = readings.get(a), rb = readings.get(b);
+  if (!ra || !rb) return false;
+  for (const s of ra) if (rb.has(s)) return true;
+  return false;
+}
+
+/** 純函式(測試直接抽這支跑):對已載入的譯本資料找相近詞。
+ *  datasets=[{ver,data}],range 同 searchLocal('1'=新約/'2'=舊約/其他=全部),readings 可為 null。
+ *  回傳 [{word,count,homophone}],最多 NEAR_WORD_MAX 個。 */
+function rankNearWords(token, datasets, range, readings) {
+  const t = String(token || '');
+  const L = t.length;
+  if (L < 2 || !NEAR_WORD_CHAR.test(t)) return [];
+  const tl = t.toLowerCase();
+  const hits = new Map(); // word → {verses:Set, left:Map, right:Map, pos}
+  for (const { ver, data } of datasets) {
+    if (!data) continue;
+    for (const bid of Object.keys(data)) {
+      const bidNum = parseInt(bid);
+      if (range === '1' && bidNum < 40) continue;
+      if (range === '2' && bidNum >= 40) continue;
+      const chapters = data[bid];
+      for (const chap of Object.keys(chapters)) {
+        const verses = chapters[chap];
+        for (const sec of Object.keys(verses)) {
+          const raw = verses[sec];
+          if (!raw) continue;
+          const lower = (ver === 'unv' ? normalizeUnvSpacesBeforeShen(raw) : raw).toLowerCase();
+          const vk = bidNum + '-' + parseInt(chap) + '-' + parseInt(sec);
+          for (let i = 0; i + L <= lower.length; i++) {
+            let diff = 0, pos = -1;
+            for (let j = 0; j < L; j++) {
+              if (lower.charCodeAt(i + j) !== tl.charCodeAt(j)) { if (++diff > 1) break; pos = j; }
+            }
+            if (diff !== 1) continue;
+            const w = lower.substr(i, L);
+            if (!NEAR_WORD_CHAR.test(w)) continue;
+            let h = hits.get(w);
+            if (!h) { h = { verses: new Set(), left: new Map(), right: new Map(), pos }; hits.set(w, h); }
+            h.verses.add(vk);
+            const lc = i > 0 ? lower[i - 1] : '^', rc = i + L < lower.length ? lower[i + L] : '$';
+            h.left.set(lc, (h.left.get(lc) || 0) + 1);
+            h.right.set(rc, (h.right.get(rc) || 0) + 1);
+          }
+        }
+      }
+    }
+  }
+  // ③ 碎片判定:節首/節尾(sentinel)不算「固定前後字」
+  const isFragment = (m, sentinel, total) => {
+    const top = [...m.entries()].filter(([k]) => k !== sentinel).map(([, v]) => v).sort((a, b) => b - a);
+    return (top[0] || 0) / total >= NEAR_FRAGMENT_RATIO
+        || ((top[0] || 0) + (top[1] || 0)) / total >= NEAR_FRAGMENT_TOP2_RATIO;
+  };
+  const out = [];
+  for (const [word, h] of hits) {
+    // 同音且至少 2 節才算「強候選」(免檢、排最前):1 節的同音多半是「那巴」這種跨詞邊界的巧合
+    const homophone = sameSound(tl[h.pos], word[h.pos], readings) && h.verses.size >= 2;
+    if (!homophone) {
+      if (NEAR_STOP_CHARS.has(word[h.pos])) continue;                          // ② 虛字假詞
+      let total = 0; for (const v of h.left.values()) total += v;
+      if (total >= NEAR_FRAGMENT_MIN && (isFragment(h.left, '^', total) || isFragment(h.right, '$', total))) continue;
+    }
+    out.push({ word, count: h.verses.size, homophone });
+  }
+  out.sort((a, b) => (b.homophone - a.homophone) || (b.count - a.count) || a.word.localeCompare(b.word, 'zh-Hant'));
+  return out.slice(0, NEAR_WORD_MAX);
+}
+// ====== NEAR-WORDS END ======
+
+/** 一個關鍵字「單獨」命中幾節(跨勾選的離線譯本去重,與 doSearch 的 verseMap 同一種計法)。 */
+function countTokenVerses(token, localVers, range) {
+  const keys = new Set();
+  localVers.forEach(ver => searchLocal(ver, token, range).forEach(r => keys.add(r.bid + '-' + r.chap + '-' + r.sec)));
+  return keys.size;
+}
+async function findNearWords(token, localVers, range) {
+  const readings = await loadReadings();
+  const key = token + '|' + localVers.join(',') + '|' + range + '|' + (readings ? 1 : 0);
+  if (!_nearWordCache.has(key)) {
+    _nearWordCache.set(key, rankNearWords(token, localVers.map(ver => ({ ver, data: bibleData[ver] })), range, readings));
+  }
+  return _nearWordCache.get(key);
+}
+
+/** 查無結果之後接著畫「你是不是要找」。非同步(讀音表可能要載),畫面先顯示查無結果、不等它。 */
+async function renderNearWords(q, localVers, range, container, seq) {
+  const tokens = parseSearchTokens(q);
+  if (!tokens.length || !localVers.length) return;
+  const counts = tokens.map(t => countTokenVerses(t, localVers, range));
+  const missing = tokens.filter((t, i) => counts[i] === 0);
+  const found = tokens.filter((t, i) => counts[i] > 0);
+  const near = {};
+  for (const t of missing) near[t] = await findNearWords(t, localVers, range);
+  if (seq !== _nearWordsSeq) return;   // 使用者已經又搜了別的
+  const chip = (label, count, attrs, homophone) =>
+    '<button type="button" class="near-chip' + (homophone ? ' is-homophone' : '') + '" ' + attrs + '>'
+    + escHtml(label) + '<small>' + count + ' 節</small></button>';
+  let html = '';
+  missing.forEach(t => {
+    const list = near[t] || [];
+    html += '<p>找不到「<b>' + escHtml(t) + '</b>」' + (list.length ? '，你是不是要找：</p>' : '，也找不到只差一個字的詞。</p>');
+    if (list.length) {
+      html += '<div class="near-chips">' + list.map(x =>
+        chip(x.word, x.count, 'data-old="' + escHtml(t) + '" data-new="' + escHtml(x.word) + '"', x.homophone)).join('') + '</div>';
+    }
+  });
+  if (tokens.length > 1 && found.length) {
+    html += '<p>' + (missing.length ? '其他關鍵字單獨都找得到' : '每個關鍵字單獨都找得到，但沒有一節同時包含全部')
+      + '。點一個就只搜它：</p>';
+    html += '<div class="near-chips">' + found.map(t =>
+      chip(t, counts[tokens.indexOf(t)], 'data-single="' + escHtml(t) + '"', false)).join('') + '</div>';
+  }
+  if (!html) return;
+  const box = document.createElement('div');
+  box.className = 'near-words';
+  box.innerHTML = html;
+  container.appendChild(box);
+}
+// 標籤點擊:換詞重搜(只換掉打錯的那個詞,其他關鍵字與分隔符照舊)或只搜單一關鍵字
+(function () {
+  const rs = document.getElementById('results-search');
+  if (!rs) return;
+  rs.addEventListener('click', (e) => {
+    const btn = e.target.closest('.near-chip');
+    if (!btn) return;
+    const input = document.getElementById('search-input');
+    if (btn.dataset.single) input.value = btn.dataset.single;
+    else if (btn.dataset.new) {
+      const cur = input.value;
+      input.value = (btn.dataset.old && cur.includes(btn.dataset.old)) ? cur.replace(btn.dataset.old, btn.dataset.new) : btn.dataset.new;
+    }
+    doSearchWithFlash();
+  });
+})();
+
 function stripHtml(s) {
   if (!s) return '';
   const d = document.createElement('div');
@@ -4601,6 +4788,7 @@ function doSearchWithFlash() {
 
 function doSearch() {
   const t0 = performance.now();
+  const nearSeq = ++_nearWordsSeq;
   const q = document.getElementById('search-input').value.trim();
   if (!q) return;
   const range = document.getElementById('search-range').value;
@@ -4633,6 +4821,7 @@ function doSearch() {
         + (onlyOnline
             ? '<div class="error-msg">目前只勾了線上譯本，無法做全文搜尋。請至少勾一個離線譯本（如和合本）。</div>'
             : '<div class="error-msg">查無結果</div>');
+      if (!onlyOnline) renderNearWords(q, vers.filter(v => LOCAL_VERSIONS.includes(v)), range, div, nearSeq);
       return;
     }
 
@@ -8431,6 +8620,11 @@ try {
 (function () {
   // 最新的放最前面。改版只要在這裡插一筆。
   var APP_VERSIONS = [
+    {
+      "v": "v104",
+      "d": "2026-09-27",
+      "t": "關鍵字找不到時,下面會列出「你是不是要找」的相近詞(最多 6 個、標節數),點一下就換成那個詞重搜。同音錯字排最前(拿巴→拿八、察出→查出、模西→摩西)。多個關鍵字湊不到同一節時,也會列出每個詞各自的節數,點一個就只搜它。"
+    },
     {
       "v": "v103",
       "d": "2026-09-27",
