@@ -1779,11 +1779,11 @@ body.simple-mode .tab { font-size:1.05rem; padding-top:12px; padding-bottom:12px
 
   <div id="panel-search" class="panel">
     <div class="search-box">
-      <input type="text" id="search-input" placeholder="輸入關鍵字（多字以空白分隔＝都要出現），按 Enter 搜尋" onkeydown="if(event.key==='Enter')doSearchWithFlash()">
+      <input type="text" id="search-input" placeholder="輸入關鍵字（多字以空白、逗號或頓號分隔＝都要出現），按 Enter 搜尋" onkeydown="if(event.key==='Enter')doSearchWithFlash()">
       <button class="btn" id="btn-search" onclick="doSearchWithFlash()">搜尋</button>
     </div>
     <div class="search-hint" style="font-size:0.78rem; color:var(--text2); margin:-6px 0 10px 2px;">
-      💡 多關鍵字以空白或逗號分隔，<b>所有關鍵字都要出現</b>才會命中（例：<code>信心 愛</code>、<code>義人,信</code>）
+      💡 多關鍵字以空白、逗號或頓號「、」分隔，<b>所有關鍵字都要出現</b>才會命中（例：<code>信心 愛</code>、<code>拿八、大衛</code>、<code>義人,信</code>）
     </div>
     <div id="search-history" class="history-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
     <div class="version-toggles" id="version-toggles-search"></div>
@@ -2680,10 +2680,12 @@ function normalizeUnvSpacesBeforeShen(s) {
   return String(s).replace(/[\s\u3000\uFEFF]+(?=神)/g, '');
 }
 
-/** 把搜尋字串切成多個 token：空白／全形空白／半形或全形逗號都當分隔符。
- *  單一 token 行為與舊版完全一致；多個 token 進入 AND 模式（每節都要全部包含）。 */
+/** 把搜尋字串切成多個 token：空白／全形空白／半形或全形逗號／頓號「、」／半形或全形分號都當分隔符。
+ *  單一 token 行為與舊版完全一致；多個 token 進入 AND 模式（每節都要全部包含）。
+ *  v103(0927):使用者截圖回報「拿八、大衛」查無結果——中文最自然的頓號本來不在分隔符裡,
+ *  整串「拿八、大衛」被當成一個 token 去比對,聖經裡當然沒有這串字。 */
 function parseSearchTokens(q) {
-  return [...new Set(String(q || '').trim().split(/[\s　,，]+/).filter(Boolean))];
+  return [...new Set(String(q || '').trim().split(/[\s　,，、;；]+/).filter(Boolean))];
 }
 
 function searchLocal(ver, keyword, range) {
@@ -8429,6 +8431,11 @@ try {
 (function () {
   // 最新的放最前面。改版只要在這裡插一筆。
   var APP_VERSIONS = [
+    {
+      "v": "v103",
+      "d": "2026-09-27",
+      "t": "關鍵字搜尋可以用頓號「、」分隔多個關鍵字了(例:拿八、大衛)。以前只認空白和逗號,用頓號會整串當一個詞去找,查無結果(使用者回報)。分號也一併可用。"
+    },
     {
       "v": "v102",
       "d": "2026-09-16",

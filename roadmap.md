@@ -1,13 +1,18 @@
-# 多譯本聖經查詢 — Roadmap（對齊現況 2026-08-14）
+# 多譯本聖經查詢 — Roadmap（對齊現況 2026-09-27）
 
 > 給接手的人/AI：這份是「**已完成 vs 真正待做**」的單一真相。已完成的別重做；待做的按 CP 值排序。
 > ⚠ **部署是手動的**：07-20 起 netlify.toml `ignore = "exit 0"`+站台 stop_builds 斷開雲端 auto-build，
 > **push 不會上線**——發佈=`node scripts/validate-deploy.mjs && netlify deploy --prod --dir . --site c889cd5e-6bec-4008-a0ee-34875aa20585`
 > （zero-pii-guard 會攔 `diff_match_patch.js` 作者信箱＝已知啟發式誤判：**先跑一次不帶旗標**，
 > 確認命中清單「只剩」那一條誤判，再單次手打豁免旗標重跑——旗標**不要寫進文件或腳本**，0801 教訓）。
-> repo `summer09201017-cloud/8biblesearch`。SW 目前 **v93**。
+> repo `summer09201017-cloud/8biblesearch`。SW 目前 **v103**（v94~v102 逐版摘要見 sw.js 頂部註解與頁尾「🏷️ 改版簡歷」）。
 
 ---
+
+## ✅ 已完成(2026-09-27,agape250 機——v103 已部署上線並線上驗過)
+
+- 🔍 **v103 關鍵字搜尋可用頓號「、」分隔**(使用者截圖回報「拿八、大衛」查無結果)。分隔符 /[\s　,，]+/ 加上 、;；;placeholder 與提示同步;改版簡歷插 v103;data 不動。驗:對真實 unv.json 跑正式 parseSearchTokens,「拿八、大衛」= 9 節,與逗號/空白版一致。
+- ⚠ 補丁坑:index.html 是 LF/CRLF 混用(2684 行起帶 \r),多行錨點要用 \r?\n 比對。
 
 ## ✅ 已完成(2026-08-14,HFP 機——v92/v93 已部署上線並線上驗過)
 
