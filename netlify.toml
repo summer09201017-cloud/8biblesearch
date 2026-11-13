@@ -1,11 +1,12 @@
-# 靜態站：根目錄即網站根
-# command = 部署閘門：驗證失敗 → 部署失敗 → 線上維持上一版（2026-07-19 白屏事故後加）
+# 靜態站：網站根 = .deploy/（v105 2026-11-13 起;由 scripts/stage-deploy.mjs 從 repo 根目錄只挑網站用到的檔複製過去）
+# command = 部署閘門：驗證失敗 → 部署失敗 → 線上維持上一版（2026-07-19 白屏事故後加）;閘門過了才備妥 .deploy
 # ignore = 止血（2026-07-20）：斷開雲端 auto-build（每次 push 都 build 會燒點數）。
-#   發佈一律走本機驗證+direct upload：node scripts/validate-deploy.mjs && netlify deploy --prod --dir . --site <id>
+#   發佈一律走本機驗證+direct upload：npx netlify deploy --prod --site <id>（CLI 會先跑下面的 command,再上傳 publish 資料夾）
+#   ⚠ 不要再加 --dir .:那會把 CLAUDE.md、交接檔、腳本、測試全部發出去
 #   （站台層另設 stop_builds=true 為主閘;本 ignore 為備援:exit 0 → 一律略過雲端 build）
 [build]
-  publish = "."
-  command = "node scripts/validate-deploy.mjs --selftest"
+  publish = ".deploy"
+  command = "node scripts/validate-deploy.mjs --selftest && node scripts/stage-deploy.mjs"
   ignore = "exit 0"
 
 # Service Worker 勿長期快取在 CDN（更新才會生效）
@@ -25,9 +26,11 @@
   [headers.values]
     Cache-Control = "public, max-age=604800"
 
-# 🔒 v105(2026-11-13):publish="." 會把整個 repo 根目錄發出去 ⇒ 內部文件、腳本、測試一律回 404。
+# 🔒 v105(2026-11-13):第二道防線。主防線是 publish=".deploy"(內部檔根本不上傳);
+#   萬一有人又用 --dir . 部署,下面這些路徑至少回 404。⚠ 只擋得住大小寫完全相同的網址
+#   (實測 Netlify 找檔不分大小寫、轉址規則卻分:/claude.md 擋不住)⇒ 別把它當主防線。
 #   網站真正用到的只有 / sw.js manifest.webmanifest icons/ vendor/ data/,這幾個不能擋。
-#   中文檔名兩種寫法都列(原字與 URL 編碼),部署後兩種都 curl 看內容驗。新增內部檔案記得補一條。
+#   中文檔名兩種寫法都列(原字與 URL 編碼)。
 [[redirects]]
   from = "/CLAUDE.md"
   to = "/__not_found__"

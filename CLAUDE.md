@@ -14,7 +14,8 @@ Production translations（**9 本離線** + **1 本線上** = 10）:
 
 **2026-11-13(場名「1113-0657-額度排程與熱門站審查-家裡」,HFP 機)v105 長輩友善修紅燈**:
 - ✅ 頁尾常駐「版本 vN(日期)· 更新紀錄」(整列一顆鈕 ≥48px/16px;版號唯一來源＝`APP_VERSIONS[0]`,寫進 `#appVerText`;右下 10 秒淡出的 `appVerBadge` 拿掉;「改版簡歷」改名「更新紀錄」)。版號與 `sw.js` CACHE_NAME 不一致 ⇒ `validate-deploy --selftest`(第 6 段,含 2 個反例)與 `node --test tests/version.test.mjs` 都紅;規則本體 `scripts/version-check.mjs`。**改版要同時改 APP_VERSIONS 第一筆＋sw.js。**
-- ✅ 經文預設 19px(`:root{--verse-font-size}`;調過字級的 `bible-verse-px` 不受影響,實機驗 22 仍 22);手機 `.btn/.tab/.fs-btn/select/input` ≥48px、16px,分頁改折行不橫滑,底部字級列收起「文字大小」字樣維持兩行,回頂鈕排到字級列上方;匯入先 confirm＋`snapshotLocal('匯入前')`;刪筆記確認講後果;朗讀說明/試聽句(創 1:1 已 cuv 核對)對齊現況;ESV/KJV 徽章對比 ≥5;`netlify.toml` 擋內部檔案 404(新增內部檔要補一條)。
+- ✅ 經文預設 19px(`:root{--verse-font-size}`;調過字級的 `bible-verse-px` 不受影響,實機驗 22 仍 22);手機 `.btn/.tab/.fs-btn/select/input` ≥48px、16px,分頁改折行不橫滑,底部字級列收起「文字大小」字樣維持兩行,回頂鈕排到字級列上方;匯入先 confirm＋`snapshotLocal('匯入前')`;刪筆記確認講後果;朗讀說明/試聽句(創 1:1 已 cuv 核對)對齊現況;ESV/KJV 徽章對比 ≥5。
+- ✅ **部署改發 `.deploy/`**:`npx netlify deploy --prod --site c889cd5e-6bec-4008-a0ee-34875aa20585`(**不要再加 `--dir .`**)。build command＝閘門＋`scripts/stage-deploy.mjs`(只複製 index.html/sw.js/manifest/icons/vendor/data)。由來:netlify.toml 404 轉址實測擋不住 `/claude.md`(Netlify 找檔不分大小寫、轉址分)⇒ 內部檔不上傳才是根治;轉址留作第二道。網站新增檔案要加進 stage-deploy 清單。
 - ⏸ 沒做:橫向 740px 走桌機版面,按鈕沒放大;新譯本徽章白字對比 4.30(清單外);換版清掉已下載譯本的離線快取策略(只回報);跟隨系統深色。
 
 **完整、會更新的「已完成 vs 真正待做」清單見 `roadmap.md`（單一真相）。** 交接快照見 `讀我-HANDOFF.txt`。
