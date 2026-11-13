@@ -9,6 +9,7 @@
 // --selftest:先拿 tests/fixtures/broken-20260719-whitescreen.html(①的真兇)驗「閘門抓得到」,
 //            再驗正式檔。守門員先驗自己,才不會有人日後重構時悄悄弄丟關鍵檢查。
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { checkVersionSync } from './version-check.mjs';
 
 const SELFTEST = process.argv.includes('--selftest');
 const FIXTURE = 'tests/fixtures/broken-20260719-whitescreen.html';
@@ -103,6 +104,19 @@ try {
 // ---- 5. manifest ----
 try { JSON.parse(readFileSync('manifest.webmanifest', 'utf8')); ok('manifest.webmanifest 可解析'); }
 catch (e) { fail('manifest.webmanifest 壞了:' + e.message); }
+
+// ---- 6. 版號一致(v105 1113 立):頁尾版號 = APP_VERSIONS 第一筆,必須 = sw.js CACHE_NAME 尾碼、日期 YYYY-MM-DD ----
+if (SELFTEST) {
+  // 反例:故意把更新紀錄第一筆版號 +1、或把日期寫成斜線,閘門都必須攔下
+  const bumped = html.replace(/(APP_VERSIONS\s*=\s*\[\s*\{\s*"v"\s*:\s*"v)(\d+)/, (m, a, n) => a + (Number(n) + 1));
+  const badDate = html.replace(/(APP_VERSIONS\s*=\s*\[\s*\{\s*"v"\s*:\s*"[^"]*"\s*,\s*"d"\s*:\s*")(\d{4})-(\d{2})-(\d{2})/, '$1$2/$3/$4');
+  const caught = [bumped, badDate].filter((h) => h !== html && checkVersionSync(h, sw).length > 0).length;
+  if (caught !== 2) fail(`🚨 版號檢查對反例(版號錯一號/日期格式錯)只攔下 ${caught}/2——檢查失效,禁止部署!`);
+  else ok('selftest:版號檢查攔得下 2 個反例(版號錯一號、日期格式錯)');
+}
+const verFails = checkVersionSync(html, sw);
+verFails.forEach(fail);
+if (verFails.length === 0) ok('頁尾版號(更新紀錄第一筆)= SW 快取名 v' + (ver ? ver[1] : '?') + ',日期格式正確');
 
 if (failed) { console.error('\n🛑 部署閘門未通過,中止部署(線上維持前一版)'); process.exit(1); }
 console.log('\n🟢 部署閘門全數通過');

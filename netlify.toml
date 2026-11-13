@@ -24,3 +24,92 @@
   for = "/data/*"
   [headers.values]
     Cache-Control = "public, max-age=604800"
+
+# 🔒 v105(2026-11-13):publish="." 會把整個 repo 根目錄發出去 ⇒ 內部文件、腳本、測試一律回 404。
+#   網站真正用到的只有 / sw.js manifest.webmanifest icons/ vendor/ data/,這幾個不能擋。
+#   中文檔名兩種寫法都列(原字與 URL 編碼),部署後兩種都 curl 看內容驗。新增內部檔案記得補一條。
+[[redirects]]
+  from = "/CLAUDE.md"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/DEPLOY.md"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/README.md"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/roadmap.md"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/GOOGLE_DRIVE_SETUP.md"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/GOOGLE_DRIVE_SETUP.docx"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/讀我-HANDOFF.txt"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/%E8%AE%80%E6%88%91-HANDOFF.txt"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/啟動網站.bat"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/%E5%95%9F%E5%8B%95%E7%B6%B2%E7%AB%99.bat"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/download_bible.js"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/fetch_niv_apibible.js"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/fetch_niv_legal.js"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/start-download.ps1"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/scripts/*"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/tests/*"
+  to = "/__not_found__"
+  status = 404
+  force = true
+[[redirects]]
+  from = "/handoff/*"
+  to = "/__not_found__"
+  status = 404
+  force = true
