@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠ 2026-11-14 使用者指示:這一站不要套「長輩友善放大」
+
+- 2026-11-13 的 v105(經文預設字 19px、手機按鈕/分頁/下拉放大、頁尾版本列、匯入確認、部署改發 `.deploy/`)沒有先給使用者看過就上線。
+  他在自己手機上看到分頁與底部列各被撐成三行、搜尋與結果只剩約三成畫面(他的字級設得很小),決定**整版退回 v104**。
+- 2026-11-14 已退回:線上用 Netlify 把 2026-09-27 那一次發布重新設為正式版(沒有重新建置);repo 以 `cac84a4` 還原 `c44afcc`、`eeafdfb`,內容與 `d61c2fd` 逐檔相同。
+- **以後不要再對這一站做放大字級、放大按鈕、改版面這類改動,除非使用者自己點名要。** 要動任何他看得到的地方,先把「會改到哪些畫面」列給他看、他點頭再做。
+
 ## What this project is
 
 A multi-translation Bible reader PWA (繁體中文介面). Single static HTML file + per-translation JSON data, no backend, no build step. Deploys to Netlify as-is. Local-first: all user data lives in `localStorage`; optional Google Drive sync writes to the user's own `appDataFolder`.
