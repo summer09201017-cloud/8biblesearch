@@ -15,5 +15,3 @@ data/NIV/
 .netlify/
 # 建置工具暫裝(scripts/gen-readings.mjs 要 pinyin-pro),不進版控
 node_modules/
-# 部署資料夾(scripts/stage-deploy.mjs 每次部署重建),不進版控
-.deploy/

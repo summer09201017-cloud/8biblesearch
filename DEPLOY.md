@@ -76,14 +76,9 @@ git push -u origin main
 ⚠ **push ≠ 上線**（0830 實測：push 後等 5 分鐘線上仍舊版——自動建置已停）。要手動部署：
 
 ```
-npx netlify deploy --prod --site c889cd5e-6bec-4008-a0ee-34875aa20585
+node scripts/validate-deploy.mjs
+npx netlify deploy --prod --dir . --site c889cd5e-6bec-4008-a0ee-34875aa20585
 ```
-
-（v105 2026-11-13 起）CLI 會先跑 netlify.toml 的 build command＝部署閘門 `validate-deploy --selftest`
-＋`scripts/stage-deploy.mjs`（把 index.html、sw.js、manifest、icons/、vendor/、data/ 複製到 `.deploy/`），
-再上傳 `.deploy/`。⚠ **不要再加 `--dir .`**：那會把 CLAUDE.md、交接檔、腳本、測試全部發出去
-（netlify.toml 的 404 轉址只擋得住大小寫完全相同的網址，/claude.md 照樣吐內容）。
-網站新增要用到的檔案或資料夾 ⇒ 加進 `scripts/stage-deploy.mjs` 的清單。
 
 已知誤咬：zero-pii-guard 會咬 `vendor/diff_match_patch.js` 第 22 行開源作者的公開 email
 （Apache 授權頭，非個資）。碰到時先自己看那行確認還是同一處，再**單次手打**放行旗標重跑——

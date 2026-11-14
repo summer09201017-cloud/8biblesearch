@@ -26,9 +26,6 @@
   --highlight: #fff3cd;
   --tag-bg: #f0e8d8;
 }
-/* v105(1113):經文預設字級 19px(手機與電腦同一個預設)。只放在 :root,不跟主題規則寫在一起——
-   使用者自己調過的字級由 setFontSize() 寫在 <html> 的 inline style,優先序比這裡高,不受影響。 */
-:root { --verse-font-size: 19px; }
 /* 印刷棕：深米黃底+深棕字，e-ink 感 */
 [data-theme="sepia"] {
   --bg: #e8dcc4;
@@ -216,7 +213,7 @@ body {
 }
 #panel-read .btn-read-copy-top:active { transform:translateY(0); }
 .selector-group { display:flex; flex-direction:column; gap:4px; }
-.selector-group label { font-size:0.875rem; color:var(--text2); font-weight:600; }   /* v105:12→14px */
+.selector-group label { font-size:0.75rem; color:var(--text2); font-weight:600; }
 .selector-group select, .selector-group input {
   padding:8px 12px; border:1px solid var(--border); border-radius:8px;
   background:var(--bg2); color:var(--text); font-size:0.9rem;
@@ -321,15 +318,15 @@ body {
 }
 .badge-unv { background:#c0392b; }
 .badge-ncv { background:#2980b9; }
-.badge-kjv { background:#1e7e34; }   /* v105:白字對比 2.87→5.14 */
+.badge-kjv { background:#27ae60; }
 .badge-asv { background:#8e44ad; }
-.badge-esv { background:#a84300; }   /* v105:白字對比 2.85→6.06 */
+.badge-esv { background:#e67e22; }
 .badge-lcc { background:#6d4c41; }
 .badge-niv { background:#1a5276; }
 .badge-web { background:#1565c0; }
 .badge-bbe { background:#5d4037; }
 .badge-rcuv { background:#7b1fa2; }
-.verse-text { font-size:var(--verse-font-size, 19px); line-height:1.85; flex:1; }
+.verse-text { font-size:var(--verse-font-size, 1rem); line-height:1.85; flex:1; }
 .verse-text .highlight-match { background:#ffe066; padding:1px 2px; border-radius:2px; }
 
 /* ===== 和修本(rcuv)線上譯本專用:段落標題外提 + 註腳可點開 ===== */
@@ -1192,7 +1189,7 @@ body {
 }
 .backup-reminder-actions .btn-backup-now:hover { filter:brightness(1.05); }
 .app-footer {
-  text-align:center; padding:20px; font-size:0.875rem; color:var(--text2);   /* v105:12→14px */
+  text-align:center; padding:20px; font-size:0.75rem; color:var(--text2);
   border-top:1px solid var(--border); margin-top:40px;
 }
 .app-footer a { color:var(--accent); text-decoration:none; }
@@ -1220,7 +1217,7 @@ body {
   .verse-read-pick .verse-comment-link,
   .verse-read-pick .btn-copy-inline { padding:3px 7px; font-size:0.75rem; }
   .verse-read-check-label { display:none; }
-  .verse-text { font-size:var(--verse-font-size, 19px); }
+  .verse-text { font-size:var(--verse-font-size, 0.95rem); }
   .search-box { flex-direction:column; }
   .quick-input { flex-direction:column; }
   .tab { padding:9px 8px; font-size:0.82rem; }
@@ -1636,44 +1633,6 @@ body.simple-mode .tab { font-size:1.05rem; padding-top:12px; padding-bottom:12px
 }
 #backToTop:hover { opacity:1; }
 #backToTop.show { display:flex; }
-
-/* 🏷️ v105(1113):頁尾常駐「版本 vN(日期)· 更新紀錄」。整列就是一顆鈕(高 ≥48px、字 ≥16px),點了打開更新紀錄。
-   版號文字由頁尾 script 從 APP_VERSIONS[0] 寫入(唯一來源),這裡不手寫版號。 */
-.ver-note-row { margin:16px 0 0; padding:0 8px; text-align:center; }
-.ver-note-btn {
-  font:inherit; font-size:1rem; line-height:1.4; min-height:48px; max-width:100%;
-  padding:10px 18px; color:var(--text); background:var(--card);
-  border:1px solid var(--border); border-radius:999px; cursor:pointer;
-}
-.ver-note-btn:hover { background:var(--tag-bg); }
-.ver-note-btn .ver-note-link { color:var(--accent); font-weight:700; text-decoration:underline; text-underline-offset:3px; }
-
-/* 🧓 v105(1113):長輩友善——手機上按鈕、分頁、下拉都要好按(高 ≥48px、字 ≥16px),
-   欄位標籤與頁尾字 ≥14px、主題鈕 ≥44px。
-   分頁列放大後改成「折行」,不再橫向滑動(原本第 7 顆「設定/資料」滑到畫面外,長輩不知道要滑)。
-   底部字級列:鈕放大後原本會折成三行(吃掉螢幕將近四分之一)⇒ 手機上收起「文字大小」那四個小字
-   (A-/A+ 本身與「19px」已看得出是字級,群組仍有 aria-label),滑桿與「朗讀」排進第一行,
-   第二行放「讀哪個譯本／存語音／速度」,一般手機寬度維持兩行。 */
-@media (max-width:600px) {
-  select { min-height:48px; font-size:1rem; }
-  input[type="text"], input[type="search"], textarea, .quick-input textarea { min-height:48px; font-size:1rem; }
-  .btn, .btn.btn-sm { min-height:48px; font-size:1rem; }
-  .btn-search-pick-copy { font-size:1rem !important; }   /* 基礎樣式用 !important 鎖在 13.6px */
-  label.btn { display:inline-flex; align-items:center; }
-  .tabs { flex-wrap:wrap; overflow-x:visible; }
-  .tab { flex:1 1 auto; min-height:48px; font-size:1rem; padding:8px 10px; }
-  .selector-group select, .selector-group input { min-height:48px; font-size:1rem; }
-  .theme-chip { width:44px; height:44px; font-size:1.2rem; border-width:2px; }
-  .font-size-bar { gap:6px; padding:6px 8px; padding-bottom:calc(6px + env(safe-area-inset-bottom)); }
-  .font-size-bar .fs-btn { min-height:48px; min-width:44px; padding:6px 10px; font-size:1rem; }
-  .font-size-bar .fs-speak-ver { min-height:48px; font-size:1rem; max-width:9em; }
-  .font-size-bar .fs-bar-value { font-size:1rem; }
-  .font-size-bar .fs-bar-label { display:none; }
-  .font-size-bar input[type="range"] { order:1; flex:1 1 64px; min-width:56px; width:auto; }
-  .font-size-bar .fs-speak-btn, .font-size-bar .fs-speak-ver { order:2; }
-  .font-size-bar #btn-speak { order:1; }
-  #backToTop { bottom:calc(var(--fsbar-h, 120px) + 12px); }   /* 回頂鈕原本疊在底部字級列的「速度」下拉上 */
-}
 </style>
 </head>
 <body>
@@ -1684,11 +1643,11 @@ body.simple-mode .tab { font-size:1.05rem; padding-top:12px; padding-bottom:12px
       <div class="font-size-bar" role="group" aria-label="文字大小調整">
         <span class="fs-bar-label">文字大小</span>
         <button type="button" class="fs-btn" onclick="adjustFontSize(-2)" aria-label="縮小字體">A-</button>
-        <span id="fs-label" class="fs-bar-value">19px</span>
+        <span id="fs-label" class="fs-bar-value">16px</span>
         <button type="button" class="fs-btn" onclick="adjustFontSize(2)" aria-label="放大字體">A+</button>
         <button type="button" id="btn-speak" class="fs-btn fs-speak-btn" onclick="toggleReadAloud()" aria-label="朗讀畫面經文" title="朗讀目前畫面上的經文（再按一次停止）">🔊 朗讀</button>
         <select id="speak-ver" class="fs-speak-ver" onmousedown="refreshSpeakOptions()" onfocus="refreshSpeakOptions()" onchange="saveSpeakVer()" aria-label="選擇要朗讀的譯本" title="選擇要朗讀哪一個譯本（中文或英文）">
-          <option value="">讀：第一個譯本</option>
+          <option value="">🔊 讀：第一個譯本</option>
         </select>
         <button type="button" id="btn-speak-dl" class="fs-btn fs-speak-btn" onclick="shareVerseAudio()" aria-label="把畫面經文存成語音檔分享" title="把目前畫面的經文產生成語音檔（可下載或分享給別人聽）">⬇ 存語音</button>
         <select id="speak-rate-bar" class="fs-speak-ver" onchange="setSpeakRate(this.value)" aria-label="朗讀速度" title="朗讀速度（英文會再自動放慢一些）">
@@ -1697,7 +1656,7 @@ body.simple-mode .tab { font-size:1.05rem; padding-top:12px; padding-bottom:12px
           <option value="0.85">正常</option>
           <option value="1">🐇 稍快</option>
         </select>
-        <input id="fs-slider" type="range" min="10" max="40" step="1" value="19" oninput="setFontSize(this.value)" aria-label="文字大小滑桿">
+        <input id="fs-slider" type="range" min="10" max="40" step="1" value="16" oninput="setFontSize(this.value)" aria-label="文字大小滑桿">
       </div>
       <div class="app-header-actions"></div>
     </div>
@@ -1980,7 +1939,8 @@ body.simple-mode .tab { font-size:1.05rem; padding-top:12px; padding-bottom:12px
     <div style="background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:16px;">
       <h3>🔊 朗讀聲音</h3>
       <p style="font-size:0.9rem;color:var(--text2);margin-bottom:12px;">
-        選朗讀用的人聲（<b>需要連線</b>），按「試聽」聽聽看。
+        選擇朗讀經文用的聲音，按「試聽」聽聽看。<b>不同瀏覽器內建的聲音不同</b>：
+        用 <b>Edge 瀏覽器</b>開本站會多出「Natural（自然）」語音，唸經文最接近真人。
       </p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
         <select id="speak-voice-sel" class="fs-speak-ver" style="max-width:100%;min-width:200px;" onchange="saveSpeakVoice()" aria-label="選擇朗讀聲音"></select>
@@ -1997,7 +1957,7 @@ body.simple-mode .tab { font-size:1.05rem; padding-top:12px; padding-bottom:12px
         <button class="btn btn-secondary btn-sm" type="button" onclick="previewSpeakVoice()">▶ 試聽</button>
       </div>
       <p style="font-size:0.78rem;color:var(--text2);margin-top:10px;">
-        💡 <b>英文朗讀通常偏快</b>，聽不清楚就把速度調到「很慢」。此設定只存在這台裝置。
+        💡 「自動（推薦）」會自己挑這台裝置上最自然的中文聲音。<b>英文朗讀通常偏快</b>，聽不清楚就把速度調到「很慢」。此設定只存在這台裝置。
       </p>
     </div>
 
@@ -2147,7 +2107,7 @@ body.simple-mode .tab { font-size:1.05rem; padding-top:12px; padding-bottom:12px
         <details style="margin-top:14px; font-size:0.88rem;">
           <summary style="cursor:pointer; color:var(--accent); font-weight:600;">🛟 進階：本地備份快照（萬一同步出問題可從這裡還原）</summary>
           <p style="margin-top:8px; color:var(--text2); font-size:0.82rem;">
-            每次雲端備份／還原、或匯入資料檔之前，系統會自動將當下本地資料留存一份快照（最多保留 3 份）。
+            每次雲端備份／還原前，系統會自動將當下本地資料留存一份快照（最多保留 3 份）。
           </p>
           <div id="snapshot-list" class="snapshot-list"></div>
         </details>
@@ -2330,14 +2290,13 @@ body.simple-mode .tab { font-size:1.05rem; padding-top:12px; padding-bottom:12px
   </div>
 </div>
 
-<div class="ver-note-row">
-  <!-- v105(1113):版號文字由頁尾 script 從 APP_VERSIONS[0] 寫入 #appVerText(唯一來源,這裡不手寫) -->
-  <button type="button" id="appVerOpen" class="ver-note-btn" aria-haspopup="dialog"><span id="appVerText">版本</span> · <span class="ver-note-link">更新紀錄</span></button>
-</div>
+<p class="ver-note-row" style="margin:.7rem 0 0;text-align:center">
+            <button type="button" id="appVerOpen" style="font:inherit;font-size:.82rem;line-height:1.2;padding:.5rem 1rem;min-height:40px;color:inherit;background:transparent;border:1px solid currentColor;border-radius:999px;opacity:.65;cursor:pointer">🏷️ 改版簡歷・看看前幾版做了什麼</button>
+          </p>
           <footer class="app-footer">
   <p>9 個離線譯本由本地 <code>data/*.json</code> 讀取，可完全離線使用（資料來源可參考<a href="https://bible.fhl.net" target="_blank" rel="noopener">信望愛</a>，執行時不連線查詢）。<strong>和修本為線上譯本</strong>，勾選時才逐章向信望愛查詢，不打包、不離線。</p>
-  <p style="margin-top:4px;">和合本 · ESV · NIV · 新譯本 · 呂振中 · BBE · ASV · KJV · WEB ｜ 和修本（線上）</p>
-  <p style="margin-top:4px;">和修本（和合本2010）版權屬香港聖經公會，經<a href="https://bible.fhl.net/json/" target="_blank" rel="noopener">信望愛 JSON API</a> 即時查詢呈現；該站標示此譯本不可下載離線資料庫，故本站不予打包。</p>
+  <p style="margin-top:4px;">和合本 · ESV · NIV · 新譯本 · 呂振中 · BBE · ASV · KJV · WEB ｜ 和修本<span style="font-size:0.7em;vertical-align:super;">線上</span> ｜ <span title="WEB／BBE：node download_bible.js">譯本說明見 DEPLOY.md</span></p>
+  <p style="margin-top:4px;font-size:0.85em;opacity:0.8;">和修本（和合本2010）版權屬香港聖經公會，經<a href="https://bible.fhl.net/json/" target="_blank" rel="noopener">信望愛 JSON API</a> 即時查詢呈現；該站標示此譯本不可下載離線資料庫，故本站不予打包。</p>
 </footer>
 
 <script>
@@ -2956,7 +2915,7 @@ function stripHtml(s) {
 // ====== 全域字體大小（10–40px）：套用至經文與📖/📝按鈕 ======
 const FS_MIN = 10, FS_MAX = 40, FS_KEY = 'bible-verse-px';
 function setFontSize(px) {
-  px = Math.max(FS_MIN, Math.min(FS_MAX, parseInt(px, 10) || 19));   // v105:預設 16→19(跟 :root 的 --verse-font-size 同一個數)
+  px = Math.max(FS_MIN, Math.min(FS_MAX, parseInt(px, 10) || 16));
   document.documentElement.style.setProperty('--verse-font-size', px + 'px');
   const slider = document.getElementById('fs-slider');
   const label = document.getElementById('fs-label');
@@ -2966,7 +2925,7 @@ function setFontSize(px) {
 }
 function adjustFontSize(delta) {
   const slider = document.getElementById('fs-slider');
-  const cur = slider ? parseInt(slider.value, 10) : 19;
+  const cur = slider ? parseInt(slider.value, 10) : 16;
   setFontSize(cur + delta);
 }
 (function restoreFontSize() {
@@ -2982,10 +2941,8 @@ function adjustFontSize(delta) {
 function syncFontBarPad() {
   const bar = document.querySelector('.font-size-bar');
   if (!bar) return;
-  if (getComputedStyle(bar).position !== 'fixed') { document.body.style.paddingBottom = ''; document.documentElement.style.removeProperty('--fsbar-h'); return; }
-  const h = Math.ceil(bar.getBoundingClientRect().height);
-  document.body.style.paddingBottom = (h + 16) + 'px';
-  document.documentElement.style.setProperty('--fsbar-h', h + 'px');   // v105:回頂鈕排在字級列上方,不疊在下拉上
+  if (getComputedStyle(bar).position !== 'fixed') { document.body.style.paddingBottom = ''; return; }
+  document.body.style.paddingBottom = Math.ceil(bar.getBoundingClientRect().height + 16) + 'px';
 }
 window.addEventListener('resize', syncFontBarPad);
 window.addEventListener('orientationchange', syncFontBarPad);
@@ -3121,8 +3078,7 @@ try { window.addEventListener('load', initSpeakRate); } catch(e) {}
 function previewSpeakVoice() {
   stopReadAloud();
   if (navigator.onLine === false) { toast('試聽需要連線（人聲由伺服器產生）'); return; }
-  // v105:只唸一節並帶出處(經文 1113 以 cuv lookup 對過和合本 創 1:1)
-  _clipQueue = [{ text: toSpeakable('起初，　神創造天地。創世記一章一節。'), lang: 'zh' }];
+  _clipQueue = [{ text: toSpeakable('起初，神創造天地。這是耶和華所定的日子，我們在其中要高興歡喜！'), lang: 'zh' }];
   _ttsAbort = ('AbortController' in window) ? new AbortController() : null;
   _speaking = true;
   _setSpeakBtn(true);
@@ -3276,11 +3232,10 @@ function refreshSpeakOptions() {
   let saved = '';
   try { saved = localStorage.getItem(SPEAK_VER_KEY) || ''; } catch(e) {}
   const prev = sel.value || saved;
-  // v105:拿掉選項前的 🔊(旁邊就是「🔊 朗讀」鈕;手機字放大後下拉變窄,省下的寬度讓「讀：第一個譯本」不被切掉)
-  let html = '<option value="">讀：第一個譯本</option>';
+  let html = '<option value="">🔊 讀：第一個譯本</option>';
   names.forEach(n => {
     const esc = n.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-    html += '<option value="' + esc + '">讀：' + esc + '</option>';
+    html += '<option value="' + esc + '">🔊 讀：' + esc + '</option>';
   });
   sel.innerHTML = html;
   sel.value = (prev && names.indexOf(prev) >= 0) ? prev : '';
@@ -6718,7 +6673,7 @@ function renderNotesList() {
 }
 
 function deleteNoteEntry(bid, chap, sec) {
-  if (!confirm('確定要刪除這則筆記嗎？\n\n刪掉之後就救不回來了——除非您之前匯出過備份檔（設定/資料 →「📤 匯出資料」）。')) return;
+  if (!confirm('確定刪除此筆記嗎？')) return;
   delete userData[`${bid}-${chap}-${sec}`];
   saveUserData();
   renderNotesList();
@@ -7599,16 +7554,8 @@ function importUserData(e) {
   if(!file) return;
   const reader = new FileReader();
   reader.onload = function(evt) {
-    let data;
-    try { data = JSON.parse(evt.target.result); }
-    catch(err) { alert('匯入失敗：檔案格式不正確（這台裝置的資料沒有被動到）'); return; }
-    // v105(1113):匯入會整份取代,先問、同意了先存快照再寫;按取消就什麼都不動
-    if (!confirm('匯入會取代這台裝置上的筆記、讀經足跡和讀經計畫，會先自動存一份快照可以還原。要繼續嗎？')) {
-      toast('已取消匯入，資料沒有變動');
-      return;
-    }
-    snapshotLocal('匯入前');
     try {
+      const data = JSON.parse(evt.target.result);
       if(data.historySearch) localStorage.setItem('bible-search-history', data.historySearch);
       if(data.historyQuick) localStorage.setItem('bible-quick-history', data.historyQuick);
       if(data.readingLog) localStorage.setItem(TRACK_LOG_KEY, data.readingLog);
@@ -7629,8 +7576,7 @@ function importUserData(e) {
         migrateUserDataLazy();
       }
       try { localStorage.setItem(BACKUP_TIME_KEY, Date.now().toString()); } catch(e2) {}
-      renderSnapshotList();
-      toast('匯入成功（匯入前的資料已存成快照，可在「雲端同步」→「本地備份快照」還原）');
+      toast('匯入成功');
       loadHistory('bible-search-history', 'search-history', 'triggerSearchHistory');
       loadHistory('bible-quick-history', 'quick-history', 'triggerQuickHistory');
       const activeTab = document.querySelector('.tab.active');
@@ -7639,7 +7585,7 @@ function importUserData(e) {
       else if (tabName === 'notes') renderNotesList();
       checkBackupReminder();
     } catch(err) {
-      alert('匯入失敗：檔案格式不正確（匯入前的資料已存成快照，可從「本地備份快照」還原）');
+      alert('匯入失敗：檔案格式不正確');
     }
   };
   reader.readAsText(file);
@@ -8656,18 +8602,18 @@ try {
   update();
 })();
 </script>
-<!-- 🏷 更新紀錄(VT2 2026-09-16 起;v105 1113 由「改版簡歷」改名)。
-     頁尾那一列「版本 vN(日期)· 更新紀錄」的版號,由下面的 script 從 APP_VERSIONS[0] 寫入——唯一來源。
-     v105 拿掉右下角 10 秒就淡出的小版號徽章(畫面上只留頁尾這一個版號)。
-     ★ 改版時在 APP_VERSIONS 最前面插一筆,版號要跟 sw.js 的 CACHE_NAME 尾碼一樣
-       (scripts/validate-deploy.mjs 與 tests/version.test.mjs 會擋不一致)。 -->
+<div id="appVerBadge" style="position:fixed;right:6px;bottom:4px;font-size:11px;line-height:1;opacity:.55;z-index:2147483000;pointer-events:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);font-family:system-ui,sans-serif"></div>
+<!-- 🏷 改版簡歷(VT2 2026-09-16 補齊 game-must-haves ⑦ 的下半件)。
+     徽章只回答「我開到哪一版」,這一份回答「每一版做了什麼」——寫給家長與老師看。
+     ★ 徽章維持 pointer-events:none(標籤不是按鈕);簡歷從選單那顆鈕開。
+     ★ 改版時在 APP_VERSIONS 最前面插一筆就好。 -->
 <style>#appVerSheet[hidden]{display:none!important}</style>
-<div id="appVerSheet" hidden role="dialog" aria-modal="true" aria-labelledby="appVerTitle" style="position:fixed;inset:0;z-index:2147483001;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;font-family:system-ui,'Noto Sans TC',sans-serif">
-  <div style="max-width:520px;width:100%;max-height:80vh;overflow-y:auto;background:var(--card, #fffdf8);border:1px solid var(--border, #d9cfc0);border-radius:12px;padding:16px 18px;color:var(--text, #2c2419);box-shadow:0 18px 50px rgba(0,0,0,.45)">
-    <h3 id="appVerTitle" style="margin:0 0 6px;font-size:20px">🏷️ 更新紀錄</h3>
-    <p style="margin:0 0 10px;font-size:16px;line-height:1.6;color:var(--text2, #6b5d4d)">每一版新增了什麼,白話寫給弟兄姊妹看。最新的在最上面。</p>
-    <ol id="appVerList" style="margin:0;padding-left:22px;font-size:18px;line-height:1.75"></ol>
-    <button type="button" id="appVerClose" style="margin-top:14px;width:100%;min-height:48px;font:inherit;font-size:18px;color:var(--text, #2c2419);background:var(--tag-bg, #f0e8d8);border:1px solid var(--border, #d9cfc0);border-radius:8px;cursor:pointer">關閉</button>
+<div id="appVerSheet" hidden style="position:fixed;inset:0;z-index:2147483001;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;font-family:system-ui,'Noto Sans TC',sans-serif">
+  <div style="max-width:460px;width:100%;max-height:72vh;overflow-y:auto;background:var(--card, #fffdf8);border:1px solid var(--border, #d9cfc0);border-radius:12px;padding:16px 18px;color:var(--text, #2c2419);box-shadow:0 18px 50px rgba(0,0,0,.45)">
+    <h3 style="margin:0 0 4px;font-size:16px">🏷️ 改版簡歷</h3>
+    <p style="margin:0 0 10px;font-size:12px;line-height:1.6;color:var(--text2, #6b5d4d)">每一版新增了什麼,白話寫給家長與老師看。前幾版都列在下面,最新的在最上面。</p>
+    <ol id="appVerList" style="margin:0;padding-left:18px;font-size:13px;line-height:1.85"></ol>
+    <button type="button" id="appVerClose" style="margin-top:14px;width:100%;min-height:44px;font:inherit;color:var(--text, #2c2419);background:var(--tag-bg, #f0e8d8);border:1px solid var(--border, #d9cfc0);border-radius:8px;cursor:pointer">關閉</button>
   </div>
 </div>
 <script>
@@ -8675,14 +8621,9 @@ try {
   // 最新的放最前面。改版只要在這裡插一筆。
   var APP_VERSIONS = [
     {
-      "v": "v105",
-      "d": "2026-11-13",
-      "t": "經文預設字變大了,沒調過字級的人一打開就是比較大的字;自己調過字級的不受影響,維持原本的設定。手機上的按鈕、分頁和下拉選單都放大,比較好按;分頁不用再左右滑,全部看得到。匯入備份檔之前會先問一聲,並自動存一份快照,萬一匯錯了可以還原;刪除筆記前的提醒也講清楚了「刪掉就救不回來」。頁尾看得到版本與更新紀錄,點一下就打開這份清單。另外:朗讀聲音的說明改成跟實際一樣,試聽只唸一節並唸出處;ESV 和 KJV 的標籤顏色加深,比較看得清楚。"
-    },
-    {
       "v": "v104",
       "d": "2026-09-27",
-      "t": "關鍵字找不到時,下面會列出「你是不是要找」的相近詞(最多 6 個、標節數),點一下就換成那個詞重搜。同音錯字排最前(例:打成「模西」會提示「摩西」、打成「撒母爾」會提示「撒母耳」)。多個關鍵字湊不到同一節時,也會列出每個詞各自的節數,點一個就只搜它。"
+      "t": "關鍵字找不到時,下面會列出「你是不是要找」的相近詞(最多 6 個、標節數),點一下就換成那個詞重搜。同音錯字排最前(拿巴→拿八、察出→查出、模西→摩西)。多個關鍵字湊不到同一節時,也會列出每個詞各自的節數,點一個就只搜它。"
     },
     {
       "v": "v103",
@@ -8692,12 +8633,12 @@ try {
     {
       "v": "v102",
       "d": "2026-09-16",
-      "t": "頁尾多一顆鈕(當時叫「改版簡歷」,現在叫「更新紀錄」),點開就看得到每一版做了什麼。以前畫面右下角只看得到版本號,卻看不到那一版改了什麼。"
+      "t": "頁尾多一顆「🏷️ 改版簡歷」鈕,點開就看得到每一版做了什麼。以前畫面右下角只看得到版本號,卻看不到那一版改了什麼。"
     },
     {
       "v": "v101",
       "d": "2026-09-14",
-      "t": "修好一個「把網站裝成 App 之後打開是錯誤畫面」的毛病(離線存起來的首頁存錯了地方)。這是整個系列一起修的同一種病。"
+      "t": "修好一個「把網站裝成 App 之後打開是錯誤畫面」的毛病(離線存檔的首頁存錯了鍵)。這是整個系列一起修的同一種病。"
     },
     {
       "v": "v100",
@@ -8759,21 +8700,57 @@ try {
   function shutSheet() { sheet.hidden = true; }
   window.__openVersionSheet = openSheet;
   window.__appVersion = APP_VERSIONS[0].v + '(' + APP_VERSIONS[0].d + ')';
-  // ★ 開更新紀錄那顆鈕**不一定在本段程式之前**就被解析完(--trigger=fixed 的 anchor 常在徽章後面)。
+  // ★ 開簡歷那顆鈕**不一定在本段程式之前**就被解析完(--trigger=fixed 的 anchor 常在徽章後面)。
   //   直接 getElementById 會拿到 null,鈕就變成按了沒反應——而且靜態檢查全綠、截圖也看不出來。
   //   ⇒ 還在解析中就等 DOMContentLoaded 再綁。
   function bindOpener() {
     var b = document.getElementById('appVerOpen');
     if (b) b.addEventListener('click', openSheet);
-    // v105:頁尾常駐那列的版號 = APP_VERSIONS[0](畫面上唯一的版號,來源只有這一處)
-    var t = document.getElementById('appVerText');
-    if (t) t.textContent = '版本 ' + window.__appVersion;
   }
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', bindOpener);
   else bindOpener();
   closeBtn.addEventListener('click', shutSheet);
   sheet.addEventListener('click', function (e) { if (e.target === sheet) shutSheet(); });
   addEventListener('keydown', function (e) { if (e.key === 'Escape' && !sheet.hidden) shutSheet(); });
+})();
+</script>
+    <script>
+      /* 🏷️ appVerBadgeFade（0828）：版號徽章是 position:fixed 在右下角，實測會蓋住大廳卡片、
+         遊戲的「難度 / 開始比賽」按鈕——pointer-events:none 只讓「點擊」穿過去，字還是被蓋著。
+         做法：10 秒後淡出。要看版本就重新整理，平常不擋畫面。 */
+      ;(function () {
+        var b = document.getElementById('appVerBadge')
+        if (!b) return
+        b.style.transition = 'opacity .8s'
+        setTimeout(function () {
+          b.style.opacity = '0'
+          setTimeout(function () { b.style.display = 'none' }, 900)
+        }, 10000)
+      })()
+    </script>
+<script>
+/* 🏷️ 版號徽章(0820 全艦隊批次):問「正在控制本頁的 SW」拿版本=你手上真的在跑的那一版,
+   頁面不寫死任何版號(不會漂)。硬重整(Ctrl+F5)的分頁不受 SW 管、問不到 → 誠實顯示退路
+   (股票管家 v134 同款);SW 換版接管時會再問,自動換新。 */
+(function () {
+  var el = document.getElementById('appVerBadge');
+  if (!el || !('serviceWorker' in navigator) || location.protocol !== 'https:') return;
+  var got = false;
+  navigator.serviceWorker.addEventListener('message', function (e) {
+    if (e.data && e.data.type === 'SW_VERSION') {
+      got = true;
+      var s = String(e.data.v), m = /-((?:v|nf)?\d+)$/.exec(s);
+      el.textContent = '🏷️ 版本 ' + (m ? m[1] : s) + '(這台裝置實際執行中的版本)';
+    }
+  });
+  function ask() { var c = navigator.serviceWorker.controller; if (c) c.postMessage('GET_VERSION'); }
+  navigator.serviceWorker.ready.then(ask).catch(function () {});
+  navigator.serviceWorker.addEventListener('controllerchange', ask);
+  setTimeout(function () {
+    if (got) return;
+    if (!navigator.serviceWorker.controller) el.textContent = '🏷️ 版本 —(強制重新整理的分頁問不到;普通重整一次即顯示)';
+    else { ask(); setTimeout(function () { if (!got) el.textContent = '🏷️ 版本 —(讀不到,重整一次即顯示)'; }, 1500); }
+  }, 1600);
 })();
 </script>
 </body>

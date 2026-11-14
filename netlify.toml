@@ -1,12 +1,11 @@
-# 靜態站：網站根 = .deploy/（v105 2026-11-13 起;由 scripts/stage-deploy.mjs 從 repo 根目錄只挑網站用到的檔複製過去）
-# command = 部署閘門：驗證失敗 → 部署失敗 → 線上維持上一版（2026-07-19 白屏事故後加）;閘門過了才備妥 .deploy
+# 靜態站：根目錄即網站根
+# command = 部署閘門：驗證失敗 → 部署失敗 → 線上維持上一版（2026-07-19 白屏事故後加）
 # ignore = 止血（2026-07-20）：斷開雲端 auto-build（每次 push 都 build 會燒點數）。
-#   發佈一律走本機驗證+direct upload：npx netlify deploy --prod --site <id>（CLI 會先跑下面的 command,再上傳 publish 資料夾）
-#   ⚠ 不要再加 --dir .:那會把 CLAUDE.md、交接檔、腳本、測試全部發出去
+#   發佈一律走本機驗證+direct upload：node scripts/validate-deploy.mjs && netlify deploy --prod --dir . --site <id>
 #   （站台層另設 stop_builds=true 為主閘;本 ignore 為備援:exit 0 → 一律略過雲端 build）
 [build]
-  publish = ".deploy"
-  command = "node scripts/validate-deploy.mjs --selftest && node scripts/stage-deploy.mjs"
+  publish = "."
+  command = "node scripts/validate-deploy.mjs --selftest"
   ignore = "exit 0"
 
 # Service Worker 勿長期快取在 CDN（更新才會生效）
@@ -25,94 +24,3 @@
   for = "/data/*"
   [headers.values]
     Cache-Control = "public, max-age=604800"
-
-# 🔒 v105(2026-11-13):第二道防線。主防線是 publish=".deploy"(內部檔根本不上傳);
-#   萬一有人又用 --dir . 部署,下面這些路徑至少回 404。⚠ 只擋得住大小寫完全相同的網址
-#   (實測 Netlify 找檔不分大小寫、轉址規則卻分:/claude.md 擋不住)⇒ 別把它當主防線。
-#   網站真正用到的只有 / sw.js manifest.webmanifest icons/ vendor/ data/,這幾個不能擋。
-#   中文檔名兩種寫法都列(原字與 URL 編碼)。
-[[redirects]]
-  from = "/CLAUDE.md"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/DEPLOY.md"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/README.md"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/roadmap.md"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/GOOGLE_DRIVE_SETUP.md"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/GOOGLE_DRIVE_SETUP.docx"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/讀我-HANDOFF.txt"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/%E8%AE%80%E6%88%91-HANDOFF.txt"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/啟動網站.bat"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/%E5%95%9F%E5%8B%95%E7%B6%B2%E7%AB%99.bat"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/download_bible.js"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/fetch_niv_apibible.js"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/fetch_niv_legal.js"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/start-download.ps1"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/scripts/*"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/tests/*"
-  to = "/__not_found__"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/handoff/*"
-  to = "/__not_found__"
-  status = 404
-  force = true
